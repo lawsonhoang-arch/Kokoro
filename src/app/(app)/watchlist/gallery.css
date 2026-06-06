@@ -1,0 +1,353 @@
+/* ============================================================
+   WATCHLIST GALLERY — pick, create, pin, recolor, or delete a list.
+   Ported verbatim from Kokoro.html's inline <style>. State lives in
+   localStorage["kokoro_watchlists_v1"] (see useWatchlists).
+   ============================================================ */
+
+/* Tools row above the grid */
+.wl-tools {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; margin-bottom: 28px;
+  border-radius: 100px;
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+}
+.wl-tools__search { flex: 1; display: flex; align-items: center; gap: 10px; color: var(--ink-faint); }
+.wl-tools__search input {
+  flex: 1; background: transparent; border: 0; outline: none;
+  color: var(--ink); font: inherit; font-size: 13.5px;
+}
+.wl-tools__sort {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 99px; background: var(--surface-2);
+  color: var(--ink-soft); font-family: var(--font-mono); font-size: 11.5px;
+  border: 1px solid var(--line);
+}
+
+.wl-grid {
+  display: grid; gap: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* ---- A single watchlist card ---- */
+.wl-card {
+  display: flex; flex-direction: column; position: relative;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-1);
+  overflow: hidden; cursor: pointer; text-decoration: none; color: inherit;
+  transition: transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s, border-color .22s;
+}
+.wl-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+  border-color: color-mix(in oklab, var(--wl-hue, var(--accent)) 35%, var(--line));
+}
+.wl-card:focus-visible { outline: 2px solid var(--wl-hue, var(--accent)); outline-offset: 3px; }
+
+/* Top hero with warm gradient — accent driven */
+.wl-card__hero {
+  position: relative; aspect-ratio: 16/9;
+  background:
+    radial-gradient(120% 80% at 25% 0%, color-mix(in oklab, var(--wl-hue, var(--accent)) 50%, transparent), transparent 60%),
+    radial-gradient(80% 70% at 80% 100%, color-mix(in oklab, var(--wl-hue, var(--accent)) 30%, transparent), transparent 70%),
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--wl-hue, var(--accent)) 14%, transparent) 0 12px, transparent 12px 24px),
+    linear-gradient(160deg, color-mix(in oklab, var(--wl-hue, var(--accent)) 28%, var(--surface-3)) 0%, var(--surface-2) 100%);
+  overflow: hidden;
+}
+.wl-card__hero::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.55) 100%);
+}
+.wl-card__hero-eyebrow {
+  position: absolute; top: 14px; left: 16px;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--uppercase-spacing);
+  text-transform: uppercase; color: rgba(255,255,255,0.78);
+  display: inline-flex; align-items: center; gap: 7px; z-index: 2;
+}
+.wl-card__hero-eyebrow::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--wl-hue, var(--accent));
+  box-shadow: 0 0 10px var(--wl-hue, var(--accent));
+}
+
+/* Fan of mini-posters in the hero */
+.wl-card__fan {
+  position: absolute; left: 14px; right: 14px; bottom: -16px; z-index: 1;
+  display: flex; align-items: flex-end; gap: 6px;
+}
+.wl-card__fan span {
+  width: 36px; height: 54px; border-radius: 5px;
+  background: linear-gradient(160deg, color-mix(in oklab, var(--wl-hue, var(--accent)) 50%, var(--surface-3)) 0%, var(--surface-2) 100%);
+  border: 1px solid rgba(0,0,0,0.4);
+  box-shadow: 0 6px 14px -8px rgba(0,0,0,0.5);
+  transform: translateY(8px) rotate(-2deg);
+}
+.wl-card__fan span:nth-child(2) { transform: translateY(0) rotate(0); }
+.wl-card__fan span:nth-child(3) { transform: translateY(4px) rotate(1.5deg); }
+.wl-card__fan span:nth-child(4) { transform: translateY(10px) rotate(3deg); }
+.wl-card__fan span:nth-child(5) { transform: translateY(18px) rotate(5deg); opacity: .8; }
+.wl-card__fan span:nth-child(6) { transform: translateY(28px) rotate(7deg); opacity: .55; }
+
+.wl-card__body { padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.wl-card__title-row { display: flex; align-items: center; gap: 10px; }
+.wl-card__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 19px;
+  letter-spacing: -0.012em; color: var(--ink); line-height: 1.2;
+  flex: 1; min-width: 0; margin: 0;
+}
+.wl-card__pin {
+  color: var(--wl-hue, var(--accent));
+  display: none; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+}
+.wl-card.is-pinned .wl-card__pin { display: inline-flex; }
+.wl-card__desc {
+  color: var(--ink-soft); font-size: 13.5px; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wl-card__stats {
+  display: flex; align-items: center; gap: 14px; margin-top: 4px;
+  color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;
+}
+.wl-card__stats .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--line-strong); }
+
+.wl-card__foot {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 20px; background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
+}
+.wl-card__foot .open {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  color: var(--wl-hue, var(--accent)); font-weight: 700; transition: gap .2s;
+}
+.wl-card:hover .open { gap: 10px; }
+
+/* Foot action icons (pin, recolor, delete) — hidden until hover */
+.wl-card__action {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 99px;
+  color: var(--ink-faint); background: transparent;
+  border: 1px solid transparent; opacity: 0; pointer-events: none;
+  transition: opacity .18s, color .15s, background .15s, border-color .15s, transform .12s;
+}
+.wl-card:hover .wl-card__action,
+.wl-card:focus-within .wl-card__action,
+.wl-card.is-pinned .wl-card__action[data-act="pin"] { opacity: 1; pointer-events: auto; }
+.wl-card__action:hover {
+  background: color-mix(in oklab, var(--wl-hue, var(--accent)) 12%, var(--surface));
+  color: var(--wl-hue, var(--accent));
+  border-color: color-mix(in oklab, var(--wl-hue, var(--accent)) 40%, var(--line));
+  transform: scale(1.05);
+}
+.wl-card__action[data-act="del"]:hover {
+  color: var(--feel-loved);
+  background: color-mix(in oklab, var(--feel-loved) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--feel-loved) 45%, var(--line));
+}
+.wl-card.is-pinned .wl-card__action[data-act="pin"] {
+  color: var(--wl-hue, var(--accent));
+  background: color-mix(in oklab, var(--wl-hue, var(--accent)) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--wl-hue, var(--accent)) 45%, var(--line));
+}
+.wl-card.is-removing {
+  transform: scale(0.92); opacity: 0; pointer-events: none;
+  transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s;
+}
+
+/* Hue picker popover anchored to the recolor button */
+.wl-card__hue-pop {
+  position: absolute; left: 12px; bottom: 56px; z-index: 4;
+  display: none; gap: 7px; align-items: center;
+  padding: 8px 10px; border-radius: 99px;
+  background: var(--surface); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lift);
+  animation: wl-pop-in .15s ease;
+}
+.wl-card__hue-pop.on { display: inline-flex; }
+.wl-card__hue-pop::after {
+  content: ""; position: absolute; left: 30px; bottom: -6px;
+  width: 10px; height: 10px; background: var(--surface);
+  border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+.wl-card__hue-swatch {
+  width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  transition: transform .15s, box-shadow .15s;
+}
+.wl-card__hue-swatch:hover { transform: scale(1.18); }
+.wl-card__hue-swatch.on {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch);
+}
+@keyframes wl-pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+
+.wl-card__people { display: inline-flex; }
+.wl-card__people span {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--p, var(--wl-hue, var(--accent))) 70%, var(--surface-3)) 0%, var(--surface-3) 80%);
+  border: 2px solid var(--surface); margin-left: -6px; flex: 0 0 auto;
+}
+.wl-card__people span:first-child { margin-left: 0; }
+
+/* + New watchlist card */
+.wl-new {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center;
+  border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--line-strong);
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  color: var(--ink-soft);
+  cursor: pointer; min-height: 100%;
+  padding: 40px 28px;
+  transition: border-color .2s, background .2s, color .2s, transform .2s;
+  font: inherit;
+}
+.wl-new:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 7%, var(--surface));
+  color: var(--accent);
+  transform: translateY(-3px);
+}
+.wl-new__icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+.wl-new__title { font-family: var(--font-title); font-weight: 700; font-size: 18px; color: inherit; }
+.wl-new__hint { font-size: 12.5px; color: var(--ink-faint); max-width: 26ch; line-height: 1.5; }
+
+/* Section heads */
+.wl-section-head {
+  display: flex; align-items: baseline; gap: 14px;
+  margin: 38px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.wl-section-head:first-of-type { margin-top: 8px; }
+.wl-section-head__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 17px;
+  color: var(--ink); letter-spacing: -0.005em;
+}
+.wl-section-head__num { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+
+/* Make the `hidden` attribute win over our explicit display values on the
+   gallery sections — without this, .wl-empty's `display: flex` overrides
+   `hidden` and the empty-state box keeps showing after you create a list. */
+[hidden] { display: none !important; }
+
+/* Empty-state when no watchlists exist */
+.wl-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 18px;
+  padding: 88px 28px 96px; margin-top: 22px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface) 60%, transparent);
+  border: 1.5px dashed var(--line-strong);
+}
+.wl-empty__art {
+  position: relative; width: 200px; height: 130px;
+  background:
+    radial-gradient(80% 60% at 40% 30%, color-mix(in oklab, var(--accent) 35%, transparent), transparent 60%),
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 12%, transparent) 0 10px, transparent 10px 20px),
+    linear-gradient(160deg, color-mix(in oklab, var(--accent) 24%, var(--surface-2)) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.wl-empty__art::after {
+  content: ""; position: absolute; inset: 12px;
+  border: 1px dashed color-mix(in oklab, var(--accent) 35%, var(--line));
+  border-radius: 12px;
+}
+.wl-empty__title {
+  font-family: var(--font-title); font-weight: 800; font-size: 24px;
+  letter-spacing: -0.014em; color: var(--ink); margin: 0;
+}
+.wl-empty__lede { color: var(--ink-soft); font-size: 14.5px; max-width: 44ch; margin: 0; line-height: 1.55; }
+
+/* ============================================================
+   DIALOGS — confirm + new-watchlist form
+   ============================================================ */
+.wl-modal {
+  position: fixed; inset: 0; z-index: 1100;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(8,5,3,0.62);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: wl-fade-in .2s ease;
+}
+.wl-modal.on { display: flex; }
+.wl-modal__box {
+  background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lift);
+  max-width: 480px; width: calc(100% - 40px);
+  padding: 28px 28px 22px;
+  animation: wl-pop .22s cubic-bezier(.2,.7,.3,1);
+}
+.wl-modal__title {
+  font-family: var(--font-title); font-weight: 800; font-size: 19px;
+  color: var(--ink); margin: 0 0 8px; letter-spacing: -0.012em;
+}
+.wl-modal__desc { color: var(--ink-soft); font-size: 14px; line-height: 1.55; margin: 0 0 18px; }
+.wl-modal__desc strong { color: var(--ink); }
+.wl-modal__row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.wl-modal__row .btn--danger {
+  color: white;
+  background: color-mix(in oklab, var(--feel-loved) 80%, oklch(0.4 0.1 35));
+  border-color: color-mix(in oklab, var(--feel-loved) 60%, var(--line-strong));
+  box-shadow: 0 2px 12px color-mix(in oklab, var(--feel-loved) 30%, transparent);
+}
+.wl-modal__row .btn--danger:hover { background: var(--feel-loved); }
+
+/* New-watchlist form fields */
+.wl-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.wl-field__label {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--uppercase-spacing);
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.wl-field input[type="text"],
+.wl-field textarea {
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--ink); font: inherit; font-size: 14px;
+  transition: border-color .15s, box-shadow .15s;
+  resize: vertical; min-height: 38px;
+}
+.wl-field textarea { min-height: 64px; font-size: 13.5px; }
+.wl-field input[type="text"]:focus,
+.wl-field textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.wl-hues {
+  display: flex; gap: 9px; flex-wrap: wrap;
+}
+.wl-hues__swatch {
+  width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+}
+.wl-hues__swatch:hover { transform: scale(1.12); }
+.wl-hues__swatch.on {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch);
+}
+.wl-hues__swatch.on::after {
+  content: ""; position: absolute; inset: 0; display: flex;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7'/></svg>") center/15px no-repeat;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+}
+
+@keyframes wl-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wl-pop {
+  from { transform: translateY(8px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

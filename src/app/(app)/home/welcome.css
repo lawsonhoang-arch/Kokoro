@@ -1,0 +1,119 @@
+/* Full-screen welcome flourish shown once right after sign-in / sign-up:
+   a smooth fade in, the username revealing letter-by-letter, then a smooth
+   fade back out to reveal the Home tab underneath. The component drives the
+   timing with timers, so this is purely the visual layer.
+
+   NOTE on !important: the shared transitions.css has a global reduced-motion
+   kill switch (`body * { animation: none !important }`). This welcome is a
+   deliberate one-time flourish that we DO want to play, so its entrance
+   animations use !important to win against that global rule. The looping glow
+   is intentionally left WITHOUT !important, so the global rule still suppresses
+   that one continuous animation for motion-sensitive users. */
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  /* opaque from the first painted frame so Home is never visible behind it —
+     only the words below animate in; the whole overlay fades out at the end */
+  background: radial-gradient(
+    120% 90% at 50% 42%,
+    color-mix(in oklab, var(--accent) 16%, var(--page)) 0%,
+    var(--page) 68%
+  );
+}
+/* fade back out — pure opacity, no movement — to reveal Home */
+.welcome--leaving {
+  animation: welcome-fade-out 0.9s ease forwards !important;
+}
+
+.welcome__glow {
+  position: absolute;
+  width: 62vmax;
+  height: 62vmax;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--accent) 32%, transparent) 0%,
+    transparent 60%
+  );
+  filter: blur(44px);
+  opacity: 0.7;
+  /* no !important — reduced-motion users get a still glow */
+  animation: welcome-glow 2.8s ease-in-out infinite alternate;
+}
+
+.welcome__inner {
+  position: relative;
+  text-align: center;
+  padding: 0 24px;
+}
+.welcome__greet {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  animation: welcome-rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) 0.2s both !important;
+}
+
+.welcome__name {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: clamp(34px, 7vw, 68px);
+  letter-spacing: -0.022em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+/* each letter eases up + settles, staggered via the --d custom property
+   (kept as a longhand so !important doesn't flatten the per-letter delays) */
+.welcome__char {
+  display: inline-block;
+  white-space: pre;
+  animation: welcome-char 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both !important;
+  animation-delay: var(--d, 0s) !important;
+}
+
+.welcome__bar {
+  width: 54px;
+  height: 3px;
+  margin: 22px auto 0;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 16px color-mix(in oklab, var(--accent) 60%, transparent);
+  transform: scaleX(0);
+  transform-origin: center;
+  animation: welcome-bar 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both !important;
+  animation-delay: var(--d, 0.5s) !important;
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes welcome-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes welcome-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes welcome-char {
+  from { opacity: 0; transform: translateY(0.55em) rotate(4deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes welcome-bar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes welcome-glow {
+  from { transform: scale(0.9); opacity: 0.5; }
+  to { transform: scale(1.1); opacity: 0.8; }
+}

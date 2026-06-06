@@ -1,0 +1,36 @@
+/* ============================================================
+   Watchlist-page overrides — ported from Watchlist.html's inline <style>.
+   Scoped under body.kk-watchlist-route (toggled by WatchlistApp) so these
+   only apply while the app is mounted, not on the other (app) routes that
+   share the same root layout / body.
+   ============================================================ */
+
+/* The app fills the viewport below the shared nav; defer the body vignette to
+   the k-app's own ambient background. */
+body.kk-watchlist-route { display: block; min-height: 100vh; }
+body.kk-watchlist-route::before,
+body.kk-watchlist-route::after { display: none; }
+
+/* Nav sits ABOVE everything with a solid backdrop (not overlay glass) so it
+   stays distinct from the watchlist's ambient backgrounds underneath. */
+body.kk-watchlist-route .site-nav {
+  z-index: 1000;
+  background: oklch(0.21 0.013 56);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 0 0 oklch(0.32 0.014 56), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* App fills the rest of the viewport, always leaving room for the nav. */
+body.kk-watchlist-route .k-app {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--nav-h));
+}
+
+/* Push the app's fixed vignette + grain down by the nav height so they never
+   cover the nav. */
+body.kk-watchlist-route .k-app::before,
+body.kk-watchlist-route .k-app::after {
+  top: var(--nav-h) !important;
+}

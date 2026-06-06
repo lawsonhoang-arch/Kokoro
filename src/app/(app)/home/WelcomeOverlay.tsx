@@ -1,0 +1,80 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import "./welcome.css";
+
+function greeting(hour: number): string {
+  if (hour < 5 || hour >= 22) return "Good night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+// Shown once after auth (the page renders this only when ?welcome=1).
+//
+// The OPAQUE backdrop is rendered from the very first paint (no mount gate), so
+// Home is never visible behind it. Only the words animate in on top; at the end
+// the whole overlay fades out to reveal Home. The time-based greeting is the one
+// piece deferred to the client (starts blank, filled on mount) so server and
+// client first render agree — everything else is deterministic.
+//
+// Lifecycle is timer-driven so it always advances (can't get stuck), even where
+// CSS animation end-events are unreliable.
+export function WelcomeOverlay({ username }: { username: string }) {
+  const [greet, setGreet] = useState("");
+  const [leaving, setLeaving] = useState(false);
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    setGreet(greeting(new Date().getHours()));
+    // strip ?welcome=1 so a refresh won't replay the greeting
+    window.history.replaceState(null, "", "/home");
+
+    const HOLD = 2600; // visible time before it starts leaving
+    const FADE = 950; // fade-out duration (matches CSS) before unmount
+    const t1 = setTimeout(() => setLeaving(true), HOLD);
+    const t2 = setTimeout(() => setGone(true), HOLD + FADE);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  if (gone) return null;
+
+  const chars = Array.from(username);
+  const charStep = 0.045; // seconds between letters
+  const charStart = 0.28; // when the first letter begins
+  const barDelay = charStart + chars.length * charStep + 0.08;
+
+  return (
+    <div
+      className={"welcome" + (leaving ? " welcome--leaving" : "")}
+      role="status"
+      aria-live="polite"
+      aria-label={`${greet}, ${username}`}
+    >
+      <div className="welcome__glow" aria-hidden="true" />
+      <div className="welcome__inner">
+        {/* nbsp keeps the line height before the greeting fills in on mount */}
+        <div className="welcome__greet">{greet ? `${greet},` : " "}</div>
+        <div className="welcome__name" aria-hidden="true">
+          {chars.map((ch, i) => (
+            <span
+              key={i}
+              className="welcome__char"
+              style={{ ["--d"]: `${charStart + i * charStep}s` } as React.CSSProperties}
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+        <span
+          className="welcome__bar"
+          aria-hidden="true"
+          style={{ ["--d"]: `${barDelay}s` } as React.CSSProperties}
+        />
+      </div>
+    </div>
+  );
+}

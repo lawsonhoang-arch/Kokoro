@@ -1,0 +1,221 @@
+/* ============================================================
+   JOURNAL — left rail of anime · right timeline of entries.
+   ============================================================ */
+.journal {
+  display: grid; grid-template-columns: 320px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* ---- Left rail: anime you've written about ---- */
+.rail {
+  position: sticky; top: calc(var(--nav-h) + 24px);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.rail__head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.rail__search {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 7px 11px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-family: var(--font-mono); font-size: 12px;
+}
+.rail__search input {
+  flex: 1; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit;
+}
+.rail__list { padding: 8px 8px 14px; max-height: 70vh; overflow-y: auto; scrollbar-width: thin; }
+
+.anime-row {
+  display: grid; grid-template-columns: 38px 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .14s;
+}
+.anime-row:hover { background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.anime-row.on {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+.anime-row__thumb {
+  width: 38px; height: 54px; border-radius: 6px;
+  background:
+    linear-gradient(160deg, color-mix(in oklab, var(--row-hue, var(--accent)) 30%, var(--surface-3)) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+}
+.anime-row--h1 { --row-hue: oklch(0.68 0.14 30); }
+.anime-row--h2 { --row-hue: oklch(0.62 0.13 200); }
+.anime-row--h3 { --row-hue: oklch(0.66 0.12 280); }
+.anime-row--h4 { --row-hue: oklch(0.68 0.13 140); }
+.anime-row--h5 { --row-hue: oklch(0.64 0.14 350); }
+.anime-row--h6 { --row-hue: oklch(0.68 0.13 100); }
+.anime-row__title { font-family: var(--font-title); font-weight: 700; font-size: 13.5px; color: var(--ink); line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.anime-row__sub   { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }
+.anime-row__count {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+  color: var(--accent);
+  padding: 2px 7px; border-radius: 99px;
+  background: color-mix(in oklab, var(--accent) 13%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+.anime-row.on .anime-row__count { background: color-mix(in oklab, var(--accent) 24%, var(--surface)); color: var(--ink); }
+
+.rail__footer {
+  padding: 12px 16px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
+}
+
+/* ---- Right side: selected anime's notes timeline ---- */
+.timeline { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.timeline__head {
+  display: flex; align-items: flex-end; gap: 22px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.timeline__cover {
+  width: 92px; height: 132px; border-radius: 10px; flex: 0 0 auto;
+  background:
+    radial-gradient(120% 80% at 30% 0%, color-mix(in oklab, var(--accent) 40%, transparent), transparent 60%),
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 14%, transparent) 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, color-mix(in oklab, var(--accent) 30%, var(--surface-3)) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+}
+.timeline__title { font-family: var(--font-title); font-weight: 800; font-size: 30px; line-height: 1.1; letter-spacing: -0.018em; margin: 0 0 8px; color: var(--ink); }
+.timeline__meta { display: flex; align-items: center; gap: 12px; color: var(--ink-faint); font-family: var(--font-mono); font-size: 11.5px; flex-wrap: wrap; }
+.timeline__meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--line-strong); }
+.timeline__head .actions { margin-left: auto; display: flex; gap: 8px; flex: 0 0 auto; }
+
+.filters {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 10px;
+}
+.filters .chip { cursor: pointer; }
+.filters .chip.on {
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  color: var(--accent);
+}
+.filters .sortby { margin-left: auto; color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px; }
+
+/* a single journal entry */
+.entry {
+  position: relative;
+  display: grid; grid-template-columns: 96px 1fr;
+  gap: 22px;
+  padding: 20px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.entry__rail {
+  position: relative;
+  padding-top: 4px;
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+.entry__rail::before {
+  content: ""; position: absolute; top: 14px; bottom: -22px; left: 6px; width: 1px;
+  background: var(--line);
+}
+.entry:last-child .entry__rail::before { display: none; }
+.entry__dot {
+  position: absolute; left: 0; top: 6px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.entry__date { padding-left: 24px; }
+.entry__date-day { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); display: block; }
+
+.entry__body { min-width: 0; }
+.entry__head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.entry__ep {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+  color: var(--accent);
+  padding: 3px 10px; border-radius: 99px;
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--accent) 32%, var(--line));
+}
+.entry__feel {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft); font-family: var(--font-mono); font-size: 10.5px;
+  background: var(--surface-2);
+}
+.entry__feel--loved   { color: var(--feel-loved);  border-color: color-mix(in oklab, var(--feel-loved) 40%, var(--line)); }
+.entry__feel--liked   { color: var(--feel-liked);  border-color: color-mix(in oklab, var(--feel-liked) 40%, var(--line)); }
+.entry__feel--mixed   { color: var(--feel-mixed);  border-color: color-mix(in oklab, var(--feel-mixed) 40%, var(--line)); }
+.entry__time { margin-left: auto; color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px; }
+
+.entry__text {
+  font-family: "Spectral", Georgia, serif;
+  font-size: 16px; line-height: 1.65; color: var(--ink);
+  font-weight: 400;
+  max-width: 70ch;
+}
+.entry__text p { margin: 0 0 12px; }
+.entry__text p:last-child { margin: 0; }
+.entry__text em { color: var(--accent); font-style: italic; }
+
+.entry__quote {
+  margin: 14px 0; padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in oklab, var(--accent) 7%, var(--surface));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-style: italic; color: var(--ink-soft); font-family: "Spectral", Georgia, serif; font-size: 14.5px;
+}
+.entry__quote::before { content: "“"; color: var(--accent); margin-right: 4px; font-size: 18px; line-height: 1; }
+.entry__quote::after  { content: "”"; color: var(--accent); margin-left: 4px;  font-size: 18px; line-height: 1; }
+
+.entry__foot {
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 12px;
+  color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;
+}
+.entry__foot button { color: var(--ink-faint); transition: color .15s; }
+.entry__foot button:hover { color: var(--accent); }
+
+/* compose-new entry stub at top */
+.compose {
+  display: grid; grid-template-columns: 96px 1fr; gap: 22px;
+  padding: 18px 0;
+  margin-bottom: 8px;
+}
+.compose__avatar { padding-left: 24px; padding-top: 4px; color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px; }
+.compose__box {
+  background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  color: var(--ink-faint);
+  font-family: "Spectral", Georgia, serif; font-size: 15px;
+  transition: border-color .15s, color .15s;
+  cursor: text;
+}
+.compose__box:hover { color: var(--ink-soft); border-color: color-mix(in oklab, var(--accent) 50%, var(--line-strong)); }
+.compose__box .compose__placeholder { font-style: italic; }
+.compose__tools {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  padding-top: 10px; border-top: 1px solid var(--line);
+}
+.compose__tool {
+  padding: 5px 10px; border-radius: 99px;
+  font-family: var(--font-mono); font-size: 10.5px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft);
+}
+
+@media (max-width: 920px) {
+  .journal { grid-template-columns: 1fr; }
+  .rail { position: static; }
+  .timeline__head { flex-wrap: wrap; }
+}

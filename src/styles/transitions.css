@@ -1,0 +1,83 @@
+/* ============================================================
+   Kokoro — cross-page transition keyframes + staggered rise
+   Ported near-verbatim from the design handoff (site.css).
+   ============================================================ */
+/* ============================================================
+   CROSS-PAGE TRANSITIONS — keep the nav anchored, fade the body
+   content out fast, then stagger elements back in on the next page.
+   No blank pause: the leaving page starts loading the next during
+   its 180ms fade, and the incoming animations begin immediately.
+   ============================================================ */
+@keyframes kk-page-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes kk-page-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes kk-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The nav stays put — only the body content animates. */
+body > x-site-nav { opacity: 1 !important; }
+
+/* Leaving state — quick fade so the next page can start loading sooner */
+body.kk-leaving .page,
+body.kk-leaving #root { animation: kk-page-fade-out 0.18s cubic-bezier(.4,0,.6,1) forwards; }
+
+/* Arriving state — page container fades in, then key elements stagger up */
+.page                  { animation: kk-page-fade-in 0.38s cubic-bezier(.2,.7,.3,1) both; }
+.page__head            { animation: kk-rise 0.5s cubic-bezier(.2,.7,.3,1) both; animation-delay: 0.06s; }
+.page > .section,
+.page > section,
+.page > .wl-grid,
+.page > .wl-tools,
+.page > .wl-empty,
+.page > .hero,
+.page > .mood-row,
+.page > .editorial,
+.page > .pf-banner,
+.page > .pf-stats,
+.page > .pf-subtabs,
+.page > .pf-grid,
+.page > .subtabs,
+.page > .community,
+.page > .journal { animation: kk-rise 0.55s cubic-bezier(.2,.7,.3,1) both; }
+/* small natural stagger between siblings — uses :nth-of-type so it works on
+   mixed-content pages without us having to hand-tune each one */
+.page > *:nth-of-type(2)  { animation-delay: 0.10s; }
+.page > *:nth-of-type(3)  { animation-delay: 0.16s; }
+.page > *:nth-of-type(4)  { animation-delay: 0.22s; }
+.page > *:nth-of-type(5)  { animation-delay: 0.28s; }
+.page > *:nth-of-type(6)  { animation-delay: 0.32s; }
+.page > *:nth-of-type(7)  { animation-delay: 0.36s; }
+.page > *:nth-of-type(8)  { animation-delay: 0.40s; }
+.page > *:nth-of-type(n+9) { animation-delay: 0.44s; }
+
+/* In grids of cards (Home shelves, gallery, etc.) — also stagger the cards */
+.wl-grid > .wl-card,
+.wl-grid > .wl-new,
+.editorial > .editorial__card,
+.shelf > .shelf-card,
+.pf-stats > .pf-stat { animation: kk-rise 0.5s cubic-bezier(.2,.7,.3,1) both; }
+.wl-grid > *:nth-child(2)  { animation-delay: 0.18s; }
+.wl-grid > *:nth-child(3)  { animation-delay: 0.22s; }
+.wl-grid > *:nth-child(4)  { animation-delay: 0.26s; }
+.wl-grid > *:nth-child(5)  { animation-delay: 0.30s; }
+.wl-grid > *:nth-child(6)  { animation-delay: 0.34s; }
+.wl-grid > *:nth-child(n+7) { animation-delay: 0.38s; }
+.editorial > *:nth-child(2) { animation-delay: 0.18s; }
+.editorial > *:nth-child(3) { animation-delay: 0.24s; }
+.shelf > *:nth-child(n)    { animation-delay: calc(0.04s * var(--i, 0)); }
+.pf-stats > *:nth-child(2) { animation-delay: 0.12s; }
+.pf-stats > *:nth-child(3) { animation-delay: 0.18s; }
+.pf-stats > *:nth-child(4) { animation-delay: 0.24s; }
+.pf-stats > *:nth-child(5) { animation-delay: 0.30s; }
+
+@media (prefers-reduced-motion: reduce) {
+  body, body * { animation: none !important; }
+}
+

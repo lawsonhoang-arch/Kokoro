@@ -1,0 +1,153 @@
+"use client";
+
+import type { PointerEvent as RPointerEvent } from "react";
+import { colorFor, tagsFor } from "./rules";
+import { EXTERNAL_SCORES, avgRatingStr } from "./helpers";
+import { Glyph } from "./Glyph";
+import { AddToTabBtn, type Collection } from "./AddToTabBtn";
+import type { Entry, GlyphSet, Mode } from "./types";
+
+export type EntryCommon = {
+  entry: Entry;
+  colorKey: string | null;
+  tagKeys: string[];
+  glyphSet: GlyphSet;
+  showScore: boolean;
+  selected: boolean;
+  onOpen: (id: string) => void;
+  collections: Collection[];
+  inGroupId: string | null;
+  onAddTab: (entryId: string, gid: string) => void;
+  onNewTab: (entryId: string) => void;
+  onRemoveTab: (entryId: string) => void;
+  onRemoveFromList: (entryId: string) => void;
+  onBrowseGrab?: (e: RPointerEvent, id: string) => void;
+  onBumpEp?: (id: string) => void;
+};
+
+type Props = EntryCommon & {
+  mode: Mode;
+  onGrab: (e: RPointerEvent, id: string) => void;
+};
+
+export function EntryRow({
+  entry,
+  colorKey,
+  tagKeys,
+  glyphSet,
+  showScore,
+  mode,
+  selected,
+  onGrab,
+  onBrowseGrab,
+  collections,
+  inGroupId,
+  onAddTab,
+  onNewTab,
+  onRemoveTab,
+  onRemoveFromList,
+  onBumpEp,
+}: Props) {
+  const color = colorFor(entry, colorKey);
+  const tags = tagsFor(entry, tagKeys);
+  const ext = EXTERNAL_SCORES[entry.id];
+  const rating = avgRatingStr(entry);
+  const sculpt = mode === "sculpt";
+
+  return (
+    <div
+      className={
+        "k-entry" + (color ? " colored" : "") + (selected ? " selected" : "") + (!sculpt ? " clickable" : "")
+      }
+      data-entry-id={entry.id}
+      data-drop="entry"
+      onPointerDown={
+        sculpt ? (e) => onGrab(e, entry.id) : (e) => onBrowseGrab && onBrowseGrab(e, entry.id)
+      }
+      style={{
+        viewTransitionName: "entry-" + entry.id,
+        ...(sculpt ? { cursor: "grab" } : null),
+      }}
+    >
+      <span className="k-entry__stripe" style={color ? { background: color, color } : undefined} />
+      <span
+        className="k-entry__glyph"
+        style={entry.feeling ? { color: `var(--feel-${entry.feeling})` } : { color: "var(--ink-faint)" }}
+      >
+        <Glyph feeling={entry.feeling} set={glyphSet} size={20} />
+      </span>
+      <div className="k-entry__main">
+        <div className="k-entry__title">{entry.title}</div>
+        <div className="k-entry__sub">
+          <span>{entry.year}</span>
+          <span className="dot" />
+          <span>{entry.genres.slice(0, 2).join(" · ")}</span>
+          {entry.status === "watching" && entry.progress != null && (
+            <>
+              <span className="dot" />
+              <span className="k-prog" onPointerDown={(e) => e.stopPropagation()}>
+                <span className="k-prog__bar">
+                  <span
+                    className="k-prog__fill"
+                    style={{ width: `${Math.round((entry.progress / entry.episodes) * 100)}%` }}
+                  />
+                </span>
+                <span className="k-prog__num">
+                  {entry.progress}/{entry.episodes}
+                </span>
+                {!sculpt && onBumpEp && entry.progress < entry.episodes && (
+                  <button
+                    className="k-prog__bump"
+                    title="Log next episode"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onBumpEp(entry.id);
+                    }}
+                  >
+                    +1
+                  </button>
+                )}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="k-tags">
+        {rating && (
+          <span className="k-rating" title={`Your rating: ${rating}/5`}>
+            <span className="k-rating__star">★</span>
+            {rating}
+          </span>
+        )}
+        {showScore && ext != null && (
+          <span className="k-extscore">
+            ext <b>{ext.toFixed(1)}</b>
+          </span>
+        )}
+        {tags.map((t, i) => (
+          <span
+            key={i}
+            className={"k-tag" + (t.kind === "feel" ? " k-tag--feel" : "")}
+            style={t.kind === "feel" && t.feeling ? { color: `var(--feel-${t.feeling})` } : undefined}
+            title={t.text}
+          >
+            {t.text}
+          </span>
+        ))}
+      </div>
+      {!sculpt && onAddTab && (
+        <span className="k-entry__add" onPointerDown={(e) => e.stopPropagation()}>
+          <AddToTabBtn
+            entryId={entry.id}
+            collections={collections}
+            inGroupId={inGroupId}
+            onAdd={onAddTab}
+            onNew={onNewTab}
+            onRemove={onRemoveTab}
+            onRemoveFromList={onRemoveFromList}
+          />
+        </span>
+      )}
+    </div>
+  );
+}

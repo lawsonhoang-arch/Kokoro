@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780610896873,
+      "tag": "0000_hot_vector",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780620441619,
+      "tag": "0001_damp_george_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780629939061,
+      "tag": "0002_large_the_initiative",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780632222702,
+      "tag": "0003_curly_expediter",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780633693338,
+      "tag": "0004_sharp_mandrill",
+      "breakpoints": true
+    }
+  ]
+}

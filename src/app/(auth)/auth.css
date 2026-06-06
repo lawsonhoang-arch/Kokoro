@@ -1,0 +1,116 @@
+/* Centered auth card — uses the shared design tokens. */
+.auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 20px;
+}
+.auth__card {
+  width: 100%;
+  max-width: 400px;
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: 34px 32px 30px;
+}
+.auth__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.auth__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: radial-gradient(
+    circle at 30% 28%,
+    color-mix(in oklab, var(--accent) 96%, white) 0%,
+    var(--accent) 60%,
+    color-mix(in oklab, var(--accent) 80%, black) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, var(--accent-ink)),
+    0 0 18px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+.auth__name {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.auth__title {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.018em;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.auth__lede {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  margin: 0 0 22px;
+}
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.auth__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.auth__label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: var(--uppercase-spacing);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.auth__input {
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.auth__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.auth__error {
+  font-size: 12.5px;
+  color: var(--feel-loved);
+  background: color-mix(in oklab, var(--feel-loved) 10%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--feel-loved) 40%, var(--line));
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+}
+.auth__submit {
+  margin-top: 4px;
+  justify-content: center;
+  width: 100%;
+}
+.auth__alt {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.auth__alt a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.auth__alt a:hover {
+  color: var(--accent-hi);
+}

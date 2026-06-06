@@ -1,0 +1,44 @@
+name: Catalog weekly sync
+
+# Full catalog refresh once a week:
+#  - db:import         → re-pull the CC0 anime-offline-database (adds new/upcoming
+#                        titles, refreshes facts; never touches community descriptions)
+#  - db:import-anime-rankings → refresh anime score/popularity from Jikan top/anime
+#  - db:import-manga   → refresh the manga catalog from Jikan top/manga
+#
+# Requires a repository secret DATABASE_URL (Supabase session-pooler connection
+# string). Trigger manually any time from the Actions tab ("Run workflow").
+
+on:
+  schedule:
+    - cron: "0 6 * * 0" # Sundays 06:00 UTC
+  workflow_dispatch:
+
+# don't let two syncs overlap
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Full anime catalog (offline DB)
+        run: npm run db:import
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Anime rankings (Jikan top/anime)
+        run: npm run db:import-anime-rankings
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Manga catalog (Jikan top/manga)
+        run: npm run db:import-manga
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

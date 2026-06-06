@@ -1,0 +1,32 @@
+name: Catalog daily season sync
+
+# Lightweight daily refresh of the CURRENT + UPCOMING season (Jikan /seasons).
+# Update-only by mal_id — keeps new/airing shows' scores, popularity and covers
+# fresh between the weekly full syncs. Never inserts rows, so no duplicates.
+#
+# Requires a repository secret DATABASE_URL.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # every day 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  season:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Season refresh (current + upcoming)
+        run: npm run db:import-season
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -1,0 +1,213 @@
+/* ============================================================
+   PROFILE — public header + sub-tabs (overview / stats /
+   reviews / settings)
+   ============================================================ */
+
+/* Wide banner with the warm radial glow */
+.pf-banner {
+  position: relative;
+  height: 220px; margin: -38px -36px 0;
+  background:
+    radial-gradient(80% 80% at 20% 30%, color-mix(in oklab, var(--accent) 55%, transparent), transparent 60%),
+    radial-gradient(70% 90% at 80% 80%, color-mix(in oklab, oklch(0.55 0.13 280) 60%, transparent), transparent 70%),
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 20%, transparent) 0 14px, transparent 14px 28px),
+    linear-gradient(160deg, color-mix(in oklab, var(--accent) 35%, var(--surface-3)) 0%, var(--surface-2) 100%);
+  border-bottom: 1px solid var(--line);
+}
+.pf-banner::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 50%, var(--page) 100%);
+}
+
+/* Header card sits straddling the banner */
+.pf-head {
+  position: relative; z-index: 2;
+  margin-top: -88px;
+  display: grid; grid-template-columns: 132px 1fr auto;
+  gap: 28px;
+  align-items: end;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.pf-head .avatar { box-shadow: 0 0 0 4px var(--page), var(--shadow-2); }
+.pf-meta { padding-bottom: 6px; min-width: 0; }
+.pf-name {
+  font-family: var(--font-title); font-weight: 800;
+  font-size: 30px; line-height: 1.1; letter-spacing: -0.018em; color: var(--ink); margin: 0;
+}
+.pf-handle {
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
+  margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
+}
+.pf-handle::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--feel-liked); }
+.pf-bio {
+  margin: 12px 0 0; color: var(--ink-soft); font-size: 14.5px;
+  max-width: 60ch; line-height: 1.55;
+}
+.pf-actions { display: flex; gap: 10px; padding-bottom: 10px; }
+
+/* Stats row */
+.pf-stats {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 14px; margin: 24px 0 32px;
+}
+.pf-stat {
+  padding: 16px 18px; border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  border: 1px solid var(--line);
+}
+.pf-stat__label {
+  font-family: var(--font-mono); font-size: 10.5px;
+  letter-spacing: var(--uppercase-spacing); text-transform: uppercase; color: var(--ink-faint);
+}
+.pf-stat__value {
+  margin-top: 6px; font-family: var(--font-title); font-weight: 800;
+  font-size: 24px; color: var(--ink); letter-spacing: -0.018em;
+}
+.pf-stat__hint { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 4px; }
+
+/* Sub-tabs — identical pattern to Community */
+.pf-subtabs {
+  display: flex; gap: 4px; padding: 4px;
+  border-radius: 100px; background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow-1);
+  width: max-content; margin-bottom: 32px;
+}
+.pf-subtabs button {
+  padding: 8px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+  color: var(--ink-faint);
+  transition: color .15s, background .15s, box-shadow .15s;
+}
+.pf-subtabs button:hover { color: var(--ink-soft); }
+.pf-subtabs button.on {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+
+/* Two-column layout for overview body */
+.pf-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 28px; align-items: start; }
+@media (max-width: 980px) { .pf-grid { grid-template-columns: 1fr; } }
+
+/* Favorites grid */
+.favs {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+}
+.favs .poster { aspect-ratio: 2/3; }
+.fav-mark {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; border-radius: 99px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--feel-loved); font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  z-index: 2;
+}
+
+/* Recent activity stream */
+.activity { display: flex; flex-direction: column; gap: 10px; }
+.act {
+  display: grid; grid-template-columns: 36px 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  border: 1px solid var(--line);
+}
+.act__icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  color: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--accent) 32%, var(--line));
+}
+.act__title { font-family: var(--font-ui); font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.act__sub { color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
+.act__when { color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px; }
+
+/* Reviews list (mini) */
+.pf-review {
+  display: grid; grid-template-columns: 60px 1fr; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  border: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+.pf-review__cover { height: 84px; border-radius: 6px; }
+.pf-review__head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+.pf-review__title { font-family: var(--font-title); font-weight: 700; font-size: 14px; color: var(--ink); }
+.pf-review__stars { color: var(--feel-loved); font-size: 12px; letter-spacing: 1px; }
+.pf-review__text { color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.pf-review__when { color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px; margin-top: 6px; display: block; }
+
+/* ============================================================
+   SETTINGS panel (initially hidden — would toggle on click)
+   ============================================================ */
+.settings {
+  display: none;
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.settings.on { display: block; }
+.settings__grid { display: grid; grid-template-columns: 220px 1fr; min-height: 460px; }
+.settings__rail {
+  border-right: 1px solid var(--line);
+  padding: 14px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.settings__rail button {
+  text-align: left; padding: 9px 12px; border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-family: var(--font-ui); font-weight: 600; font-size: 13px;
+  transition: background .14s, color .14s;
+}
+.settings__rail button:hover { background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.settings__rail button.on {
+  color: var(--ink); background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+.settings__body { padding: 30px 32px; }
+.settings__group { margin-bottom: 26px; }
+.settings__label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--uppercase-spacing); text-transform: uppercase; color: var(--ink-faint); margin-bottom: 12px; }
+
+.setting-row {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 16px; padding: 14px 0; border-top: 1px solid var(--line);
+  align-items: center;
+}
+.setting-row:first-child { border-top: 0; }
+.setting-row__title { font-family: var(--font-ui); font-weight: 700; font-size: 14px; color: var(--ink); }
+.setting-row__desc  { font-family: var(--font-ui); font-size: 12.5px; color: var(--ink-faint); margin-top: 3px; line-height: 1.45; }
+
+/* a tiny toggle switch */
+.toggle {
+  width: 36px; height: 20px; border-radius: 99px; position: relative;
+  background: var(--surface-3); border: 1px solid var(--line);
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.toggle::after {
+  content: ""; position: absolute; top: 1px; left: 1px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--ink-soft); transition: left .2s, background .2s;
+}
+.toggle.on { background: color-mix(in oklab, var(--accent) 35%, var(--surface)); border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); }
+.toggle.on::after { left: 17px; background: white; }
+.pill-select {
+  display: inline-flex; gap: 4px; padding: 3px; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.pill-select button {
+  padding: 5px 11px; border-radius: 99px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
+}
+.pill-select button.on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 30%, var(--line)); }
+
+.danger { color: var(--feel-loved); }
+.danger-btn {
+  padding: 8px 14px; border-radius: 99px;
+  color: var(--feel-loved); border: 1px solid color-mix(in oklab, var(--feel-loved) 45%, var(--line));
+  background: color-mix(in oklab, var(--feel-loved) 8%, var(--surface));
+  font-family: var(--font-ui); font-weight: 700; font-size: 12.5px;
+}

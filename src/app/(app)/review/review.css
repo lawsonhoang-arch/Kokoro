@@ -1,0 +1,86 @@
+.rev-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rev-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+}
+.rev-card {
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: 20px 22px;
+}
+.rev-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.rev-card__title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--ink);
+}
+.rev-card__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.rev-card__meta b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.rev-card__body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.rev-card__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.rev-btn {
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  transition: background 0.14s, border-color 0.14s;
+}
+.rev-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.rev-btn--approve {
+  color: var(--accent-ink);
+  background: var(--feel-liked);
+  border-color: color-mix(in oklab, var(--feel-liked) 70%, var(--accent-ink));
+}
+.rev-btn--approve:hover {
+  background: color-mix(in oklab, var(--feel-liked) 88%, white);
+}
+.rev-btn--reject {
+  color: var(--ink-soft);
+}
+.rev-btn--reject:hover {
+  color: var(--feel-loved);
+  border-color: color-mix(in oklab, var(--feel-loved) 45%, var(--line));
+}

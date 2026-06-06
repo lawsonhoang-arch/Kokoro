@@ -1,0 +1,66 @@
+/* ============================================================
+   Manga — reading shelves + library
+   ============================================================ */
+
+/* sub-tabs (self-contained; mirrors the other section bars) */
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 22px; }
+.subtabs__tab {
+  padding: 7px 14px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13px;
+  color: var(--ink-faint); background: transparent;
+  border: 1px solid var(--line); cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.subtabs__tab:hover { color: var(--ink-soft); background: var(--surface-2); }
+.subtabs__tab.on {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+.subtabs__tab .num { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-left: 3px; }
+
+.mg-section-title {
+  font-family: var(--font-title); font-weight: 800; font-size: 17px;
+  color: var(--ink); margin: 0 0 14px; letter-spacing: -0.01em;
+}
+
+/* continue reading */
+.mg-continue { margin-bottom: 34px; }
+.mg-continue__row {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
+}
+.mg-resume {
+  display: flex; gap: 14px; padding: 12px; overflow: hidden;
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+.mg-resume:hover { border-color: var(--line-strong); box-shadow: var(--shadow-1); transform: translateY(-1px); }
+.mg-resume__art {
+  flex: 0 0 auto; width: 52px; height: 74px; border-radius: var(--radius-sm); overflow: hidden;
+  background:
+    radial-gradient(140% 90% at 18% -10%, color-mix(in oklab, var(--poster-hue, var(--accent)) 34%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in oklab, var(--poster-hue, var(--accent)) 32%, var(--surface-2)) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+}
+.mg-resume__body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.mg-resume__title { font-family: var(--font-title); font-weight: 700; font-size: 14px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg-resume__chapter { font-size: 12px; color: var(--ink-faint); margin: 2px 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg-progress { height: 5px; border-radius: 100px; background: var(--surface-3); overflow: hidden; margin-top: auto; }
+.mg-progress__fill { display: block; height: 100%; border-radius: 100px; background: var(--accent); }
+.mg-resume__pct { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 5px; }
+
+/* library / browse grid */
+.mg-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px;
+  align-items: start;
+}
+.mg-card { display: flex; flex-direction: column; cursor: pointer; }
+.mg-card__poster { position: relative; overflow: hidden; transition: transform .14s, box-shadow .14s; }
+.mg-card:hover .mg-card__poster { transform: translateY(-3px); box-shadow: var(--shadow-2, var(--shadow-1)); }
+.mg-card__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mg-card__gen { position: absolute; inset: 0; }
+.mg-card__meta-row { margin-top: 8px; }
+.mg-card__name {
+  font-family: var(--font-title); font-weight: 700; font-size: 13.5px; color: var(--ink);
+  line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mg-card__sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }

@@ -1,0 +1,345 @@
+/* ============================================================
+   Kokoro — top nav, page chrome, atoms, poster/avatar/shelf/stars
+   Ported near-verbatim from the design handoff (site.css).
+   ============================================================ */
+/* ============================================================
+   TOP NAV (rendered by <x-site-nav>)
+   ============================================================ */
+.site-nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 18px;
+  height: var(--nav-h);
+  padding: 0 28px;
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+/* equal-width left/right sections keep the centered [tabs + search-circle] group
+   in the middle; the min-width reserves room for the logo / controls so the
+   group never overlaps them when the search bar expands. */
+.site-nav__side { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 150px; }
+.site-nav__side--left { justify-content: flex-start; }
+.site-nav__side--right { justify-content: flex-end; }
+.site-nav__center {
+  display: flex; align-items: center; gap: 18px;
+  flex: 0 1 auto; min-width: 0; /* natural width, centered; grows as the search expands */
+}
+
+.site-nav__brand { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.site-nav__mark {
+  width: 22px; height: 22px; border-radius: 7px;
+  background:
+    radial-gradient(circle at 30% 28%, color-mix(in oklab, var(--accent) 96%, white) 0%, var(--accent) 60%, color-mix(in oklab, var(--accent) 80%, black) 100%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, var(--accent-ink)),
+    0 0 18px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+.site-nav__name {
+  font-family: var(--font-title); font-weight: 800;
+  font-size: 18px; letter-spacing: -0.02em; color: var(--ink);
+}
+
+.site-nav__tabs {
+  display: flex; align-items: center; gap: 16px;
+  margin: 0; padding: 0; list-style: none;
+  flex: 0 0 auto; /* natural width; grouped with the search circle, centered */
+}
+.site-nav__tab {
+  display: inline-flex; align-items: center;
+  padding: 8px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  color: var(--ink-faint);
+  transition: color .18s, background .18s, box-shadow .18s;
+}
+.site-nav__tab:hover { color: var(--ink-soft); background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
+.site-nav__tab.on {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+
+.site-nav__end { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.site-nav__icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  transition: color .15s, border-color .15s, background .15s;
+}
+.site-nav__icon:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.site-nav__avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 30%, color-mix(in oklab, var(--accent) 80%, var(--surface-3)) 0%, var(--surface-3) 70%);
+  border: 1px solid var(--line-strong);
+  transition: box-shadow .15s, transform .12s;
+}
+.site-nav__avatar:hover { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent); }
+
+/* ---- expanding search: tabs collapse to icons to make room ---- */
+.site-nav__tabs { min-width: 0; }
+.site-nav__tab-ico {
+  display: inline-flex; align-items: center; width: 0; opacity: 0; overflow: hidden;
+  transition: width .26s cubic-bezier(.2,.7,.3,1), opacity .18s;
+}
+.site-nav__tab-label {
+  display: inline-block; max-width: 130px; opacity: 1; white-space: nowrap; overflow: hidden;
+  transition: max-width .26s cubic-bezier(.2,.7,.3,1), opacity .18s;
+}
+.site-nav--searching .site-nav__tab-ico { width: 18px; opacity: 1; }
+.site-nav--searching .site-nav__tab-label { max-width: 0; opacity: 0; }
+.site-nav--searching .site-nav__review {
+  max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; white-space: nowrap;
+  transition: max-width .26s, opacity .18s, padding .26s;
+}
+
+/* ---- the persistent search bar ---- */
+.navsrch {
+  position: relative; display: flex; align-items: center; flex: 0 0 auto;
+  border-radius: 100px; border: 1px solid transparent;
+  transition: background .25s, border-color .25s, padding .25s;
+}
+.navsrch--open { background: var(--surface-2); border-color: var(--line); padding-right: 6px; }
+.navsrch__icon {
+  width: 36px; height: 36px; border-radius: 50%; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-soft); border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .25s;
+}
+.navsrch__icon:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.navsrch--open .navsrch__icon { border-color: transparent; background: transparent; color: var(--ink-faint); }
+.navsrch__input {
+  width: 0; min-width: 0; opacity: 0; padding: 0; border: none; outline: none; background: none;
+  font: inherit; font-size: 14px; color: var(--ink);
+  transition: width .3s cubic-bezier(.2,.7,.3,1), opacity .2s, padding .25s;
+}
+.navsrch--open .navsrch__input { width: clamp(180px, 26vw, 380px); opacity: 1; padding: 0 6px 0 2px; }
+.navsrch__input::placeholder { color: var(--ink-faint); }
+
+/* ---- live results dropdown under the bar ---- */
+.navsrch__drop {
+  position: absolute; top: calc(100% + 10px); left: 0; right: 0; z-index: 60;
+  min-width: 320px; max-height: 62vh; overflow-y: auto; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-lift);
+  display: flex; flex-direction: column; gap: 2px;
+  animation: navsrch-drop .14s ease;
+}
+@keyframes navsrch-drop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.navsrch__hint { padding: 14px 12px; font-size: 12.5px; color: var(--ink-faint); }
+.navsrch__item { display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: var(--radius-sm); text-align: left; cursor: pointer; }
+.navsrch__item:hover { background: var(--surface-2); }
+.navsrch__cover { flex: 0 0 auto; width: 34px; height: 48px; border-radius: 5px; object-fit: cover; background: var(--surface-2); background-size: cover; background-position: center; border: 1px solid var(--line); }
+.navsrch__itxt { display: flex; flex-direction: column; min-width: 0; }
+.navsrch__ititle { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.navsrch__imeta { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 1px; }
+.navsrch__all {
+  margin-top: 3px; padding: 9px 10px; border-radius: var(--radius-sm); text-align: left; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .03em; color: var(--accent);
+  border-top: 1px solid var(--line);
+}
+.navsrch__all:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+
+/* ---- responsive: tighten the nav for tablets, then phones ---- */
+@media (max-width: 900px) {
+  .site-nav { gap: 12px; padding: 0 18px; }
+  .site-nav__side { min-width: 120px; }
+  .site-nav__tabs { gap: 2px; }
+  .navsrch__drop { min-width: 260px; }
+}
+@media (max-width: 520px) {
+  /* phones: the tab strip drops out (its home on phones is a menu/bottom bar —
+     TODO). The bar becomes logo + a centered search circle + avatar. */
+  .site-nav { gap: 10px; padding: 0 12px; }
+  .site-nav__name { display: none; } /* keep the logo mark, drop the wordmark */
+  .site-nav__tabs,
+  .site-nav__review { display: none; }
+  .site-nav__side { min-width: 0; }
+  .navsrch--open .navsrch__input { width: clamp(120px, 52vw, 300px); }
+  /* anchor the dropdown to the viewport edges so it never overflows the screen */
+  .navsrch__drop { position: fixed; left: 8px; right: 8px; top: calc(var(--nav-h) + 4px); width: auto; }
+}
+
+/* ============================================================
+   PAGE CHROME — used by every non-watchlist page
+   ============================================================ */
+.page { max-width: 1280px; margin: 0 auto; padding: 38px 36px 120px; }
+.page--narrow { max-width: 960px; }
+.page--wide   { max-width: 1440px; }
+.page__head { margin-bottom: 32px; display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.page__head > div { flex: 1 1 0; min-width: 280px; }
+.page__head > .actions { flex: 0 0 auto; min-width: 0; display: flex; gap: 10px; justify-content: flex-end; }
+
+.page__eyebrow {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: var(--uppercase-spacing); text-transform: uppercase;
+  color: var(--accent); margin-bottom: 10px;
+}
+.page__title {
+  font-family: var(--font-title); font-weight: 800;
+  font-size: 36px; line-height: 1.08; letter-spacing: -0.022em;
+  margin: 0 0 8px; color: var(--ink);
+}
+.page__lede { color: var(--ink-soft); font-size: 15.5px; max-width: 60ch; margin: 0; }
+
+/* ============================================================
+   ATOMS
+   ============================================================ */
+.card {
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.card--pad { padding: 22px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .12s;
+}
+.btn:hover { background: var(--surface-3); border-color: var(--line-strong); transform: translateY(-0.5px); }
+.btn--primary {
+  color: var(--accent-ink); background: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 80%, var(--accent-ink));
+  box-shadow: 0 2px 14px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.btn--primary:hover { background: var(--accent-hi); }
+.btn--ghost { background: transparent; border-color: var(--line); }
+.btn--ghost:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; border-radius: 100px;
+  background: color-mix(in oklab, var(--surface-2) 70%, transparent);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em;
+}
+.chip--accent {
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  color: var(--accent);
+}
+
+/* Section headers (shared across shelves on every page) */
+.section { margin-top: 44px; }
+.section__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.section__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 22px;
+  letter-spacing: -0.012em; margin: 0;
+}
+.section__sub { color: var(--ink-faint); font-size: 13px; }
+.section__more {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: var(--uppercase-spacing); text-transform: uppercase;
+  color: var(--ink-faint); transition: color .15s;
+}
+.section__more:hover { color: var(--accent); }
+
+/* ============================================================
+   POSTER / PLACEHOLDER ART (used everywhere a cover would go)
+   ============================================================ */
+.poster {
+  position: relative; aspect-ratio: 2/3; border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+}
+.poster::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(140% 80% at 20% -10%, color-mix(in oklab, var(--poster-hue, var(--accent)) 28%, transparent), transparent 60%),
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--poster-hue, var(--accent)) 12%, transparent) 0 8px, transparent 8px 18px),
+    linear-gradient(160deg, color-mix(in oklab, var(--poster-hue, var(--accent)) 30%, var(--surface-2)) 0%, var(--surface-2) 100%);
+}
+.poster::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.7) 100%);
+}
+.poster__title {
+  position: absolute; left: 12px; right: 12px; bottom: 10px;
+  font-family: var(--font-title); font-weight: 700; font-size: 13px;
+  color: white;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.poster__sub {
+  position: absolute; left: 12px; bottom: 36px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.65); text-transform: uppercase;
+}
+
+/* poster hues (deterministic-ish; cycle through them as you place posters) */
+.poster--h1 { --poster-hue: oklch(0.68 0.14 30); }
+.poster--h2 { --poster-hue: oklch(0.62 0.13 200); }
+.poster--h3 { --poster-hue: oklch(0.66 0.12 280); }
+.poster--h4 { --poster-hue: oklch(0.68 0.13 140); }
+.poster--h5 { --poster-hue: oklch(0.64 0.14 350); }
+.poster--h6 { --poster-hue: oklch(0.70 0.13 70); }
+.poster--h7 { --poster-hue: oklch(0.62 0.12 240); }
+.poster--h8 { --poster-hue: oklch(0.68 0.13 100); }
+
+/* small avatar bubble */
+.avatar {
+  display: inline-block; width: 36px; height: 36px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--avatar-hue, var(--accent)) 70%, var(--surface-3)) 0%, var(--surface-3) 75%);
+  border: 1px solid var(--line);
+}
+.avatar--lg { width: 96px; height: 96px; }
+.avatar--xl { width: 132px; height: 132px; border-width: 2px; }
+.avatar--h1 { --avatar-hue: oklch(0.72 0.13 30); }
+.avatar--h2 { --avatar-hue: oklch(0.66 0.12 200); }
+.avatar--h3 { --avatar-hue: oklch(0.70 0.14 280); }
+.avatar--h4 { --avatar-hue: oklch(0.68 0.13 140); }
+.avatar--h5 { --avatar-hue: oklch(0.70 0.14 50); }
+.avatar--h6 { --avatar-hue: oklch(0.64 0.12 320); }
+
+/* ============================================================
+   HORIZONTAL SHELF (used on Home + Profile for poster scrollers)
+   ============================================================ */
+.shelf {
+  display: flex; gap: 16px;
+  overflow-x: auto; overflow-y: visible;
+  padding: 4px 4px 18px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.shelf > * { flex: 0 0 168px; scroll-snap-align: start; }
+.shelf::-webkit-scrollbar { height: 8px; }
+.shelf::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
+.shelf::-webkit-scrollbar-track { background: transparent; }
+
+.shelf-card .poster { margin-bottom: 8px; }
+.shelf-card__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 13.5px;
+  color: var(--ink); line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.shelf-card__sub {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px;
+}
+
+/* ============================================================
+   STAR ROW (for ratings in placeholders)
+   ============================================================ */
+.stars {
+  display: inline-flex; align-items: center; gap: 1px;
+  color: var(--feel-loved); font-size: 12px;
+}
+.stars__count { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin-left: 6px; }
+

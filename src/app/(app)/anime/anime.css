@@ -1,0 +1,162 @@
+/* Standalone in-depth anime page (/anime/[id]). */
+.anime-hero {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.anime-cover {
+  position: relative;
+  aspect-ratio: 2/3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+  background: var(--surface-2);
+}
+.anime-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.anime-cover__gen {
+  position: absolute;
+  inset: 0;
+}
+.anime-info {
+  min-width: 0;
+}
+.anime-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: var(--uppercase-spacing);
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.anime-title {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+  margin: 0;
+}
+.anime-native {
+  color: var(--ink-faint);
+  font-size: 14px;
+  margin-top: 6px;
+}
+.anime-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.anime-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 4px 11px;
+  border-radius: 100px;
+  background: color-mix(in oklab, var(--surface-2) 70%, transparent);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+.anime-tag--genre {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+  color: var(--accent);
+}
+.anime-credit {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+.anime-section {
+  margin-top: 40px;
+  max-width: 760px;
+}
+
+/* Add-to-watchlist control */
+.adw {
+  position: relative;
+  display: inline-block;
+}
+.adw__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 100px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--accent) 80%, var(--accent-ink));
+  box-shadow: 0 2px 14px color-mix(in oklab, var(--accent) 35%, transparent);
+  cursor: pointer;
+}
+.adw__btn:hover {
+  background: var(--accent-hi);
+}
+.adw__btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.adw__picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.adw__item {
+  text-align: left;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.adw__item:hover {
+  background: var(--surface-3);
+}
+.adw__hint {
+  padding: 9px 11px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+.adw__fb {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--feel-liked);
+}
+.adw__fb--dup {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 720px) {
+  .anime-hero {
+    grid-template-columns: 1fr;
+  }
+  .anime-cover {
+    max-width: 220px;
+  }
+}

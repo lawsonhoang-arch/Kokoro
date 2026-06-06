@@ -1,0 +1,33 @@
+/* ============================================================
+   Kokoro — design tokens (OKLCH palette, fonts, radii, shadows, motion)
+   Ported near-verbatim from the design handoff (site.css).
+   ============================================================ */
+:root {
+  --page:     oklch(0.185 0.012 56);
+  --surface:  oklch(0.225 0.014 54);
+  --surface-2:oklch(0.27 0.016 52);
+  --surface-3:oklch(0.31 0.018 50);
+  --ink:      oklch(0.94 0.014 76);
+  --ink-soft: oklch(0.78 0.018 70);
+  --ink-faint:oklch(0.62 0.016 64);
+  --line:     oklch(0.32 0.014 56);
+  --line-strong: oklch(0.42 0.016 55);
+  --accent:   oklch(0.72 0.13 52);
+  --accent-hi:oklch(0.78 0.13 56);
+  --accent-ink: oklch(0.18 0.02 50);
+  --feel-loved:   oklch(0.78 0.14 70);
+  --feel-liked:   oklch(0.76 0.10 150);
+  --feel-mixed:   oklch(0.74 0.07 250);
+  --radius: 12px;
+  --radius-sm: 9px;
+  --radius-lg: 18px;
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.32);
+  --shadow-2: 0 10px 28px rgba(0,0,0,0.36), 0 2px 6px rgba(0,0,0,0.22);
+  --shadow-lift: 0 26px 60px rgba(0,0,0,0.52), 0 8px 18px rgba(0,0,0,0.32);
+  --font-title: "Nunito", system-ui, sans-serif;
+  --font-ui: "Nunito Sans", "Nunito", system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+  --uppercase-spacing: 0.18em;
+  --nav-h: 60px;
+}
+
