@@ -11,6 +11,8 @@ export type Watchlist = {
   pinned: boolean;
   titleCount: number;
   watching: number;
+  /** extra rating axes shared by every title in the list */
+  customAxes: string[];
   createdAt: number;
   lastEdited: number;
 };

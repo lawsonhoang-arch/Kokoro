@@ -3,7 +3,7 @@
 import type { PointerEvent as RPointerEvent } from "react";
 import { colorFor, tagsFor } from "./rules";
 import { EXTERNAL_SCORES, avgRatingStr } from "./helpers";
-import { Glyph } from "./Glyph";
+import { RatingMark, hasMark, markColor } from "./RatingMark";
 import { AddToTabBtn, type Collection } from "./AddToTabBtn";
 import type { Entry, GlyphSet, Mode } from "./types";
 
@@ -72,9 +72,9 @@ export function EntryRow({
       <span className="k-entry__stripe" style={color ? { background: color, color } : undefined} />
       <span
         className="k-entry__glyph"
-        style={entry.feeling ? { color: `var(--feel-${entry.feeling})` } : { color: "var(--ink-faint)" }}
+        style={{ color: hasMark(entry) ? markColor(entry) : "var(--ink-faint)" }}
       >
-        <Glyph feeling={entry.feeling} set={glyphSet} size={20} />
+        <RatingMark entry={entry} glyphSet={glyphSet} size={20} />
       </span>
       <div className="k-entry__main">
         <div className="k-entry__title">{entry.title}</div>

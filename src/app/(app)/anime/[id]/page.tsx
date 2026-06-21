@@ -1,10 +1,15 @@
 import "../anime.css";
 import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { Page } from "@/shell/Page";
 import { getTitle } from "@/lib/catalog";
+import { isCompleted } from "@/lib/completions";
+import { isFavorite } from "@/lib/favorites";
 import { DescriptionSection } from "@/features/submissions/DescriptionSection";
 import { AddToWatchlist } from "@/features/search/AddToWatchlist";
+import { MarkWatched } from "@/features/search/MarkWatched";
+import { FavoriteButton } from "@/features/search/FavoriteButton";
 
 // Deterministic generated poster (matches the search overlay) — used when a
 // title has no cover image.
@@ -23,8 +28,12 @@ function genPoster(seed: string): CSSProperties {
 export default async function AnimePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // ids contain a ':' (e.g. "anilist:457") which arrives percent-encoded
-  const t = await getTitle(decodeURIComponent(id));
+  const [t, session] = await Promise.all([getTitle(decodeURIComponent(id)), auth()]);
   if (!t) notFound();
+  const uid = session?.user?.id;
+  const [done, fav] = uid
+    ? await Promise.all([isCompleted(uid, t.id), isFavorite(uid, t.id)])
+    : [false, false];
 
   return (
     <Page>
@@ -59,7 +68,11 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
             ))}
           </div>
 
-          <AddToWatchlist titleId={t.id} />
+          <div className="anime-actions">
+            <AddToWatchlist titleId={t.id} />
+            <MarkWatched titleId={t.id} initialDone={done} />
+            <FavoriteButton titleId={t.id} initialFavorite={fav} />
+          </div>
 
           {t.cover && <div className="anime-credit">Cover art © respective owners</div>}
         </div>

@@ -2,7 +2,7 @@
 
 import { colorFor, tagsFor } from "./rules";
 import { EXTERNAL_SCORES, avgRatingStr, abbrev, posterStyleFor } from "./helpers";
-import { Glyph } from "./Glyph";
+import { RatingMark, hasMark, markColor } from "./RatingMark";
 import { AddToTabBtn } from "./AddToTabBtn";
 import type { EntryCommon } from "./EntryRow";
 import type { ViewMode } from "./types";
@@ -102,7 +102,10 @@ export function EntryCard({
       <div
         className={"k-hybrid" + (color ? " colored" : "") + (selected ? " selected" : "")}
         style={{ viewTransitionName: "entry-" + entry.id }}
+        data-entry-id={entry.id}
+        data-drop="entry"
         onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}
+        onDragStart={(e) => e.preventDefault()}
       >
         {color && <span className="k-hybrid__stripe" style={{ background: color }} />}
         <div className="k-hybrid__art" style={poster}>
@@ -113,12 +116,13 @@ export function EntryCard({
               alt=""
               referrerPolicy="no-referrer"
               loading="lazy"
+              draggable={false}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
             />
           )}
-          {entry.feeling && (
-            <span className="k-hybrid__feel" style={{ color: `var(--feel-${entry.feeling})` }}>
-              <Glyph feeling={entry.feeling} set={glyphSet} size={14} />
+          {hasMark(entry) && (
+            <span className="k-hybrid__feel" style={{ color: markColor(entry) }}>
+              <RatingMark entry={entry} glyphSet={glyphSet} size={14} />
             </span>
           )}
         </div>
@@ -153,7 +157,10 @@ export function EntryCard({
     <div
       className={"k-card" + (selected ? " selected" : "")}
       style={{ viewTransitionName: "entry-" + entry.id }}
+      data-entry-id={entry.id}
+      data-drop="entry"
       onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}
+      onDragStart={(e) => e.preventDefault()}
     >
       <div className="k-card__art" style={poster}>
         {entry.cover && (
@@ -163,13 +170,14 @@ export function EntryCard({
             alt=""
             referrerPolicy="no-referrer"
             loading="lazy"
+            draggable={false}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         )}
         {color && <span className="k-card__stripe" style={{ background: color }} />}
-        {entry.feeling && (
-          <span className="k-card__feel" style={{ color: `var(--feel-${entry.feeling})` }}>
-            <Glyph feeling={entry.feeling} set={glyphSet} size={16} />
+        {hasMark(entry) && (
+          <span className="k-card__feel" style={{ color: markColor(entry) }}>
+            <RatingMark entry={entry} glyphSet={glyphSet} size={16} />
           </span>
         )}
         <span className="k-card__add">{addBtn}</span>

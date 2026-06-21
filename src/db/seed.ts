@@ -10,7 +10,7 @@ import { LIBRARY } from "../features/watchlist/data";
 // Seeds the shared anime catalog (titles) from the mock LIBRARY.
 // Run with:  npm run db:seed   (after db:push / db:migrate)
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) {
     console.error("DATABASE_URL not set — add it to .env.local first.");
     process.exit(1);

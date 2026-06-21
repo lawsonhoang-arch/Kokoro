@@ -1,39 +1,72 @@
 "use client";
 
 import { useState } from "react";
-import { FEELINGS } from "./data";
+import { FEELINGS, SYMBOL_STYLES, GRADE_LETTERS, MOOD_EMOJI } from "./data";
 import { EXTERNAL_SCORES } from "./helpers";
 import { Glyph } from "./Glyph";
 import { Ico } from "./Ico";
+import { EpisodeNotes } from "./EpisodeNotes";
+import { TakeNotes } from "./TakeNotes";
 import { DescriptionSection } from "@/features/submissions/DescriptionSection";
-import type { Entry, Feeling, GlyphSet } from "./types";
+import { BASE_AXES } from "./types";
+import type { Entry, Feeling, GlyphSet, RateMode, SymbolStyle } from "./types";
 
-const DIM_NAMES: (keyof Entry["dims"])[] = ["story", "art", "music", "pacing"];
 const FEELING_KEYS = Object.keys(FEELINGS) as Feeling[];
+const RATE_MODES: { key: RateMode; label: string }[] = [
+  { key: "glyphs", label: "Glyphs" },
+  { key: "axes", label: "Axes" },
+  { key: "symbols", label: "Symbols" },
+];
+const SYMBOL_KEYS = Object.keys(SYMBOL_STYLES) as SymbolStyle[];
 
 type Props = {
   entry: Entry;
   glyphSet: GlyphSet;
   showScore: boolean;
+  customAxes: string[];
   onClose: () => void;
   onSetFeeling: (id: string, f: Feeling | null) => void;
-  onSetDim: (id: string, d: keyof Entry["dims"], v: number) => void;
+  onSetRateMode: (id: string, m: RateMode) => void;
+  onSetSymbol: (id: string, s: { style: SymbolStyle; value: number } | null) => void;
+  onSetDim: (id: string, d: string, v: number) => void;
+  onAddAxis: (name: string) => void;
+  onRemoveAxis: (name: string) => void;
   onSetTake: (id: string, v: string) => void;
   onRemove?: (id: string) => void;
+  watched: number[];
+  onToggleWatched: (id: string, ep: number) => void;
+  onMarkAllWatched: (id: string) => void;
+  onClearWatched: (id: string) => void;
 };
 
 export function DetailPanel({
   entry,
   glyphSet,
   showScore,
+  customAxes,
   onClose,
   onSetFeeling,
+  onSetRateMode,
+  onSetSymbol,
   onSetDim,
+  onAddAxis,
+  onRemoveAxis,
   onSetTake,
   onRemove,
+  watched,
+  onToggleWatched,
+  onMarkAllWatched,
+  onClearWatched,
 }: Props) {
   const ext = EXTERNAL_SCORES[entry.id];
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [axisDraft, setAxisDraft] = useState<string | null>(null);
+
+  const rateMode: RateMode = entry.rateMode ?? "glyphs";
+  const symStyle: SymbolStyle = entry.symbol?.style ?? "stars";
+  const symValue = entry.symbol?.value ?? 0;
+  const setSymValue = (v: number) =>
+    onSetSymbol(entry.id, symValue === v ? null : { style: symStyle, value: v });
   return (
     <aside className="k-detail" role="dialog" aria-modal="true">
       <div className="k-detail__scroll">
@@ -101,59 +134,198 @@ export function DetailPanel({
 
         <div className="k-impression">
           <div className="k-impression__col">
-            <div className="k-impression__lbl">Feeling — a glyph, never a number</div>
-            <div className="k-feelpick">
-              {FEELING_KEYS.map((k) => (
+            <div className="k-impression__lbl">How you rate this — your choice</div>
+            <div className="k-ratemode" role="tablist" aria-label="Rating method">
+              {RATE_MODES.map((m) => (
                 <button
-                  key={k}
-                  className={entry.feeling === k ? "on" : ""}
-                  style={entry.feeling === k ? { color: `var(--feel-${k})` } : undefined}
-                  onClick={() => onSetFeeling(entry.id, entry.feeling === k ? null : k)}
+                  key={m.key}
+                  role="tab"
+                  aria-selected={rateMode === m.key}
+                  className={"k-ratemode__opt" + (rateMode === m.key ? " on" : "")}
+                  onClick={() => onSetRateMode(entry.id, m.key)}
                 >
-                  <span style={{ color: `var(--feel-${k})` }}>
-                    <Glyph feeling={k} set={glyphSet} size={22} />
-                  </span>
-                  <span>{FEELINGS[k].label}</span>
+                  {m.label}
                 </button>
               ))}
             </div>
 
-            <div className="k-impression__lbl">Your axes — optional, private</div>
-            <div className="k-dims">
-              {DIM_NAMES.map((d) => (
-                <div className="k-dim" key={d}>
-                  <span className="k-dim__name">{d}</span>
-                  <div className="k-dim__pips">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <span
-                        key={n}
-                        className={"k-dim__pip" + (entry.dims[d] >= n ? " on" : "")}
-                        onClick={() => onSetDim(entry.id, d, entry.dims[d] === n ? 0 : n)}
-                      />
-                    ))}
-                  </div>
+            {rateMode === "glyphs" && (
+              <>
+                <div className="k-impression__lbl">Feeling — a glyph, never a number</div>
+                <div className="k-feelpick">
+                  {FEELING_KEYS.map((k) => (
+                    <button
+                      key={k}
+                      className={entry.feeling === k ? "on" : ""}
+                      style={entry.feeling === k ? { color: `var(--feel-${k})` } : undefined}
+                      onClick={() => onSetFeeling(entry.id, entry.feeling === k ? null : k)}
+                    >
+                      <span style={{ color: `var(--feel-${k})` }}>
+                        <Glyph feeling={k} set={glyphSet} size={22} />
+                      </span>
+                      <span>{FEELINGS[k].label}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-              <button className="k-dim__addaxis">+ add a personal axis</button>
-            </div>
+              </>
+            )}
+
+            {rateMode === "axes" && (
+              <>
+                <div className="k-impression__lbl">Axes — facet by facet, kept private</div>
+                <div className="k-dims">
+                  {BASE_AXES.map((d) => (
+                    <div className="k-dim" key={d}>
+                      <span className="k-dim__name">{d}</span>
+                      <div className="k-dim__pips">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <span
+                            key={n}
+                            className={"k-dim__pip" + ((entry.dims[d] ?? 0) >= n ? " on" : "")}
+                            onClick={() => onSetDim(entry.id, d, entry.dims[d] === n ? 0 : n)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {customAxes.map((name) => (
+                    <div className="k-dim k-dim--custom" key={name}>
+                      <span className="k-dim__name">{name}</span>
+                      <div className="k-dim__pips">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <span
+                            key={n}
+                            className={"k-dim__pip" + ((entry.dims[name] ?? 0) >= n ? " on" : "")}
+                            onClick={() => onSetDim(entry.id, name, (entry.dims[name] ?? 0) === n ? 0 : n)}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        className="k-dim__del"
+                        title={`Remove “${name}” axis`}
+                        aria-label={`Remove ${name} axis`}
+                        onClick={() => onRemoveAxis(name)}
+                      >
+                        <Ico name="x" s={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {axisDraft === null ? (
+                    <button className="k-dim__addaxis" onClick={() => setAxisDraft("")}>
+                      + add a personal axis
+                    </button>
+                  ) : (
+                    <form
+                      className="k-axisadd"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const n = axisDraft.trim();
+                        if (n) onAddAxis(n);
+                        setAxisDraft(null);
+                      }}
+                    >
+                      <input
+                        className="k-axisadd__input"
+                        autoFocus
+                        maxLength={24}
+                        value={axisDraft}
+                        placeholder="axis name — e.g. animation"
+                        onChange={(e) => setAxisDraft(e.target.value)}
+                        onKeyDown={(e) => e.key === "Escape" && setAxisDraft(null)}
+                      />
+                      <button type="submit" className="k-axisadd__ok">
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="k-axisadd__cancel"
+                        onClick={() => setAxisDraft(null)}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </>
+            )}
+
+            {rateMode === "symbols" && (
+              <>
+                <div className="k-impression__lbl">Symbols — stars, grades or moods, your pick</div>
+                <div className="k-symstyle" role="tablist" aria-label="Symbol style">
+                  {SYMBOL_KEYS.map((st) => (
+                    <button
+                      key={st}
+                      role="tab"
+                      aria-selected={symStyle === st}
+                      className={"k-symstyle__opt" + (symStyle === st ? " on" : "")}
+                      onClick={() => onSetSymbol(entry.id, { style: st, value: symValue })}
+                    >
+                      {SYMBOL_STYLES[st].label}
+                    </button>
+                  ))}
+                </div>
+                <div className={"k-symrate k-symrate--" + symStyle} role="radiogroup">
+                  {[1, 2, 3, 4, 5].map((n) => {
+                    const on = symStyle === "stars" ? symValue >= n : symValue === n;
+                    const glyph =
+                      symStyle === "stars" ? "★" : symStyle === "grades" ? GRADE_LETTERS[n] : MOOD_EMOJI[n];
+                    return (
+                      <button
+                        key={n}
+                        role="radio"
+                        aria-checked={on}
+                        aria-label={`${n} of 5`}
+                        className={"k-sym" + (on ? " on" : "")}
+                        onClick={() => setSymValue(n)}
+                      >
+                        {glyph}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="k-impression__col">
-            <div className="k-impression__lbl">Your take — feeds recommendations</div>
-            <textarea
-              className="k-take"
-              value={entry.take}
-              placeholder="What did it make you feel? Write as much or as little as you like…"
-              onChange={(e) => onSetTake(entry.id, e.target.value)}
-            />
-            <div className="k-take-foot">
-              <span className="k-privacy">
-                <Ico name="lock" s={11} /> Private
-              </span>
-              <span>Markdown · spoiler-flag with ||…||</span>
-            </div>
+            <div className="k-impression__lbl">Your take — your overall notes, kept in your Journal</div>
+            {entry.titleId ? (
+              <TakeNotes
+                key={entry.id}
+                titleId={entry.titleId}
+                initialTake={entry.take}
+                onMirror={(body) => onSetTake(entry.id, body)}
+              />
+            ) : (
+              <>
+                <textarea
+                  className="k-take"
+                  value={entry.take}
+                  placeholder="What did it make you feel? Write as much or as little as you like…"
+                  onChange={(e) => onSetTake(entry.id, e.target.value)}
+                />
+                <div className="k-take-foot">
+                  <span className="k-privacy">
+                    <Ico name="lock" s={11} /> Private
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
+
+        {entry.titleId && entry.episodes > 0 && (
+          <EpisodeNotes
+            titleId={entry.titleId}
+            title={entry.title}
+            episodes={entry.episodes}
+            watched={watched}
+            onToggleWatched={(ep) => onToggleWatched(entry.id, ep)}
+            onMarkAll={() => onMarkAllWatched(entry.id)}
+            onClear={() => onClearWatched(entry.id)}
+          />
+        )}
 
         {onRemove && (
           <div className="k-detail__danger">

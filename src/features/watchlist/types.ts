@@ -4,7 +4,18 @@
 export type Feeling = "loved" | "liked" | "mixed" | "dropped";
 export type Status = "watching" | "completed" | "planned";
 
-export type Dims = { story: number; art: number; music: number; pacing: number };
+/** How the user rates a title — they can pick per title. */
+export type RateMode = "glyphs" | "axes" | "symbols";
+
+/** Visual style for the "symbols" rating mode. */
+export type SymbolStyle = "stars" | "grades" | "emoji";
+/** A symbols rating: a 1–5 value (5 = best) rendered in the chosen style. */
+export type SymbolRating = { style: SymbolStyle; value: number };
+
+/** The four fixed axes; custom axes live alongside these as extra string keys. */
+export type Dims = { story: number; art: number; music: number; pacing: number } & Record<string, number>;
+/** The always-present axes, in display order. */
+export const BASE_AXES = ["story", "art", "music", "pacing"] as const;
 
 export type Entry = {
   id: string;
@@ -19,11 +30,18 @@ export type Entry = {
   seasons: number;
   status: Status;
   feeling: Feeling | null;
+  /** preferred rating method for this title (defaults to "glyphs") */
+  rateMode?: RateMode;
+  /** the symbols rating, when rateMode = "symbols" */
+  symbol?: SymbolRating | null;
   watched: string | null;
   dims: Dims;
   take: string;
   air: { day: string; time: string };
+  /** number of episodes watched (= watchedEps.length) */
   progress?: number;
+  /** the specific episode numbers the user marked watched */
+  watchedEps?: number[];
 };
 
 export type RuleCat = "group" | "sort" | "color" | "tag";

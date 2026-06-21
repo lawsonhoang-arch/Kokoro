@@ -156,6 +156,12 @@
 .entry__feel--liked   { color: var(--feel-liked);  border-color: color-mix(in oklab, var(--feel-liked) 40%, var(--line)); }
 .entry__feel--mixed   { color: var(--feel-mixed);  border-color: color-mix(in oklab, var(--feel-mixed) 40%, var(--line)); }
 .entry__time { margin-left: auto; color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px; }
+/* "Overall take" chip — distinct from per-episode chips */
+.entry__ep--take {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--accent) 80%, var(--accent-ink));
+}
 
 .entry__text {
   font-family: "Spectral", Georgia, serif;
@@ -213,6 +219,192 @@
   font-family: var(--font-mono); font-size: 10.5px;
   background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft);
 }
+
+/* ---- real-data additions ---- */
+.rail__head { gap: 8px; }
+.rail__new {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 100px;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid color-mix(in oklab, var(--accent) 80%, var(--accent-ink));
+  box-shadow: 0 2px 12px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.rail__new:hover { background: var(--accent-hi); }
+
+.anime-row { width: 100%; text-align: left; border: 0; background: none; font: inherit; }
+.anime-row__thumb { position: relative; overflow: hidden; }
+.anime-row__thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.jrail-all__thumb {
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2));
+}
+.jrail-all__thumb::before {
+  content: ""; width: 16px; height: 12px; border-radius: 2px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) left 0 top 0/100% 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left 0 top 5px/100% 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) left 0 top 10px/70% 2px no-repeat;
+  opacity: 0.8;
+}
+.rail__empty { padding: 16px 12px; color: var(--ink-faint); font-size: 12.5px; line-height: 1.5; }
+
+.timeline__cover { position: relative; overflow: hidden; }
+.timeline__cover .jcover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* composer: collapsed button + open form */
+.compose__box--btn { width: 100%; display: block; text-align: left; }
+.jcompose { display: flex; flex-direction: column; gap: 12px; }
+.jcompose__target {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
+  display: flex; align-items: center; gap: 8px;
+}
+.jcompose__target b { color: var(--ink); font-weight: 700; }
+.jlink {
+  color: var(--accent); font-family: var(--font-mono); font-size: 11px; cursor: pointer;
+  background: none; border: none; padding: 0;
+}
+.jlink:hover { text-decoration: underline; }
+
+/* title picker */
+.jpick {
+  border: 1px dashed var(--line-strong); border-radius: var(--radius);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: color-mix(in oklab, var(--surface-2) 50%, transparent);
+}
+.jpick__label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.jpick__search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-faint);
+}
+.jpick__search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 13.5px; }
+.jpick__results { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.jpick__results button {
+  width: 100%; text-align: left; display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  background: none; border: none; color: var(--ink); font: inherit;
+}
+.jpick__results button:hover { background: var(--surface-3); }
+.jpick__title { font-weight: 600; font-size: 13.5px; }
+.jpick__year { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.jpick__row { display: flex; align-items: center; justify-content: space-between; }
+
+/* note fields (compose + edit) */
+.jform { display: flex; flex-direction: column; gap: 10px; }
+.jform__body {
+  width: 100%; min-height: 96px; resize: vertical;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); padding: 13px 15px;
+  font-family: "Spectral", Georgia, serif; font-size: 15.5px; line-height: 1.6; color: var(--ink);
+}
+.jform__quote {
+  width: 100%; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-2)); padding: 10px 14px;
+  font-family: "Spectral", Georgia, serif; font-style: italic; font-size: 14px; color: var(--ink-soft);
+}
+.jform__body:focus, .jform__quote:focus, .jform__ep:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+}
+.jform__tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.jform__ep {
+  flex: 0 0 auto; width: 150px;
+  border: 1px solid var(--line); border-radius: 100px; background: var(--surface-2);
+  padding: 6px 13px; color: var(--ink); font-family: var(--font-mono); font-size: 11.5px;
+}
+.jform__feels { display: flex; gap: 6px; flex-wrap: wrap; }
+.jfeel {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px;
+}
+.jfeel:hover { color: var(--ink-soft); }
+.jfeel__sym { font-size: 12px; }
+.jfeel.on { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px currentColor; }
+.jfeel--loved.on { color: var(--feel-loved); }
+.jfeel--liked.on { color: var(--feel-liked); }
+.jfeel--mixed.on { color: var(--feel-mixed); }
+.jfeel--neutral.on { color: var(--ink-soft); }
+.jform__addquote {
+  margin-left: auto; color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px;
+  background: none; border: none; cursor: pointer; padding: 5px 6px;
+}
+.jform__addquote:hover { color: var(--accent); }
+/* episode picker — type a number OR switch to a grid */
+.jform__epmode { display: inline-flex; gap: 3px; padding: 3px; border-radius: 100px; background: var(--surface-2); border: 1px solid var(--line); flex: 0 0 auto; }
+.jform__epmodeopt { padding: 5px 12px; border-radius: 100px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); background: none; border: none; cursor: pointer; transition: color .14s, background .14s, box-shadow .14s; }
+.jform__epmodeopt:hover { color: var(--ink-soft); }
+.jform__epmodeopt.on { color: var(--ink); background: var(--surface); box-shadow: var(--shadow-1); }
+.jform__epgrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 6px; margin-top: 2px; max-height: 200px; overflow-y: auto; scrollbar-width: thin; padding-right: 2px;
+}
+.jform__epcell {
+  position: relative; aspect-ratio: 1; min-height: 38px; display: grid; place-items: center; cursor: pointer;
+  border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink-soft); font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+  transition: border-color .12s, background .12s, color .12s, transform .1s;
+}
+.jform__epcell:hover { border-color: var(--line-strong); color: var(--ink); transform: translateY(-1px); }
+.jform__epcell.has { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); color: var(--ink); }
+.jform__epcell.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 2px 12px color-mix(in oklab, var(--accent) 35%, transparent); }
+.jform__epcount {
+  position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 100px; font-size: 9px; font-weight: 700; line-height: 1;
+  color: var(--accent-ink); background: color-mix(in oklab, var(--accent) 88%, black); border: 1px solid var(--surface);
+}
+.jform__epcell.on .jform__epcount { background: var(--surface); color: var(--accent); }
+/* the note box glows accent while a specific episode is selected */
+.jform__body--ep { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 18px color-mix(in oklab, var(--accent) 28%, transparent); }
+.jform__body--ep:focus { box-shadow: 0 0 0 1px var(--accent), 0 0 22px color-mix(in oklab, var(--accent) 40%, transparent); }
+
+.jform__actions { display: flex; gap: 8px; margin-top: 2px; }
+.entry--editing { background: color-mix(in oklab, var(--surface-2) 30%, transparent); border-radius: var(--radius); }
+
+.entry__foot .jdanger { color: var(--feel-dropped); font-weight: 600; }
+.journal-empty { color: var(--ink-faint); font-size: 14px; line-height: 1.6; padding: 24px 0; max-width: 52ch; }
+
+/* the all-systems rating control (.jrate*) now lives in the shared
+   styles/rating-control.css, imported by this page (see journal/page.tsx). */
+
+/* entry rating badge */
+.entry__feel--dropped { color: var(--feel-dropped); border-color: color-mix(in oklab, var(--feel-dropped) 40%, var(--line)); }
+.entry__feel .k-glyph { display: inline-flex; }
+.entry__rate { font-family: var(--font-mono); font-weight: 700; color: var(--ink-soft); }
+
+/* note title (heading) */
+.jform__title {
+  width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface-2); padding: 9px 14px;
+  font-family: var(--font-title); font-weight: 700; font-size: 16px; color: var(--ink);
+}
+.jform__title:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.jform__title::placeholder { color: var(--ink-faint); font-weight: 400; font-family: var(--font-ui); font-size: 13.5px; }
+.entry__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 17px; line-height: 1.25;
+  color: var(--ink); margin-bottom: 8px;
+}
+
+/* filter bar */
+.jfilters {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 12px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line);
+}
+.jfilters__search {
+  flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-faint);
+}
+.jfilters__search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 13px; }
+.jfilters__sel {
+  padding: 7px 12px; border-radius: 100px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-soft);
+  font-family: var(--font-mono); font-size: 11.5px;
+}
+.jfilters__sel:hover { border-color: var(--line-strong); color: var(--ink); }
+.jfilters__sel:focus { outline: none; border-color: var(--accent); }
+.jfilters__sort { margin-left: auto; }
 
 @media (max-width: 920px) {
   .journal { grid-template-columns: 1fr; }

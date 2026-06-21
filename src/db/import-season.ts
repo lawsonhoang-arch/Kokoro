@@ -23,6 +23,8 @@ type JikanAnime = {
   mal_id: number;
   score?: number | null;
   members?: number | null;
+  title_english?: string | null;
+  rating?: string | null;
   images?: { jpg?: { image_url?: string | null; large_image_url?: string | null } };
 };
 
@@ -47,12 +49,14 @@ async function fetchPage(url: string, page: number, attempt = 0): Promise<{ data
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) { console.error("DATABASE_URL not set."); process.exit(1); }
   const client = postgres(url, { prepare: false });
 
   await client`alter table titles add column if not exists mal_id integer`;
   await client`alter table titles add column if not exists popularity integer`;
+  await client`alter table titles add column if not exists english_title text`;
+  await client`alter table titles add column if not exists nsfw boolean not null default false`;
   await client`create index if not exists titles_mal_idx on titles(mal_id)`;
 
   // collect the season's titles (dedup by mal_id)
@@ -80,7 +84,9 @@ async function main() {
       update titles set
         score = coalesce(${score}, score),
         popularity = coalesce(${members}, popularity),
-        cover = coalesce(${cover}, cover)
+        cover = coalesce(${cover}, cover),
+        english_title = coalesce(${a.title_english?.trim() || null}, english_title),
+        nsfw = coalesce(${a.rating?.startsWith("Rx") ? true : null}, nsfw)
       where mal_id = ${a.mal_id} and kind = 'anime'
     `;
     matched += res.count;

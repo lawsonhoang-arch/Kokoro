@@ -1,61 +1,89 @@
 import "./profile.css";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { Page } from "@/shell/Page";
-import { Avatar, Button } from "@/components/ui";
-import { Icon } from "@/components/Icon";
+import { Avatar } from "@/components/ui";
+import {
+  getProfileUser,
+  getProfileSummary,
+  getProfileReviews,
+  getProfileActivity,
+} from "@/lib/profile";
+import { getFavorites } from "@/lib/favorites";
 import { ProfileTabs } from "./ProfileTabs";
 
-type Stat = { label: string; value: string; hint: string };
-const STATS: Stat[] = [
-  { label: "Watched", value: "487", hint: "titles, all-time" },
-  { label: "This year", value: "62", hint: "35 finished · 27 dropped" },
-  { label: "Hours", value: "3 940", hint: "~164 days of TV" },
-  { label: "Top genre", value: "Drama", hint: "38% of your list" },
-  { label: "Followers", value: "128", hint: "↑ 12 this month" },
-];
+// stable 1–6 avatar hue from the username
+function hueOf(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (h % 6) + 1;
+}
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
+
+  const [user, summary, reviews, activity, favorites] = await Promise.all([
+    getProfileUser(userId),
+    getProfileSummary(userId),
+    getProfileReviews(userId),
+    getProfileActivity(userId),
+    getFavorites(userId),
+  ]);
+  if (!user) redirect("/login");
+
+  const displayName = user.name || "@" + user.username;
+  const memberSince = new Date(user.createdAt).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const s = summary.stats;
+
   return (
     <Page width="wide">
-      {/* banner stretches edge-to-edge inside the page padding */}
       <div className="pf-banner" aria-hidden="true"></div>
 
-      {/* HEAD: avatar + identity + actions */}
       <header className="pf-head">
-        <Avatar size="xl" hue={3} />
+        <Avatar size="xl" hue={hueOf(user.username)} />
         <div className="pf-meta">
-          <h1 className="pf-name">Riley Okabe</h1>
-          <span className="pf-handle">@riley · online · timezone JST</span>
-          <p className="pf-bio">
-            Slow, generous storytelling enjoyer. Currently rewatching Mushishi one episode per
-            Sunday. Mod of the Late Night Mushishi club. Open to recommendations — gentler the
-            better.
+          <h1 className="pf-name">
+            {displayName}
+            {user.role !== "user" && <span className="pf-rolebadge">{user.role}</span>}
+          </h1>
+          <span className="pf-handle">@{user.username} · joined {memberSince}</span>
+          <p className={"pf-bio" + (user.bio ? "" : " pf-bio--empty")}>
+            {user.bio || "No bio yet — add one in Settings."}
           </p>
-        </div>
-        <div className="pf-actions">
-          <Button variant="ghost">
-            <Icon name="message" size={14} />
-            Message
-          </Button>
-          <Button variant="primary">
-            <Icon name="plus" size={14} />
-            Follow
-          </Button>
         </div>
       </header>
 
-      {/* STATS row */}
       <section className="pf-stats" aria-label="Profile stats">
-        {STATS.map((s) => (
-          <div key={s.label} className="pf-stat">
-            <div className="pf-stat__label">{s.label}</div>
-            <div className="pf-stat__value">{s.value}</div>
-            <div className="pf-stat__hint">{s.hint}</div>
-          </div>
-        ))}
+        <div className="pf-stat">
+          <div className="pf-stat__label">Tracked</div>
+          <div className="pf-stat__value">{s.tracked}</div>
+          <div className="pf-stat__hint">titles, all lists</div>
+        </div>
+        <div className="pf-stat">
+          <div className="pf-stat__label">Completed</div>
+          <div className="pf-stat__value">{s.completed}</div>
+          <div className="pf-stat__hint">{s.watching} watching · {s.planned} planned</div>
+        </div>
+        <div className="pf-stat">
+          <div className="pf-stat__label">Episodes</div>
+          <div className="pf-stat__value">{s.episodesWatched.toLocaleString()}</div>
+          <div className="pf-stat__hint">episodes watched</div>
+        </div>
+        <div className="pf-stat">
+          <div className="pf-stat__label">Hours</div>
+          <div className="pf-stat__value">{s.hours.toLocaleString()}</div>
+          <div className="pf-stat__hint">~{Math.max(1, Math.round(s.hours / 24))} days of watch time</div>
+        </div>
+        <div className="pf-stat">
+          <div className="pf-stat__label">Reviews</div>
+          <div className="pf-stat__value">{s.reviews}</div>
+          <div className="pf-stat__hint">posted to community</div>
+        </div>
       </section>
 
-      {/* SUB-TABS + panels (interactive client island) */}
-      <ProfileTabs />
+      <ProfileTabs user={user} summary={summary} reviews={reviews} activity={activity} favorites={favorites} />
     </Page>
   );
 }

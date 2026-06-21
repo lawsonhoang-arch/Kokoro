@@ -51,12 +51,14 @@ type JikanManga = {
   genres?: { name: string }[];
   themes?: { name: string }[];
   demographics?: { name: string }[];
+  explicit_genres?: { name: string }[]; // Hentai / Erotica → adult
 };
 
 type TitleRow = {
   id: string;
   kind: string;
   title: string;
+  englishTitle: string | null;
   year: number;
   episodes: number;
   seasons: number;
@@ -64,6 +66,7 @@ type TitleRow = {
   genres: string[];
   cover: string | null;
   score: number | null;
+  nsfw: boolean;
   searchText: string;
 };
 
@@ -90,6 +93,7 @@ function toRow(m: JikanManga): TitleRow {
     id: "mga:" + m.mal_id,
     kind: "manga",
     title: m.title,
+    englishTitle: m.title_english?.trim() || null,
     year: m.published?.prop?.from?.year ?? 0,
     episodes: m.chapters ?? 0, // chapters
     seasons: m.volumes ?? 1, // volumes
@@ -98,6 +102,7 @@ function toRow(m: JikanManga): TitleRow {
     cover: m.images?.jpg?.large_image_url ?? m.images?.jpg?.image_url ?? null,
     // MAL score ×100 as an int (9.12 → 912) — used to surface acclaimed manga
     score: m.score ? Math.round(m.score * 100) : null,
+    nsfw: (m.explicit_genres?.length ?? 0) > 0,
     searchText,
   };
 }
@@ -123,7 +128,7 @@ async function fetchPage(page: number, attempt = 0): Promise<JikanManga[]> {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) { console.error("DATABASE_URL not set."); process.exit(1); }
 
   console.log(`Fetching ${PAGES} pages (≈${PAGES * PER_PAGE} manga) from Jikan…`);
@@ -149,6 +154,7 @@ async function main() {
       id: "mga:seed-" + (i + 1),
       kind: "manga",
       title: f.title,
+      englishTitle: null,
       year: f.year,
       episodes: f.chapters,
       seasons: 1,
@@ -156,6 +162,7 @@ async function main() {
       genres: f.genres,
       cover: null,
       score: null,
+      nsfw: false,
       searchText: f.title.toLowerCase(),
     }));
   }
@@ -165,6 +172,8 @@ async function main() {
 
   // make sure the discriminator column + helpful index exist (idempotent)
   await db.execute(sql`alter table titles add column if not exists kind text not null default 'anime'`);
+  await db.execute(sql`alter table titles add column if not exists english_title text`);
+  await db.execute(sql`alter table titles add column if not exists nsfw boolean not null default false`);
   await db.execute(sql`create index if not exists titles_kind_idx on titles(kind)`);
 
   const BATCH = 500;
@@ -179,6 +188,7 @@ async function main() {
         set: {
           kind: sql`excluded.kind`,
           title: sql`excluded.title`,
+          englishTitle: sql`excluded.english_title`,
           year: sql`excluded.year`,
           episodes: sql`excluded.episodes`,
           seasons: sql`excluded.seasons`,
@@ -186,6 +196,7 @@ async function main() {
           genres: sql`excluded.genres`,
           cover: sql`excluded.cover`,
           score: sql`excluded.score`,
+          nsfw: sql`excluded.nsfw`,
           searchText: sql`excluded.search_text`,
         },
       });

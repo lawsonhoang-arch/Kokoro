@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
+import { setLastList } from "@/lib/lastList";
 import type { HueKey } from "@/lib/palette";
-import type { Entry } from "./types";
+import type { Entry, Group } from "./types";
 
 // Render the watchlist app client-only: its view/layout prefs and pointer/
 // startViewTransition interactions are all client concerns, so SSR adds nothing
@@ -17,11 +19,29 @@ export function WatchlistAppLoader({
   title,
   hue,
   initialEntries,
+  initialCustomAxes,
+  initialGroups,
 }: {
   id: string;
   title: string;
   hue: HueKey;
   initialEntries: Entry[];
+  initialCustomAxes: string[];
+  initialGroups: Group[];
 }) {
-  return <WatchlistApp id={id} title={title} hue={hue} initialEntries={initialEntries} />;
+  // Remember this as the last-opened list so the Lists tab returns here.
+  useEffect(() => {
+    setLastList(id);
+  }, [id]);
+
+  return (
+    <WatchlistApp
+      id={id}
+      title={title}
+      hue={hue}
+      initialEntries={initialEntries}
+      initialCustomAxes={initialCustomAxes}
+      initialGroups={initialGroups}
+    />
+  );
 }

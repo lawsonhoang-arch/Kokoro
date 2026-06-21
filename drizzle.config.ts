@@ -13,7 +13,9 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "",
+    // DDL/migrations must NOT go through the transaction pooler — use the direct
+    // connection (DIRECT_URL), falling back to DATABASE_URL when unset.
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "",
   },
   casing: "snake_case",
 });

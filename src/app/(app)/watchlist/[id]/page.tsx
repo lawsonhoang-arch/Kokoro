@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getWatchlist } from "@/lib/watchlists";
 import { getWatchlistEntries } from "@/lib/entries";
+import { getGroups } from "@/lib/groups";
 import { WatchlistAppLoader } from "@/features/watchlist/WatchlistAppLoader";
 
 // Server Component: auth-gates, verifies the signed-in user owns this list,
@@ -21,9 +22,19 @@ export default async function WatchlistDetailPage({
   const list = await getWatchlist(session.user.id, id);
   if (!list) notFound();
 
-  const entries = await getWatchlistEntries(session.user.id, list.id);
+  const [entries, initialGroups] = await Promise.all([
+    getWatchlistEntries(session.user.id, list.id),
+    getGroups(session.user.id, list.id),
+  ]);
 
   return (
-    <WatchlistAppLoader id={list.id} title={list.title} hue={list.hue} initialEntries={entries} />
+    <WatchlistAppLoader
+      id={list.id}
+      title={list.title}
+      hue={list.hue}
+      initialEntries={entries}
+      initialCustomAxes={list.customAxes}
+      initialGroups={initialGroups}
+    />
   );
 }

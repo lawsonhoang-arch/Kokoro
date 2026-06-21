@@ -26,7 +26,27 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+      - name: Preflight — verify DATABASE_URL secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is empty/missing. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          host=$(node -e "try{process.stdout.write(new URL(process.env.DATABASE_URL).hostname)}catch{process.stdout.write('unparseable')}")
+          echo "DB host: $host"
+          case "$host" in
+            *pooler.supabase.com) echo "OK: Supabase pooler host (IPv4-friendly).";;
+            db.*.supabase.co) echo "::error::DATABASE_URL uses the DIRECT host ($host), which is IPv6-only and unreachable from GitHub's IPv4 runners. Use the Supabase Session pooler string (aws-0-<region>.pooler.supabase.com:5432)."; exit 1;;
+            unparseable) echo "::error::DATABASE_URL is not a valid URL — likely an unencoded special char in the password (e.g. # → %23)."; exit 1;;
+            *) echo "::warning::Unrecognized DB host '$host' — ensure it is reachable from GitHub Actions and the Supabase project is not paused.";;
+          esac
       - name: Season refresh (current + upcoming)
         run: npm run db:import-season
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Refresh event banners (featured premiere + season)
+        run: npm run db:refresh-events
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

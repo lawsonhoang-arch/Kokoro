@@ -1,4 +1,4 @@
-import type { Entry, Feeling } from "./types";
+import type { Entry, Feeling, SymbolStyle } from "./types";
 
 // Sample library — port of data.js.
 // feeling: loved | liked | mixed | dropped
@@ -158,3 +158,14 @@ export const FEELINGS: Record<Feeling, { label: string; tier: number }> = {
   mixed: { label: "Mixed", tier: 2 },
   dropped: { label: "Dropped", tier: 3 },
 };
+
+/** Symbol rating styles (the "symbols" rate mode). Values run 1–5, 5 = best. */
+export const SYMBOL_STYLES: Record<SymbolStyle, { label: string }> = {
+  stars: { label: "Stars" },
+  grades: { label: "Grades" },
+  emoji: { label: "Mood" },
+};
+/** Letter grade per value (index = value 1–5; "" is unused index 0). */
+export const GRADE_LETTERS = ["", "D", "C", "B", "A", "S"];
+/** Mood emoji per value (index = value 1–5). */
+export const MOOD_EMOJI = ["", "💀", "😴", "😐", "🙂", "😍"];

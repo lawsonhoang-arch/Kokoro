@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "@/lib/auth-actions";
+import { getLastList } from "@/lib/lastList";
 import { NavSearch } from "./NavSearch";
 
 type NavUser = {
@@ -70,6 +71,13 @@ function activeFromPath(pathname: string): string {
 export function SiteNav({ user }: { user: NavUser }) {
   const pathname = usePathname();
   const active = activeFromPath(pathname);
+  // The Lists tab returns to the list the user last had open (if any), so they
+  // don't have to re-pick one each visit. Read after mount + on every nav so it
+  // stays fresh; null on the server keeps SSR markup matching (no hydration gap).
+  const [lastListId, setLastListId] = useState<string | null>(null);
+  useEffect(() => {
+    setLastListId(getLastList());
+  }, [pathname]);
   // Search collapses to a circle inside the centered tab group; clicking it
   // expands the bar inline and pushes the tabs aside. Labels fold to icons only
   // when the expanded bar wouldn't otherwise fit — measured, not assumed.
@@ -161,11 +169,15 @@ export function SiteNav({ user }: { user: NavUser }) {
         <ol ref={tabsRef} className="site-nav__tabs" role="tablist">
         {TABS.map((t) => {
           const on = active === t.id;
+          const href =
+            t.id === "watchlist" && lastListId
+              ? `/watchlist/${encodeURIComponent(lastListId)}`
+              : t.href;
           return (
             <li key={t.id}>
               <Link
                 className={"site-nav__tab" + (on ? " on" : "")}
-                href={t.href}
+                href={href}
                 aria-current={on ? "page" : "false"}
                 title={t.label}
               >
@@ -196,6 +208,33 @@ export function SiteNav({ user }: { user: NavUser }) {
             title="Description review queue"
           >
             Review
+          </Link>
+        )}
+        {isMod && (
+          <Link
+            className={"site-nav__tab site-nav__review" + (active === "editorial" ? " on" : "")}
+            href="/editorial"
+            title="Edit Home editorial picks"
+          >
+            Editorial
+          </Link>
+        )}
+        {isMod && (
+          <Link
+            className={"site-nav__tab site-nav__review" + (active === "events" ? " on" : "")}
+            href="/events"
+            title="Edit the Home event banner"
+          >
+            Events
+          </Link>
+        )}
+        {isMod && (
+          <Link
+            className={"site-nav__tab site-nav__review" + (pathname.startsWith("/news/admin") ? " on" : "")}
+            href="/news/admin"
+            title="Edit the news briefing"
+          >
+            Newsroom
           </Link>
         )}
 

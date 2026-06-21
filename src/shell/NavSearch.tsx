@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { searchAnimeAction } from "@/features/search/actions";
 import type { SearchResult } from "@/features/search/types";
+import { NavQuickAdd } from "./NavQuickAdd";
 
 function genPoster(seed: string): React.CSSProperties {
   let h = 0;
@@ -58,7 +59,11 @@ export function NavSearch({ open, setOpen }: { open: boolean; setOpen: (b: boole
   useEffect(() => {
     if (!open) return;
     const h = (e: PointerEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as HTMLElement;
+      // the quick-add picker is portaled outside the search wrap — don't treat
+      // clicks inside it as "outside".
+      if (t.closest?.(".navsrch__qamenu")) return;
+      if (wrapRef.current && !wrapRef.current.contains(t)) setOpen(false);
     };
     document.addEventListener("pointerdown", h);
     return () => document.removeEventListener("pointerdown", h);
@@ -80,7 +85,7 @@ export function NavSearch({ open, setOpen }: { open: boolean; setOpen: (b: boole
         setResults(res.slice(0, 6));
         setLoading(false);
       }
-    }, 250);
+    }, 110);
     return () => clearTimeout(t);
   }, [q]);
 
@@ -127,20 +132,23 @@ export function NavSearch({ open, setOpen }: { open: boolean; setOpen: (b: boole
           ) : (
             <>
               {results.map((r) => (
-                <button key={r.id} className="navsrch__item" onClick={() => goTitle(r.id)}>
-                  {r.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="navsrch__cover" src={r.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
-                  ) : (
-                    <span className="navsrch__cover" style={genPoster(r.id)} />
-                  )}
-                  <span className="navsrch__itxt">
-                    <span className="navsrch__ititle">{r.title}</span>
-                    <span className="navsrch__imeta">
-                      {[r.format, r.year].filter(Boolean).join(" · ")}
+                <div key={r.id} className="navsrch__item">
+                  <button className="navsrch__go" onClick={() => goTitle(r.id)}>
+                    {r.cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="navsrch__cover" src={r.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+                    ) : (
+                      <span className="navsrch__cover" style={genPoster(r.id)} />
+                    )}
+                    <span className="navsrch__itxt">
+                      <span className="navsrch__ititle">{r.title}</span>
+                      <span className="navsrch__imeta">
+                        {[r.format, r.year].filter(Boolean).join(" · ")}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <NavQuickAdd titleId={r.id} />
+                </div>
               ))}
               <button className="navsrch__all" onClick={submit}>
                 See all results for “{q.trim()}” →

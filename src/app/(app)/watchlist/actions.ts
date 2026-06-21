@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import * as wl from "@/lib/watchlists";
-import { addEntry, updateEntry, removeEntry, type EntryPatch } from "@/lib/entries";
+import { addEntry, updateEntry, removeEntry, reorderEntries, type EntryPatch } from "@/lib/entries";
+import { syncGroups, type GroupInput } from "@/lib/groups";
 import type { Watchlist } from "@/lib/storage";
 import type { HueKey } from "@/lib/palette";
 
@@ -44,6 +45,31 @@ export async function updateEntryAction(entryId: string, patch: EntryPatch): Pro
 export async function removeEntryAction(entryId: string): Promise<void> {
   const userId = await requireUserId();
   await removeEntry(userId, entryId);
+}
+
+/** Persist a manual drag-reorder of a list's entries. */
+export async function reorderEntriesAction(watchlistId: string, orderedIds: string[]): Promise<void> {
+  const userId = await requireUserId();
+  await reorderEntries(userId, watchlistId, orderedIds);
+}
+
+/** Persist the watchlist's collections (tabs) + their membership. */
+export async function syncGroupsAction(watchlistId: string, groups: GroupInput[]): Promise<void> {
+  const userId = await requireUserId();
+  await syncGroups(userId, watchlistId, groups);
+}
+
+/** Add a shared custom rating axis to a list. Returns the resulting axis list
+ *  (or null if rejected: empty / duplicate / reserved / limit). */
+export async function addCustomAxisAction(listId: string, name: string): Promise<string[] | null> {
+  const userId = await requireUserId();
+  return wl.addCustomAxis(userId, listId, name);
+}
+
+/** Remove a shared custom rating axis from a list. Returns the resulting list. */
+export async function removeCustomAxisAction(listId: string, name: string): Promise<string[]> {
+  const userId = await requireUserId();
+  return wl.removeCustomAxis(userId, listId, name);
 }
 
 export async function createWatchlistAction(input: {

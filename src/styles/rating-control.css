@@ -1,0 +1,60 @@
+/* ============================================================
+   All-systems rating control (glyphs / axes / symbols).
+   Shared by the Journal composer and the Community review composer
+   (imported by both pages). Drives <RatingControl> (`.jrate*`).
+   ============================================================ */
+.jrate { display: flex; flex-direction: column; gap: 12px; }
+.jrate__modes, .jrate__symstyle {
+  display: inline-flex; gap: 3px; padding: 3px; align-self: flex-start;
+  border-radius: 100px; background: var(--surface-2); border: 1px solid var(--line);
+}
+.jrate__mode, .jrate__symstyleopt {
+  padding: 6px 14px; border-radius: 100px; cursor: pointer;
+  font-family: var(--font-ui); font-weight: 600; font-size: 12.5px; color: var(--ink-faint);
+  background: none; border: none; transition: color .14s, background .14s, box-shadow .14s;
+}
+.jrate__symstyleopt { padding: 5px 12px; font-size: 11.5px; }
+.jrate__mode:hover, .jrate__symstyleopt:hover { color: var(--ink-soft); }
+.jrate__mode.on, .jrate__symstyleopt.on { color: var(--ink); background: var(--surface); box-shadow: var(--shadow-1); }
+
+.jrate__feels { display: flex; gap: 8px; flex-wrap: wrap; }
+.jrate__feel {
+  flex: 1; min-width: 90px; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 11px 6px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-soft);
+  transition: border-color .14s, color .14s, box-shadow .14s;
+}
+.jrate__feel span:last-child { font-size: 10.5px; font-weight: 600; }
+.jrate__feel:hover { border-color: var(--line-strong); }
+.jrate__feel.on { background: var(--surface); border-color: currentColor; color: var(--ink); box-shadow: var(--shadow-1); }
+
+.jrate__dims { display: flex; flex-direction: column; gap: 9px; }
+.jrate__dim { display: flex; align-items: center; gap: 14px; }
+.jrate__dimname {
+  width: 64px; flex: 0 0 auto; font-size: 12.5px; color: var(--ink-soft);
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px;
+}
+/* pips fill the row so each axis spans the full width, like the glyph cards */
+.jrate__pips { flex: 1; display: flex; gap: 6px; }
+.jrate__pip { flex: 1; height: 24px; border-radius: 6px; cursor: pointer; background: var(--surface-2); border: 1px solid var(--line); transition: background .12s, border-color .12s; }
+.jrate__pip:hover { border-color: var(--line-strong); }
+.jrate__pip.on { background: var(--accent); border-color: var(--accent); }
+
+.jrate__symbols { display: flex; flex-direction: column; gap: 12px; }
+/* symbols fill the row too */
+.jrate__symrate { display: flex; gap: 8px; }
+.jrate__sym {
+  flex: 1; min-width: 0; height: 50px; padding: 0 6px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink-faint); font-size: 20px; line-height: 1;
+  transition: color .12s, background .12s, border-color .12s, transform .1s;
+}
+.jrate__sym:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+.jrate__sym.on { color: var(--ink); border-color: var(--accent); }
+.jrate__symrate--stars .jrate__sym { font-size: 23px; }
+.jrate__symrate--stars .jrate__sym.on { color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface-2)); }
+.jrate__symrate--grades .jrate__sym { font-family: var(--font-title); font-weight: 800; font-size: 17px; }
+.jrate__symrate--grades .jrate__sym.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.jrate__symrate--emoji .jrate__sym { filter: grayscale(0.5) opacity(0.7); }
+.jrate__symrate--emoji .jrate__sym.on { filter: none; background: color-mix(in oklab, var(--accent) 14%, var(--surface-2)); border-color: var(--accent); }

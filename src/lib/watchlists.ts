@@ -13,6 +13,7 @@ type Row = {
   description: string;
   hue: string;
   pinned: boolean;
+  customAxes: unknown;
   createdAt: Date;
   lastEditedAt: Date;
   titleCount: number;
@@ -28,6 +29,7 @@ function toDTO(r: Row): Watchlist {
     desc: r.description,
     hue: r.hue as HueKey,
     pinned: r.pinned,
+    customAxes: Array.isArray(r.customAxes) ? (r.customAxes as string[]) : [],
     titleCount: Number(r.titleCount),
     watching: Number(r.watching),
     createdAt: r.createdAt.getTime(),
@@ -41,6 +43,7 @@ const selectWithCounts = {
   description: watchlists.description,
   hue: watchlists.hue,
   pinned: watchlists.pinned,
+  customAxes: watchlists.customAxes,
   createdAt: watchlists.createdAt,
   lastEditedAt: watchlists.lastEditedAt,
   titleCount: sql<number>`count(${watchlistEntries.id})`,
@@ -102,4 +105,40 @@ export async function deleteWatchlist(userId: string, id: string): Promise<void>
   await db
     .delete(watchlists)
     .where(and(eq(watchlists.id, id), eq(watchlists.userId, userId)));
+}
+
+const BASE_AXIS_NAMES = ["story", "art", "music", "pacing"];
+
+async function readCustomAxes(userId: string, id: string): Promise<string[]> {
+  const [row] = await db
+    .select({ axes: watchlists.customAxes })
+    .from(watchlists)
+    .where(and(eq(watchlists.id, id), eq(watchlists.userId, userId)))
+    .limit(1);
+  return row && Array.isArray(row.axes) ? (row.axes as string[]) : [];
+}
+
+/** Add a shared custom rating axis to a list (deduped, name-normalised). Returns
+ *  the resulting axis list, or null if the name was empty/duplicate/reserved. */
+export async function addCustomAxis(userId: string, id: string, name: string): Promise<string[] | null> {
+  const clean = name.trim().slice(0, 24);
+  if (!clean) return null;
+  const lc = clean.toLowerCase();
+  if (BASE_AXIS_NAMES.includes(lc)) return null;
+  const cur = await readCustomAxes(userId, id);
+  if (cur.some((a) => a.toLowerCase() === lc)) return null;
+  if (cur.length >= 8) return null; // keep the panel sane
+  const next = [...cur, clean];
+  await db.update(watchlists).set({ customAxes: next, ...touch() })
+    .where(and(eq(watchlists.id, id), eq(watchlists.userId, userId)));
+  return next;
+}
+
+/** Remove a shared custom rating axis from a list. Returns the resulting list. */
+export async function removeCustomAxis(userId: string, id: string, name: string): Promise<string[]> {
+  const cur = await readCustomAxes(userId, id);
+  const next = cur.filter((a) => a.toLowerCase() !== name.trim().toLowerCase());
+  await db.update(watchlists).set({ customAxes: next, ...touch() })
+    .where(and(eq(watchlists.id, id), eq(watchlists.userId, userId)));
+  return next;
 }

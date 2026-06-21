@@ -2,31 +2,122 @@
    HOME — discovery feed. Page-specific styles, ported verbatim
    from Home.html's inline <style>.
    ============================================================ */
-.hero {
+
+/* Ambient top glow, tinted to the featured carousel cover. HeroCarousel tweens
+   --feature-glow frame-by-frame in JS (see its comment), so no CSS transition is
+   needed here; @property just declares it as an inheriting colour. */
+@property --feature-glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(0.62 0.13 35);
+}
+.feature-glow {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 100vw; height: 820px; pointer-events: none;
+  background:
+    radial-gradient(135% 80% at 50% 14%,
+      color-mix(in oklab, var(--feature-glow) 78%, transparent) 0%,
+      color-mix(in oklab, var(--feature-glow) 46%, transparent) 22%,
+      color-mix(in oklab, var(--feature-glow) 18%, transparent) 45%,
+      transparent 68%);
+}
+/* hero carousel — sliding track of featured titles */
+.hero-carousel {
   position: relative;
-  margin: 28px 0 56px;
-  border-radius: 28px;
+  /* sits at the top of the left content column: left-aligned with the shelves
+     below, with the news/community rail filling the space to its right. The
+     wide AniList banner art stays sharp at this width. */
+  margin: 0 0 4px;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-2);
-  min-height: 460px;
-  display: grid; grid-template-columns: 1.05fr 1fr;
   background: var(--surface);
 }
-.hero__art {
+.hero-track {
+  display: flex;
+  transition: transform .55s cubic-bezier(.4, 0, .2, 1);
+  will-change: transform;
+}
+
+.hero {
   position: relative;
+  min-height: 440px;
+  /* full-bleed banner art with the info centered on top of a darkening scrim. */
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  background: var(--surface);
+  overflow: hidden;
+}
+/* inside the carousel the chrome lives on the wrapper, not each slide */
+.hero-slide {
+  flex: 0 0 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* prev / next arrows */
+.hero-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 3; display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  color: #fff; cursor: pointer;
+  background: color-mix(in oklab, #000 42%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity .2s, background .2s;
+}
+.hero-carousel:hover .hero-nav { opacity: 1; }
+.hero-nav:hover { background: color-mix(in oklab, #000 62%, transparent); }
+.hero-nav:focus-visible { opacity: 1; }
+.hero-nav--prev { left: 16px; }
+.hero-nav--next { right: 16px; }
+
+/* slide dots */
+.hero-dots {
+  position: absolute; left: 0; right: 0; bottom: 18px; z-index: 3;
+  display: flex; gap: 9px; justify-content: center;
+}
+.hero-dot {
+  width: 8px; height: 8px; border-radius: 50%; padding: 0; cursor: pointer;
+  background: rgba(255, 255, 255, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: background .2s, width .2s, transform .2s;
+}
+.hero-dot:hover { background: rgba(255, 255, 255, 0.6); }
+.hero-dot.on {
+  width: 22px; border-radius: 100px;
+  background: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 70%, white);
+}
+.hero__art {
+  position: absolute; inset: 0; /* full-bleed behind the text panel */
   background:
     radial-gradient(120% 80% at 30% 0%, color-mix(in oklab, var(--accent) 50%, transparent), transparent 60%),
     radial-gradient(80% 70% at 80% 100%, color-mix(in oklab, oklch(0.55 0.13 280) 60%, transparent), transparent 70%),
     repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 18%, transparent) 0 14px, transparent 14px 28px),
     linear-gradient(160deg, color-mix(in oklab, var(--accent) 30%, var(--surface-3)) 0%, var(--surface-2) 100%);
 }
+/* scrim: keep the banner clear in the centre and only vignette the edges so it
+   blends into the rounded frame — the text gets its own darkening (below). */
 .hero__art::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 0%, transparent 60%, color-mix(in oklab, var(--surface) 92%, transparent) 100%);
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background:
+    radial-gradient(135% 130% at 50% 48%,
+      transparent 52%,
+      color-mix(in oklab, var(--surface) 45%, transparent) 84%,
+      color-mix(in oklab, var(--surface) 80%, transparent) 100%),
+    linear-gradient(180deg, transparent 74%, color-mix(in oklab, var(--surface) 45%, transparent) 100%);
 }
 .hero__cover {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+/* no-banner fallback: a lightly softened, zoomed cover as a full-bleed backdrop
+   (kept mostly visible — only enough blur to settle the upscaled crop). */
+.hero__cover--blur {
+  filter: blur(6px) saturate(1.05) brightness(0.92); transform: scale(1.08);
 }
 .hero__art-mark {
   z-index: 1;
@@ -39,24 +130,38 @@
   background: var(--accent); margin-right: 8px; vertical-align: middle;
   box-shadow: 0 0 12px var(--accent);
 }
-.hero__body { padding: 44px 48px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.hero__body {
+  position: relative; z-index: 2; /* above the art + scrim */
+  width: 100%; max-width: 660px;
+  padding: 40px 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
+}
+/* a soft dark halo sits just behind the centered text so it stays readable on
+   bright banners, while the rest of the banner shows through clearly. */
+.hero__body::before {
+  content: ""; position: absolute; z-index: -1; inset: -8% -6%;
+  pointer-events: none;
+  background: radial-gradient(ellipse 72% 84% at 50% 50%,
+    rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.42) 40%, rgba(0,0,0,0.16) 66%, transparent 82%);
+}
 .hero__eyebrow {
   font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--uppercase-spacing);
   text-transform: uppercase; color: var(--accent);
 }
 .hero__title {
   font-family: var(--font-title); font-weight: 800;
-  font-size: 44px; line-height: 1.04; letter-spacing: -0.025em;
+  font-size: 46px; line-height: 1.05; letter-spacing: -0.025em;
   color: var(--ink); margin: 0;
 }
-.hero__desc { color: var(--ink-soft); font-size: 15.5px; max-width: 44ch; }
+.hero__desc { color: var(--ink-soft); font-size: 15.5px; max-width: 48ch; margin: 0 auto; }
 .hero__meta {
-  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-  color: var(--ink-faint); font-family: var(--font-mono); font-size: 11.5px;
+  display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap;
+  color: var(--ink-soft); font-family: var(--font-mono); font-size: 11.5px;
 }
 .hero__meta span { display: inline-flex; align-items: center; gap: 6px; }
 .hero__meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--line-strong); }
-.hero__actions { display: flex; gap: 10px; margin-top: 8px; }
+.hero__actions { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; }
 
 /* mood chips row beneath hero */
 .mood-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 56px; }
@@ -71,7 +176,15 @@
   transition: transform .18s, box-shadow .18s, border-color .18s;
   cursor: pointer;
 }
+.editorial__card { text-decoration: none; }
 .editorial__card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
+.editorial__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.editorial__empty {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 140px; padding: 24px; border: 1px dashed var(--line); border-radius: var(--radius-lg);
+  color: var(--ink-faint); text-decoration: none; font-size: 14px;
+}
+.editorial__empty:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
 .editorial__art {
   height: 180px; position: relative;
   background:
@@ -87,6 +200,68 @@
 .editorial__title { font-family: var(--font-title); font-weight: 700; font-size: 19px; line-height: 1.2; letter-spacing: -0.012em; color: var(--ink); margin: 0; }
 .editorial__excerpt { color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
 .editorial__byline { margin-top: auto; padding-top: 14px; display: flex; align-items: center; gap: 10px; color: var(--ink-faint); font-size: 12px; }
+
+/* consolidated discovery section — tabs swap the shelf in place */
+.discover__bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 4px;
+}
+.discover__tabs { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.discover__tab {
+  padding: 8px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 14px;
+  color: var(--ink-faint); background: transparent; border: 1px solid transparent;
+  cursor: pointer; transition: color .15s, background .15s, box-shadow .15s;
+}
+.discover__tab:hover { color: var(--ink-soft); }
+.discover__tab.on {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+.discover__more {
+  flex: 0 0 auto;
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: var(--uppercase-spacing); text-transform: uppercase;
+  color: var(--ink-faint); transition: color .15s;
+}
+.discover__more:hover { color: var(--accent); }
+.discover__sub { color: var(--ink-faint); font-size: 13px; margin: 8px 0 16px; }
+
+/* browse-by-genre tiles — wide rectangles backed by the genre's top anime */
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+.genre-tile {
+  position: relative; display: flex; align-items: center;
+  height: 88px; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--line); box-shadow: var(--shadow-1);
+  text-decoration: none; isolation: isolate;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.genre-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
+.genre-tile__bg {
+  position: absolute; inset: 0; z-index: -2;
+  width: 100%; height: 100%; object-fit: cover; object-position: center 22%;
+  transition: transform .25s ease;
+}
+.genre-tile:hover .genre-tile__bg { transform: scale(1.05); }
+.genre-tile__bg--gen { display: block; }
+/* darken left→right so the genre label stays readable over any art */
+.genre-tile::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg,
+    color-mix(in oklab, var(--surface) 88%, transparent) 0%,
+    color-mix(in oklab, var(--surface) 55%, transparent) 45%,
+    color-mix(in oklab, var(--surface) 20%, transparent) 100%);
+}
+.genre-tile__name {
+  padding: 0 20px;
+  font-family: var(--font-title); font-weight: 800; font-size: 18px; letter-spacing: -0.01em;
+  color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.65);
+}
 
 /* poster cards in the discovery / recommendation shelves */
 .h-card { display: flex; flex-direction: column; text-decoration: none; }
@@ -115,10 +290,104 @@
   text-shadow: 0 2px 8px rgba(0,0,0,0.75);
 }
 
+/* ============================================================
+   HOME BODY — discovery shelves (left) + news/community rail (right)
+   ============================================================ */
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 36px;
+  align-items: start;
+}
+/* min-width:0 lets the horizontal poster shelves shrink within the column
+   instead of forcing the grid track wider (which would overflow the page). */
+.home-main { min-width: 0; }
+
+.home-rail {
+  position: sticky;
+  top: calc(var(--nav-h) + 18px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  /* aligns with the top of the hero, which now leads the left column. */
+  margin-top: 0;
+}
+
+.hrail-card { padding: 15px 16px 7px; }
+.hrail-card__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 4px;
+}
+.hrail-card__title {
+  font-family: var(--font-title); font-weight: 800; font-size: 15px;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0;
+}
+.hrail-card__more { font-size: 12px; color: var(--ink-faint); white-space: nowrap; flex: 0 0 auto; }
+.hrail-card__more:hover { color: var(--accent); }
+
+.hrail-list { list-style: none; margin: 0; padding: 0; }
+.hrail-list > li { border-top: 1px solid var(--line); }
+.hrail-list > li:first-child { border-top: none; }
+
+/* news rows */
+.hrail-news { display: flex; flex-direction: column; gap: 3px; padding: 11px 0; }
+.hrail-news:hover .hrail-news__headline { color: var(--accent); }
+.hrail-news__cat {
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--accent);
+}
+.hrail-news__headline {
+  font-size: 13.5px; line-height: 1.35; color: var(--ink); font-weight: 600;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hrail-news__meta { font-size: 11.5px; color: var(--ink-faint); }
+
+/* community post rows */
+.hrail-post { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; }
+.hrail-post__top { display: flex; align-items: center; gap: 8px; }
+.hrail-post__avatar { width: 22px; height: 22px; font-size: 9px; flex: 0 0 auto; }
+.hrail-post__author {
+  font-size: 12.5px; font-weight: 700; color: var(--ink); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hrail-post__time { font-size: 11px; color: var(--ink-faint); margin-left: auto; flex: 0 0 auto; }
+.hrail-post__heading {
+  font-size: 13.5px; line-height: 1.35; color: var(--ink-soft); font-weight: 600;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hrail-post:hover .hrail-post__heading { color: var(--accent); }
+.hrail-post__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hrail-post__chip {
+  font-size: 11px; color: var(--ink-soft);
+  background: color-mix(in oklab, var(--surface-2) 70%, transparent);
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+  max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hrail-post__stat { font-size: 11px; color: var(--ink-faint); }
+
+/* upcoming rows — small cover thumb + title/date */
+.hrail-up { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+.hrail-up__cover {
+  width: 38px; height: 52px; flex: 0 0 auto; border-radius: 6px; object-fit: cover;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.hrail-up__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hrail-up__title {
+  font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hrail-up:hover .hrail-up__title { color: var(--accent); }
+.hrail-up__meta { font-size: 11px; color: var(--ink-faint); }
+
 /* responsive */
+@media (max-width: 1180px) {
+  /* rail drops below the shelves and lays its two cards side by side */
+  .home-grid { grid-template-columns: 1fr; }
+  .home-rail { position: static; flex-direction: row; flex-wrap: wrap; margin-top: 44px; }
+  .home-rail > * { flex: 1 1 320px; min-width: 0; }
+}
 @media (max-width: 880px) {
-  .hero { grid-template-columns: 1fr; }
-  .hero__art { min-height: 220px; }
   .editorial { grid-template-columns: 1fr; }
   .hero__title { font-size: 32px; }
+  .hero__body { padding: 32px 22px; gap: 16px; }
 }

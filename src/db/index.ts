@@ -2,24 +2,34 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-// Hot-reload-safe singleton: Next's dev server re-evaluates modules on every
-// change, which would otherwise open a new pool each time and exhaust Supabase
-// connections. Cache the client on globalThis in dev.
-const globalForDb = globalThis as unknown as {
-  _pgClient?: ReturnType<typeof postgres>;
+const g = globalThis as unknown as {
+  _pg?: ReturnType<typeof postgres>;
+  _pgDirect?: ReturnType<typeof postgres>;
 };
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  // Surfaced clearly instead of a cryptic driver error at first query.
-  throw new Error(
-    "DATABASE_URL is not set. Copy .env.example to .env.local and add your Supabase connection string.",
-  );
-}
+const POOLED = process.env.DATABASE_URL;
+const DIRECT = process.env.DIRECT_URL ?? POOLED; // fall back in dev
+if (!POOLED) throw new Error("DATABASE_URL is not set.");
 
-// prepare:false keeps us compatible with Supabase's transaction pooler (6543).
+// Normal request traffic → transaction pooler. Keep max small; the pooler fans out.
 const client =
-  globalForDb._pgClient ?? postgres(connectionString, { prepare: false });
-if (process.env.NODE_ENV !== "production") globalForDb._pgClient = client;
-
+  g._pg ??
+  postgres(POOLED, {
+    prepare: false,                                  // required for Supavisor
+    max: Number(process.env.DB_POOL_MAX ?? 5),
+    idle_timeout: 20,
+    max_lifetime: 60 * 30,                           // recycle conns
+    connect_timeout: 10,
+  });
+if (process.env.NODE_ENV !== "production") g._pg = client;
 export const db = drizzle(client, { schema, casing: "snake_case" });
+
+// Heavy / streaming work the transaction pooler would cancel (the catalog index
+// load) + migrations. One lazy connection, never on the request hot path.
+export function getDbDirect() {
+  const c =
+    g._pgDirect ??
+    postgres(DIRECT!, { prepare: false, max: 1, idle_timeout: 10, connect_timeout: 15 });
+  if (process.env.NODE_ENV !== "production") g._pgDirect = c;
+  return drizzle(c, { schema, casing: "snake_case" });
+}

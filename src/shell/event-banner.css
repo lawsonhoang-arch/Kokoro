@@ -1,0 +1,81 @@
+/* ============================================================
+   Event banner — full-bleed Steam-style hero at the top of Home
+   ============================================================ */
+.evb {
+  position: relative;
+  width: 100%;
+  height: clamp(170px, 23vw, 280px);
+  overflow: hidden;
+  background: transparent; /* let the page's warm vignette show through the fade */
+  isolation: isolate;
+}
+/* Fade the ART + scrim (not the text) to transparent at the bottom, so the
+   page's own background shows through and the banner melts seamlessly into the
+   page below it. The title/CTA stay fully crisp. */
+.evb__bg,
+.evb__scrim {
+  -webkit-mask-image: linear-gradient(to bottom, #000 12%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 12%, transparent 100%);
+}
+/* …and bring the page's own warm background UP into the banner's lower half so
+   the blend goes both ways. Sits below the title/CTA (z-index -1) so text stays
+   crisp; the tone matches the page vignette (surface → page). */
+.evb::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 42%,
+    color-mix(in oklab, var(--surface) 55%, var(--page)) 100%
+  );
+}
+/* pull the page up into that fade so the two genuinely blend together
+   (only applies on Home, where the banner is the page's previous sibling) */
+.evb + .page { margin-top: clamp(-48px, -3vw, -28px); position: relative; z-index: 1; }
+.evb__bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 30%; z-index: -2;
+}
+/* darken left→right and bottom so text stays readable over any art */
+.evb__scrim {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--surface) 92%, transparent) 0%,
+      color-mix(in oklab, var(--surface) 70%, transparent) 38%, transparent 78%),
+    linear-gradient(0deg, color-mix(in oklab, var(--surface) 85%, transparent) 0%, transparent 55%);
+}
+
+.evb__content {
+  max-width: 1440px; height: 100%;
+  margin: 0 auto; padding: 0 36px;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  gap: 14px;
+}
+.evb__text { display: flex; flex-direction: column; gap: 8px; max-width: 60%; }
+.evb__title {
+  margin: 0;
+  font-family: var(--font-title); font-weight: 800;
+  font-size: clamp(24px, 3.4vw, 44px); line-height: 1.02; letter-spacing: -0.02em;
+  color: var(--ink);
+  text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+}
+.evb__sub {
+  margin: 0; color: var(--ink-soft); font-size: clamp(13px, 1.3vw, 16px); line-height: 1.4;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+}
+.evb__cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+  color: var(--accent-ink);
+  background: var(--banner-accent, var(--accent));
+  box-shadow: 0 6px 20px color-mix(in oklab, var(--banner-accent, var(--accent)) 45%, transparent);
+  transition: transform .12s, box-shadow .15s, filter .15s;
+}
+.evb__cta:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.evb__cta--static { cursor: default; }
+
+@media (max-width: 640px) {
+  .evb__text { max-width: 100%; }
+  .evb__content { padding: 0 18px; }
+}

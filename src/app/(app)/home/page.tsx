@@ -4,19 +4,35 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { Page, PageHead } from "@/shell/Page";
 import { Avatar } from "@/components/ui";
-import { Icon } from "@/components/Icon";
 import { SectionHead } from "@/components/SectionHead";
 import {
-  getHero, getContinueWatching, getRecommendations, searchCatalogFull,
+  getHeroSlides, getRecommendations, searchCatalogFull,
 } from "@/lib/catalog";
+import { getGenreFeatureTiles, getSeasonal, getLatestUpdated, getUnderratedGems, getUpcoming } from "@/lib/search-index";
+import { HeroCarousel } from "./HeroCarousel";
+import { getPublishedPicks } from "@/lib/editorial";
+import { isModerator } from "@/lib/submissions";
+import { getHomeFeed } from "@/lib/community";
+import { getNewsFeed } from "@/lib/news";
 import type { SearchResult } from "@/features/search/types";
-import { AddToWatchlist } from "@/features/search/AddToWatchlist";
 import { WelcomeOverlay } from "./WelcomeOverlay";
 import { TitleCard } from "./TitleCard";
+import { HomeRail } from "./HomeRail";
 
-const GENRE_CHIPS = [
-  "Action", "Fantasy", "Romance", "Sci-Fi", "Slice of Life", "Comedy",
-  "Drama", "Mystery", "Horror", "Adventure", "Supernatural", "Sports",
+// Browse-by-genre tiles, each backed by a hand-picked title's cover.
+const GENRE_FEATURES = [
+  { genre: "Action", query: "Dragon Ball Z" },
+  { genre: "Fantasy", query: "Re:Zero -Starting Life" },
+  { genre: "Romance", query: "Love Is War" },
+  { genre: "Sci-Fi", query: "Cowboy Bebop" },
+  { genre: "Slice of Life", query: "Sound! Euphonium" },
+  { genre: "Comedy", query: "Gintama" },
+  { genre: "Drama", query: "Your Lie in April" },
+  { genre: "Mystery", query: "Mononoke" },
+  { genre: "Horror", query: "Perfect Blue" },
+  { genre: "Adventure", query: "One Piece" },
+  { genre: "Supernatural", query: "Dan Da Dan" },
+  { genre: "Sports", query: "Haikyu" },
 ];
 
 function heroPoster(seed: string): CSSProperties {
@@ -52,23 +68,6 @@ function Shelf({
   );
 }
 
-const EDITORIAL = [
-  {
-    h: 1, kicker: "Genre · Fantasy", avatar: 2, byline: "By the Editors · 8 min read",
-    title: "Quiet magic — the new wave of low-stakes fantasy.",
-    excerpt: "What happens when the stakes get smaller, the worlds get warmer, and the conflicts move inward. Six titles to start.",
-  },
-  {
-    h: 2, kicker: "Spotlight · Studio", avatar: 4, byline: "By the Editors · 12 min read",
-    title: "Where the studio's quiet experiments became their loudest hits.",
-    excerpt: "Ten years of small wagers and the shape of a house style — from one-shot OVAs to last year's prestige projects.",
-  },
-  {
-    h: 3, kicker: "Watch club · This month", avatar: 5, byline: "Curated by Mio · 412 members",
-    title: "Watching it again, slowly, together.",
-    excerpt: "Our community pick is a quiet 2003 series most people watched alone. We're rewatching one episode a week, with notes.",
-  },
-];
 
 export default async function HomePage({
   searchParams,
@@ -86,96 +85,64 @@ export default async function HomePage({
       session?.user?.email?.split("@")[0] || "friend";
   }
 
-  // Discovery + personalization, fetched in parallel.
-  const [hero, topAnime, trending, newAnime, topManga, continueW, recs] = await Promise.all([
-    getHero(),
-    searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 14),
-    searchCatalogFull("", { type: "anime", sort: "popular" }, 1, 14),
-    searchCatalogFull("", { type: "anime", sort: "newest" }, 1, 14),
-    searchCatalogFull("", { type: "manga", sort: "rated" }, 1, 14),
-    userId ? getContinueWatching(userId, 14) : Promise.resolve([]),
+  const isMod = isModerator(session?.user?.role);
+
+  // Discovery + personalization + editorial, fetched in parallel.
+  const [heroSlides, latestUpdated, seasonal, topAnime, trending, gems, topManga, recs, picks, genreTiles, news, topFeed, upcoming] = await Promise.all([
+    getHeroSlides(userId, 6),
+    getLatestUpdated(14),
+    getSeasonal(14),
+    searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 14, undefined, true),
+    searchCatalogFull("", { type: "anime", sort: "popular" }, 1, 14, undefined, true),
+    getUnderratedGems(14),
+    searchCatalogFull("", { type: "manga", sort: "rated" }, 1, 14, undefined, true),
     userId ? getRecommendations(userId, 14) : Promise.resolve({ seedGenre: null, seedTitle: null, results: [] }),
+    getPublishedPicks(),
+    getGenreFeatureTiles(GENRE_FEATURES),
+    getNewsFeed(),
+    getHomeFeed(userId, { sort: "top" }),
+    getUpcoming(6),
   ]);
 
-  const heroMeta = hero
-    ? [hero.year || null, hero.genres.slice(0, 2).join(" · ") || null,
-       hero.episodes ? `${hero.episodes} episodes` : null,
-       hero.score ? `★ ${(hero.score / 100).toFixed(1)}` : null].filter(Boolean)
-    : [];
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   return (
     <>
       {welcomeName && <WelcomeOverlay username={welcomeName} />}
+      {/* ambient top glow, tinted to the featured carousel cover by HeroCarousel */}
+      <div className="feature-glow" aria-hidden="true" />
       <Page width="wide">
         <PageHead
           eyebrow="Discover"
           title="What's on tonight"
           lede="Top-rated and trending anime & manga, new arrivals, and picks shaped by what you watch."
-          actions={
-            <Link className="btn btn--primary" href="/search">
-              <Icon name="plus" size={14} />
-              Add a title
-            </Link>
-          }
         />
 
-        {/* HERO — the top-rated title in the catalog */}
-        {hero && (
-          <section className="hero" aria-labelledby="hero-title">
-            <div className="hero__art" style={heroPoster(hero.id)} aria-hidden="true">
-              {hero.cover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="hero__cover" src={hero.cover} alt="" referrerPolicy="no-referrer" />
-              ) : null}
-              <span className="hero__art-mark">#1 by rating</span>
-            </div>
-            <div className="hero__body">
-              <span className="hero__eyebrow">Top of the catalog · Highest rated</span>
-              <h2 className="hero__title" id="hero-title">{hero.title}</h2>
-              <p className="hero__desc">
-                {hero.description ||
-                  "The catalog's highest-rated series right now. Open it for details, or add it to one of your lists to start tracking."}
-              </p>
-              <div className="hero__meta">
-                {heroMeta.map((m, i) => (
-                  <span key={i}>
-                    {i > 0 && <span className="sep" />}
-                    {m}
-                  </span>
-                ))}
-              </div>
-              <div className="hero__actions">
-                <AddToWatchlist titleId={hero.id} />
-                <Link className="btn" href={`/anime/${encodeURIComponent(hero.id)}`}>
-                  View details
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Two-column body: hero + discovery shelves on the left, a sticky rail
+            of news + popular community posts on the right. The hero lives in the
+            left column so it aligns with the shelves and the rail fills the
+            space beside it (the whole grid stacks on narrow screens). */}
+        <div className="home-grid">
+          <div className="home-main">
 
-        {/* GENRE chips → catalog search */}
-        <div className="mood-row" role="group" aria-label="Browse by genre">
-          {GENRE_CHIPS.map((g) => (
-            <Link key={g} className="chip" href={`/search?genre=${encodeURIComponent(g)}&sort=rated`}>
-              {g}
-            </Link>
-          ))}
-        </div>
+        {/* HERO — a sliding carousel of the catalog's top-rated titles */}
+        <HeroCarousel slides={heroSlides} />
 
-        {/* DISCOVERY */}
+        {/* DISCOVERY — stacked shelves, one after another */}
+        <Shelf title={`${cap(seasonal.season)} ${seasonal.year}`} sub="This season's most popular anime"
+          moreHref="/search?type=anime&sort=popular" items={seasonal.results} />
+        <Shelf title="Latest updated" sub="Currently airing — new episodes & seasons"
+          moreHref="/search?type=anime&sort=popular" items={latestUpdated} />
+        <Shelf title="Trending" sub="What people are watching most"
+          moreHref="/search?type=anime&sort=popular" items={trending.results} />
         <Shelf title="Top rated" sub="The highest-scored anime in the catalog"
           moreHref="/search?type=anime&sort=rated" items={topAnime.results} ranked />
-        <Shelf title="Trending now" sub="What people are watching most"
-          moreHref="/search?type=anime&sort=popular" items={trending.results} />
-        <Shelf title="New & notable" sub="Recent arrivals"
-          moreHref="/search?type=anime&sort=newest" items={newAnime.results} />
         <Shelf title="Top manga" sub="Acclaimed series to read"
           moreHref="/search?type=manga&sort=rated" items={topManga.results} />
+        <Shelf title="Underrated gems" sub="Highly rated, under the radar"
+          moreHref="/search?type=anime&sort=rated" items={gems} />
 
         {/* RECOMMENDATIONS */}
-        <Shelf title="Continue watching" sub="Pick up where you left off"
-          moreHref="/watchlist" items={continueW} />
         {recs.results.length > 0 && (
           <Shelf
             title={
@@ -192,26 +159,77 @@ export default async function HomePage({
           />
         )}
 
-        {/* SPOTLIGHTS */}
-        <section className="section">
-          <SectionHead title="Editorial picks" sub="Curated essays from the Kokoro team" moreLabel="See all →" />
-          <div className="editorial">
-            {EDITORIAL.map((e) => (
-              <article key={e.title} className={`editorial__card card editorial__card--h${e.h}`}>
-                <div className="editorial__art" aria-hidden="true" />
-                <div className="editorial__body">
-                  <span className="editorial__kicker">{e.kicker}</span>
-                  <h4 className="editorial__title">{e.title}</h4>
-                  <p className="editorial__excerpt">{e.excerpt}</p>
-                  <div className="editorial__byline">
-                    <Avatar hue={e.avatar} style={{ width: 24, height: 24 }} />
-                    <span>{e.byline}</span>
-                  </div>
-                </div>
-              </article>
+        {/* BROWSE BY GENRE — each tile backed by that genre's most popular anime */}
+        <section className="section" aria-label="Browse by genre">
+          <SectionHead title="Browse by genre" sub="Jump into a vibe" moreLabel="All genres →" moreHref="/search?type=anime&sort=popular" />
+          <div className="genre-grid">
+            {genreTiles.map(({ genre, cover }) => (
+              <Link
+                key={genre}
+                className="genre-tile"
+                href={`/search?genre=${encodeURIComponent(genre)}&sort=rated`}
+              >
+                {cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="genre-tile__bg" src={cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+                ) : (
+                  <span className="genre-tile__bg genre-tile__bg--gen" style={heroPoster(genre)} aria-hidden="true" />
+                )}
+                <span className="genre-tile__name">{genre}</span>
+              </Link>
             ))}
           </div>
         </section>
+
+        {/* SPOTLIGHTS — editable from /editorial (moderators) */}
+        {(picks.length > 0 || isMod) && (
+          <section className="section">
+            <SectionHead
+              title="Editorial picks"
+              sub="Curated essays from the Kokoro team"
+              moreLabel={isMod ? "Edit picks →" : undefined}
+              moreHref={isMod ? "/editorial" : undefined}
+            />
+            <div className="editorial">
+              {picks.map((e) => {
+                const body = (
+                  <>
+                    <div className="editorial__art" aria-hidden="true">
+                      {e.cover ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className="editorial__cover" src={e.cover} alt="" referrerPolicy="no-referrer" />
+                      ) : null}
+                    </div>
+                    <div className="editorial__body">
+                      <span className="editorial__kicker">{e.kicker}</span>
+                      <h4 className="editorial__title">{e.title}</h4>
+                      <p className="editorial__excerpt">{e.excerpt}</p>
+                      <div className="editorial__byline">
+                        <Avatar hue={e.avatarHue} style={{ width: 24, height: 24 }} />
+                        <span>{e.byline}</span>
+                      </div>
+                    </div>
+                  </>
+                );
+                const cls = `editorial__card card editorial__card--h${e.hue}`;
+                return e.href ? (
+                  <a key={e.id} className={cls} href={e.href}>{body}</a>
+                ) : (
+                  <article key={e.id} className={cls}>{body}</article>
+                );
+              })}
+              {picks.length === 0 && isMod && (
+                <Link className="editorial__empty" href="/editorial">
+                  No published picks yet — click to add some →
+                </Link>
+              )}
+            </div>
+          </section>
+        )}
+          </div>
+
+          <HomeRail news={news.slice(0, 6)} posts={topFeed.posts.slice(0, 6)} upcoming={upcoming} />
+        </div>
       </Page>
     </>
   );

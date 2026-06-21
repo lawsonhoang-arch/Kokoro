@@ -6,7 +6,7 @@
 /* Wide banner with the warm radial glow */
 .pf-banner {
   position: relative;
-  height: 220px; margin: -38px -36px 0;
+  height: 220px; margin: -38px -28px 0;
   background:
     radial-gradient(80% 80% at 20% 30%, color-mix(in oklab, var(--accent) 55%, transparent), transparent 60%),
     radial-gradient(70% 90% at 80% 80%, color-mix(in oklab, oklch(0.55 0.13 280) 60%, transparent), transparent 70%),
@@ -22,7 +22,7 @@
 /* Header card sits straddling the banner */
 .pf-head {
   position: relative; z-index: 2;
-  margin-top: -88px;
+  margin-top: -66px;
   display: grid; grid-template-columns: 132px 1fr auto;
   gap: 28px;
   align-items: end;
@@ -210,4 +210,163 @@
   color: var(--feel-loved); border: 1px solid color-mix(in oklab, var(--feel-loved) 45%, var(--line));
   background: color-mix(in oklab, var(--feel-loved) 8%, var(--surface));
   font-family: var(--font-ui); font-weight: 700; font-size: 12.5px;
+}
+
+/* ============================================================
+   PROFILE v2 — real data: header badge, favorites, watching,
+   stats breakdowns, editable settings.
+   ============================================================ */
+.pf-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pf-rolebadge {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 99px; color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface)); border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--line));
+}
+.pf-bio--empty { color: var(--ink-faint); font-style: italic; }
+.pf-stat__value--text { font-size: 18px; }
+.section__more { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.section__more:hover { text-decoration: underline; }
+.pf-empty { padding: 22px 4px; color: var(--ink-faint); font-size: 13.5px; line-height: 1.5; }
+
+/* shared poster (cover image or generated gradient) */
+.pf-poster { position: relative; display: block; overflow: hidden; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+.pf-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* favorites — fixed-size cards (--fav-size set inline; smaller as the count
+   grows, bigger when few) that fill rows left-to-right, so the section stays
+   compact instead of one giant card. */
+.pf-favs { display: grid; grid-template-columns: repeat(auto-fill, var(--fav-size, 138px)); gap: 14px; justify-content: start; }
+.pf-fav { position: relative; }
+.pf-fav__link { display: flex; flex-direction: column; }
+.pf-fav__art { aspect-ratio: 2/3; width: 100%; transition: transform .16s, border-color .16s; }
+.pf-fav:hover .pf-fav__art { transform: translateY(-2px); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.pf-fav__remove {
+  position: absolute; top: 8px; left: 8px; z-index: 3; width: 22px; height: 22px;
+  display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+  color: #fff; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.14);
+  font-size: 11px; opacity: 0; transition: opacity .14s, background .14s;
+}
+.pf-fav:hover .pf-fav__remove, .pf-fav__remove:focus-visible { opacity: 1; }
+.pf-fav__remove:hover { background: color-mix(in oklab, var(--feel-dropped) 75%, black); }
+.pf-fav__score {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--feel-loved);
+  padding: 2px 7px; border-radius: 99px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.12);
+}
+.pf-fav__sub { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 7px; }
+.pf-fav__title { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); line-height: 1.25; margin-top: 2px; }
+.pf-fav:hover .pf-fav__title { color: var(--accent); }
+
+.pf-review__heading { font-family: var(--font-title); font-weight: 600; font-size: 13px; color: var(--ink); margin: 2px 0 4px; }
+.act__icon--note, .act__icon--take { color: oklch(0.70 0.14 280); background: color-mix(in oklab, oklch(0.70 0.14 280) 14%, var(--surface-2)); border-color: color-mix(in oklab, oklch(0.70 0.14 280) 30%, var(--line)); }
+.act__icon--discussion { color: var(--feel-liked); background: color-mix(in oklab, var(--feel-liked) 14%, var(--surface-2)); border-color: color-mix(in oklab, var(--feel-liked) 30%, var(--line)); }
+.act__icon--completed { color: var(--feel-liked); background: color-mix(in oklab, var(--feel-liked) 16%, var(--surface-2)); border-color: color-mix(in oklab, var(--feel-liked) 34%, var(--line)); }
+
+/* currently watching */
+.pf-watching { display: flex; flex-direction: column; gap: 10px; }
+.pf-watch { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--radius); background: color-mix(in oklab, var(--surface) 88%, transparent); border: 1px solid var(--line); transition: border-color .14s; }
+.pf-watch:hover { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.pf-watch__art { aspect-ratio: 2/3; }
+.pf-watch__title { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-watch__bar { height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; margin: 6px 0 4px; }
+.pf-watch__fill { display: block; height: 100%; background: var(--accent); }
+.pf-watch__num { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+
+/* stats tab */
+.pf-statusbar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--surface-2); margin-bottom: 12px; }
+.pf-statusbar__seg { height: 100%; }
+.pf-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+.pf-leg { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-soft); }
+.pf-leg b { color: var(--ink); }
+.pf-dot { width: 9px; height: 9px; border-radius: 50%; }
+.pf-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+.pf-mini__cell { text-align: center; }
+.pf-mini__v { font-family: var(--font-title); font-weight: 800; font-size: 22px; color: var(--ink); }
+.pf-mini__l { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pf-bars { display: flex; flex-direction: column; gap: 11px; }
+.pf-bar__row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.pf-bar__label { font-size: 12.5px; color: var(--ink-soft); text-transform: capitalize; }
+.pf-bar__n { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+.pf-bar__track { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.pf-bar__fill { display: block; height: 100%; border-radius: 99px; }
+
+/* settings (editable) */
+.pf-settings { background: color-mix(in oklab, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 26px 30px; max-width: 720px; }
+.pf-field { margin-bottom: 14px; position: relative; }
+.pf-field > label { display: block; font-family: var(--font-ui); font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+.pf-input { width: 100%; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+.pf-input:focus { outline: none; border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); }
+.pf-textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
+.pf-counter { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 5px; display: block; }
+.pf-handle-edit { display: flex; align-items: center; gap: 6px; }
+.pf-at { font-family: var(--font-mono); color: var(--ink-faint); font-size: 15px; }
+.pf-saverow { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.pf-ok { color: var(--feel-liked); font-size: 12.5px; font-weight: 700; }
+.pf-err { color: var(--feel-dropped); font-size: 12.5px; }
+.pf-settings .setting-row .chip { font-family: var(--font-mono); font-size: 11px; }
+
+/* ----- Add-favorites: header button + search modal ----- */
+.pf-addfav {
+  font-family: var(--font-ui); font-weight: 700; font-size: 12px;
+  padding: 7px 13px; border-radius: 100px; cursor: pointer;
+  color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--accent) 38%, var(--line));
+  transition: background .14s, border-color .14s;
+}
+.pf-addfav:hover { background: color-mix(in oklab, var(--accent) 18%, var(--surface)); }
+.pf-empty--cta { display: block; width: 100%; text-align: left; cursor: pointer; transition: border-color .14s, color .14s; }
+.pf-empty--cta:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); color: var(--ink-soft); }
+.pf-empty b { color: var(--accent); }
+
+.pf-modal__scrim {
+  position: fixed; inset: 0; z-index: 90;
+  background: color-mix(in oklab, var(--page) 72%, transparent); backdrop-filter: blur(3px);
+  animation: pf-fade .15s ease;
+}
+.pf-modal {
+  position: fixed; z-index: 91; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px)); max-height: 80vh; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift); padding: 20px; animation: pf-pop .16s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes pf-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pf-pop { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.pf-modal__head { display: flex; align-items: center; justify-content: space-between; }
+.pf-modal__title { font-family: var(--font-title); font-weight: 800; font-size: 18px; color: var(--ink); margin: 0; }
+.pf-modal__x { width: 28px; height: 28px; border-radius: 50%; color: var(--ink-faint); cursor: pointer; display: grid; place-items: center; }
+.pf-modal__x:hover { background: var(--surface-2); color: var(--ink); }
+.pf-modal__lede { font-size: 12.5px; color: var(--ink-faint); margin: 4px 0 14px; }
+.pf-modal__search {
+  width: 100%; padding: 11px 14px; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font-size: 14px;
+}
+.pf-modal__search:focus { outline: none; border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); }
+.pf-modal__results { margin-top: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; min-height: 90px; scrollbar-width: thin; }
+.pf-modal__hint { padding: 24px 6px; color: var(--ink-faint); font-size: 13px; }
+.pf-fres { display: flex; align-items: center; gap: 11px; padding: 7px 8px; border-radius: var(--radius-sm); }
+.pf-fres:hover { background: var(--surface-2); }
+.pf-fres__cover { flex: 0 0 auto; width: 34px; height: 48px; border-radius: 5px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); }
+.pf-fres__txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.pf-fres__title { font-family: var(--font-title); font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-fres__meta { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 1px; }
+.pf-fres__add {
+  flex: 0 0 auto; font-family: var(--font-ui); font-weight: 700; font-size: 12px;
+  padding: 6px 14px; border-radius: 100px; cursor: pointer;
+  color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); transition: background .14s;
+}
+.pf-fres__add:hover { background: var(--accent-hi); }
+.pf-fres__add.added { color: var(--feel-loved); background: color-mix(in oklab, var(--feel-loved) 14%, var(--surface)); border-color: color-mix(in oklab, var(--feel-loved) 40%, var(--line)); }
+.pf-fres__add:disabled { opacity: 0.6; cursor: default; }
+
+/* favorite card title clamps to 2 lines so small cards stay tidy */
+.pf-fav__title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* add-favorites: count + at-limit banner */
+.pf-modal__count { font-family: var(--font-mono); font-weight: 700; color: var(--ink-soft); }
+.pf-modal__count--full { color: var(--feel-loved); }
+.pf-modal__limit {
+  margin: 0 0 12px; padding: 9px 12px; border-radius: var(--radius);
+  font-size: 12.5px; color: var(--feel-loved);
+  background: color-mix(in oklab, var(--feel-loved) 12%, var(--surface-2));
+  border: 1px solid color-mix(in oklab, var(--feel-loved) 34%, var(--line));
 }

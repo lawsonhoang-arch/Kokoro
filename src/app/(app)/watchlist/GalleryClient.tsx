@@ -6,6 +6,7 @@ import { Button } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import type { HueKey } from "@/lib/palette";
 import type { Watchlist } from "@/lib/storage";
+import { getLastList, clearLastList } from "@/lib/lastList";
 import { useWatchlists } from "./useWatchlists";
 import { WatchlistCard } from "./WatchlistCard";
 import { NewWatchlistModal } from "./NewWatchlistModal";
@@ -58,9 +59,17 @@ export function GalleryClient({ initialLists }: { initialLists: Watchlist[] }) {
     (id: string) => {
       setRemovingId((cur) => (cur === id ? null : cur));
       remove(id);
+      if (getLastList() === id) clearLastList();
     },
     [remove],
   );
+
+  // Forget a remembered list that no longer exists (deleted here or elsewhere),
+  // so the Lists tab never tries to reopen a dead list.
+  useEffect(() => {
+    const last = getLastList();
+    if (last && !lists.some((l) => l.id === last)) clearLastList();
+  }, [lists]);
 
   // Safety net: if the is-removing transition never reports back (e.g. the
   // element gets detached first), commit the delete anyway.

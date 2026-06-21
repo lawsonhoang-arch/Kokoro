@@ -15,7 +15,14 @@ import {
   bucketOf,
   chainedComparator,
 } from "./rules";
-import { updateEntryAction, removeEntryAction } from "@/app/(app)/watchlist/actions";
+import {
+  updateEntryAction,
+  removeEntryAction,
+  addCustomAxisAction,
+  removeCustomAxisAction,
+  reorderEntriesAction,
+  syncGroupsAction,
+} from "@/app/(app)/watchlist/actions";
 import { hueValue, type HueKey } from "@/lib/palette";
 
 import { EntryRow } from "./EntryRow";
@@ -41,6 +48,8 @@ import {
   type Status,
   type ViewMode,
   type Bucket,
+  type RateMode,
+  type SymbolRating,
 } from "./types";
 
 // Fixed presentation tweaks (the prototype's dev-only TweaksPanel is omitted —
@@ -55,7 +64,9 @@ const PANELS_KEY = "kokoro_panels_v2";
 const SIDEBAR_KEY = "kokoro_sidebar_collapsed";
 
 let _gid = 1;
-const nid = () => "g" + _gid++;
+// real UUIDs so a new collection's client id matches the row we persist for it
+const nid = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "g" + _gid++;
 
 const startViewTransition = (apply: () => void) => {
   const doc = document as Document & {
@@ -80,18 +91,24 @@ type ArmedTarget = { type: "globals" } | { type: "group" | "entry"; id: string }
 type BrowseHit =
   | { kind: "coll"; id: string }
   | { kind: "status"; status: string }
+  | { kind: "entry"; id: string; after: boolean }
   | null;
+type PendingReorder = { draggedId: string; targetId: string; after: boolean } | null;
 
 export default function WatchlistApp({
   id,
   title,
   hue,
   initialEntries,
+  initialCustomAxes,
+  initialGroups,
 }: {
   id: string;
   title: string;
   hue: HueKey;
   initialEntries: Entry[];
+  initialCustomAxes: string[];
+  initialGroups: Group[];
 }) {
   // Title + accent come from the owning list record (fetched server-side).
   const accent = hueValue(hue);
@@ -108,6 +125,7 @@ export default function WatchlistApp({
   const [entries, setEntries] = useState<Entry[]>(() =>
     initialEntries.map((e) => ({ ...e, dims: { ...e.dims } })),
   );
+  const [customAxes, setCustomAxes] = useState<string[]>(initialCustomAxes);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Esc closes the detail modal
@@ -122,7 +140,11 @@ export default function WatchlistApp({
 
   const [showScore] = useState(false);
   const [query, setQuery] = useState("");
-  const [tabbed, setTabbed] = useState<string[]>([]);
+  // saved collections start pinned as tabs (the rail), matching how they were
+  // created; child groups stay nested, not pinned.
+  const [tabbed, setTabbed] = useState<string[]>(() =>
+    initialGroups.filter((g) => !g.parentId).map((g) => "g:" + g.id),
+  );
   const [activeTab, setActiveTab] = useState<string>("list");
 
   const chooseTab = (key: string) => {
@@ -136,7 +158,7 @@ export default function WatchlistApp({
   const [convTarget, setConvTarget] = useState<string | null>(null);
 
   const [globals, setGlobals] = useState<Rules>(emptyRules);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
   const [armed, setArmed] = useState<ArmedTarget>(null);
@@ -307,29 +329,75 @@ export default function WatchlistApp({
   };
   const takeTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // ---- per-episode watched tracking -----------------------------------------
+  const epRange = (n: number) => Array.from({ length: Math.max(0, n) }, (_, i) => i + 1);
+  // the explicit watched set, backfilling legacy entries (progress but no set)
+  const watchedSetOf = (e: Entry): number[] =>
+    e.watchedEps && e.watchedEps.length
+      ? e.watchedEps
+      : e.progress
+        ? epRange(Math.min(e.progress, e.episodes))
+        : [];
+
+  // Debounce the watched persist per entry: rapid toggles each send the FULL
+  // set, so concurrent fire-and-forget writes could land out of order and leave
+  // a stale set in the DB. Coalescing to the latest set fixes that (and cuts writes).
+  const watchedTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  /** Set exactly which episodes are watched; derives progress + status. */
+  const setWatched = (id: string, epsRaw: number[]) => {
+    const cur = entries.find((e) => e.id === id);
+    if (!cur) return;
+    const eps = [...new Set(epsRaw.filter((n) => n >= 1 && n <= cur.episodes))].sort((a, b) => a - b);
+    const progress = eps.length;
+    let status: Status = cur.status;
+    if (cur.episodes > 0 && progress >= cur.episodes) status = "completed";
+    else if (progress > 0 && cur.status === "planned") status = "watching";
+    else if (progress === 0 && cur.status === "completed") status = "watching";
+    const patch = { watchedEps: eps, progress, status };
+    setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+    clearTimeout(watchedTimers.current[id]);
+    watchedTimers.current[id] = setTimeout(() => persist(id, patch), 220);
+  };
+  const toggleWatched = (id: string, n: number) => {
+    const cur = entries.find((e) => e.id === id);
+    if (!cur) return;
+    const set = new Set(watchedSetOf(cur));
+    if (set.has(n)) set.delete(n);
+    else set.add(n);
+    setWatched(id, [...set]);
+  };
+  const markAllWatched = (id: string) => {
+    const cur = entries.find((e) => e.id === id);
+    if (cur) setWatched(id, epRange(cur.episodes));
+  };
+  const clearWatched = (id: string) => setWatched(id, []);
+
   const STATUS_OK: Record<string, number> = { watching: 1, completed: 1, planned: 1 };
   const setEntryStatus = (id: string, status: string) => {
     if (!STATUS_OK[status]) return;
     const cur = entries.find((e) => e.id === id);
     if (!cur) return;
-    const patch: { status: Status; progress?: number } = { status: status as Status };
-    if (status === "planned") patch.progress = 0;
-    else if (status === "completed") patch.progress = cur.episodes;
-    else if (status === "watching" && (cur.progress == null || cur.progress >= cur.episodes))
+    if (status === "completed") {
+      if (cur.episodes > 0) return setWatched(id, epRange(cur.episodes)); // mark all → completed
+    }
+    const patch: { status: Status; progress?: number; watchedEps?: number[] } = { status: status as Status };
+    if (status === "planned") { patch.progress = 0; patch.watchedEps = []; }
+    else if (status === "completed") patch.progress = cur.episodes; // episodes === 0 fallthrough
+    else if (status === "watching" && (cur.progress == null || cur.progress >= cur.episodes)) {
       patch.progress = Math.max(1, Math.floor(cur.episodes / 4));
+      patch.watchedEps = epRange(patch.progress);
+    }
     setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     persist(id, patch);
   };
+  /** "+1": mark the next unwatched episode watched. */
   const bumpEpisode = (id: string) => {
     const cur = entries.find((e) => e.id === id);
     if (!cur || cur.episodes <= 0) return;
-    const nextEp = Math.min((cur.progress || 0) + 1, cur.episodes);
-    const patch =
-      nextEp >= cur.episodes
-        ? { progress: nextEp, status: "completed" as Status }
-        : { progress: nextEp };
-    setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-    persist(id, patch);
+    const set = watchedSetOf(cur);
+    let next = 0;
+    for (let n = 1; n <= cur.episodes; n++) if (!set.includes(n)) { next = n; break; }
+    if (next) setWatched(id, [...set, next]);
   };
 
   const createTab = (withId: string | null) => {
@@ -347,6 +415,31 @@ export default function WatchlistApp({
     if (isGroupKey(key)) renameGroup(key.slice(2), name);
   };
 
+  // Persist collections + their membership whenever they change. Local state is
+  // the source of truth; this debounced sync mirrors it to the DB (skipping the
+  // first run, which is just the server-loaded state). Scoped rules are not
+  // persisted — they stay client-only like the global rules.
+  const groupsHydrated = useRef(false);
+  useEffect(() => {
+    if (!groupsHydrated.current) {
+      groupsHydrated.current = true;
+      return;
+    }
+    const t = setTimeout(() => {
+      void syncGroupsAction(
+        id,
+        groups.map((g, i) => ({
+          id: g.id,
+          name: g.name,
+          parentId: g.parentId,
+          position: i,
+          entryIds: g.entryIds,
+        })),
+      ).catch(() => {});
+    }, 500);
+    return () => clearTimeout(t);
+  }, [groups, id]);
+
   /* ----------------------- impression edits ----------------------- */
   const upd = (id: string, patch: Partial<Entry>) =>
     setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -354,13 +447,33 @@ export default function WatchlistApp({
     upd(id, { feeling: f });
     persist(id, { feeling: f });
   };
-  const setDim = (id: string, d: keyof Entry["dims"], v: number) => {
+  const setRateMode = (id: string, m: RateMode) => {
+    upd(id, { rateMode: m });
+    persist(id, { rateMode: m });
+  };
+  const setSymbol = (id: string, s: SymbolRating | null) => {
+    upd(id, { symbol: s });
+    persist(id, { symbol: s });
+  };
+  const setDim = (id: string, d: string, v: number) => {
     const cur = entries.find((e) => e.id === id);
     if (!cur) return;
     const dims = { ...cur.dims, [d]: v };
     setEntries((es) => es.map((e) => (e.id === id ? { ...e, dims } : e)));
     persist(id, { dims });
   };
+  // Shared custom axes — optimistic, reconciled with the server's canonical list.
+  const addAxis = (name: string) => {
+    void addCustomAxisAction(id, name).then((next) => {
+      if (next) setCustomAxes(next);
+    });
+  };
+  const removeAxis = (name: string) => {
+    setCustomAxes((ax) => ax.filter((a) => a !== name));
+    void removeCustomAxisAction(id, name).then(setCustomAxes);
+  };
+  // entry.take is a denormalised mirror of the most-recent take (for the card
+  // preview); the take notes themselves live in the Journal (see TakeNotes).
   const setTake = (id: string, v: string) => {
     upd(id, { take: v });
     clearTimeout(takeTimers.current[id]);
@@ -424,18 +537,75 @@ export default function WatchlistApp({
   };
 
   /* ---- browse-mode: drag an entry onto a tab or collection heading ---- */
-  const browseDrag = useRef<{ id: string; sx: number; sy: number; started: boolean; label: string; ghost?: HTMLElement } | null>(null);
+  const browseDrag = useRef<{ id: string; sx: number; sy: number; started: boolean; label: string; ghost?: HTMLElement; srcEl?: HTMLElement } | null>(null);
   const [browseArm, setBrowseArm] = useState<BrowseHit>(null);
+  const [pendingReorder, setPendingReorder] = useState<PendingReorder>(null);
+  const reorderEl = useRef<HTMLElement | null>(null);
+  const clearReorderHint = () => {
+    if (reorderEl.current) {
+      reorderEl.current.classList.remove("k-reorder-before", "k-reorder-after");
+      reorderEl.current = null;
+    }
+  };
+
+  // the list flattened in its current on-screen order, so a manual reorder
+  // begins from whatever sort/grouping the user is looking at.
+  const flatDisplayOrder = (): Entry[] => {
+    const cmp = chainedComparator(globals.sort, "s" + seedRef.current);
+    const sortArr = (arr: Entry[]) => (cmp ? [...arr].sort(cmp) : arr);
+    const grp = globals.group[0] || null;
+    if (!grp) return sortArr(entries);
+    const map: Record<string, { order: number; label: string | null; items: Entry[] }> = {};
+    for (const e of entries) {
+      const bkt = bucketOf(e, grp);
+      (map[bkt.key] = map[bkt.key] || { order: bkt.order, label: bkt.label, items: [] }).items.push(e);
+    }
+    return Object.values(map)
+      .sort((a, b) => a.order - b.order || (a.label || "").localeCompare(b.label || ""))
+      .flatMap((s) => sortArr(s.items));
+  };
+  const moveInOrder = (base: Entry[], draggedId: string, targetId: string, after: boolean): Entry[] | null => {
+    const dragged = base.find((e) => e.id === draggedId);
+    if (!dragged) return null;
+    const arr = base.filter((e) => e.id !== draggedId);
+    const ti = arr.findIndex((e) => e.id === targetId);
+    if (ti < 0) return null;
+    arr.splice(after ? ti + 1 : ti, 0, dragged);
+    return arr;
+  };
+  const commitOrder = (arr: Entry[]) => {
+    setEntries(arr);
+    void reorderEntriesAction(id, arr.map((e) => e.id)).catch(() => {});
+  };
+  const confirmReorder = () => {
+    const pr = pendingReorder;
+    setPendingReorder(null);
+    if (!pr) return;
+    const arr = moveInOrder(flatDisplayOrder(), pr.draggedId, pr.targetId, pr.after);
+    setGlobals((g) => ({ ...g, sort: [], group: [] })); // clear the overridden rules
+    if (arr) commitOrder(arr);
+  };
+
   const dropHitAt = (x: number, y: number): BrowseHit => {
     let el = document.elementFromPoint(x, y) as HTMLElement | null;
     while (el && el !== document.body) {
-      if (el.dataset && el.dataset.tabKey) {
-        const tk = el.dataset.tabKey;
-        if (tk.startsWith("g:")) return { kind: "coll", id: tk.slice(2) };
-        if (tk.startsWith("s:")) return { kind: "status", status: tk.slice(2) };
+      const ds = el.dataset;
+      if (ds) {
+        if (ds.tabKey) {
+          if (ds.tabKey.startsWith("g:")) return { kind: "coll", id: ds.tabKey.slice(2) };
+          if (ds.tabKey.startsWith("s:")) return { kind: "status", status: ds.tabKey.slice(2) };
+        }
+        if (ds.collid) return { kind: "coll", id: ds.collid };
+        if (ds.statusKey) return { kind: "status", status: ds.statusKey };
+        if (ds.drop === "entry" && ds.entryId) {
+          const r = el.getBoundingClientRect();
+          // grid cards split left/right; stacked rows & hybrid split top/bottom
+          const after = el.classList.contains("k-card")
+            ? x > r.left + r.width / 2
+            : y > r.top + r.height / 2;
+          return { kind: "entry", id: ds.entryId, after };
+        }
       }
-      if (el.dataset && el.dataset.collid) return { kind: "coll", id: el.dataset.collid };
-      if (el.dataset && el.dataset.statusKey) return { kind: "status", status: el.dataset.statusKey };
       el = el.parentElement;
     }
     return null;
@@ -444,10 +614,16 @@ export default function WatchlistApp({
     if (sculpt) return;
     if (e.button != null && e.button !== 0) return;
     if ((e.target as HTMLElement).closest(".k-addwrap, .k-addmenu, button, input, textarea, a")) return;
+    // sweep up any ghost left behind by an interrupted drag (belt-and-braces)
+    document.querySelectorAll(".k-entrydrag-ghost").forEach((n) => n.remove());
     const entry = byId[id];
-    browseDrag.current = { id, sx: e.clientX, sy: e.clientY, started: false, label: entry ? entry.title : "" };
+    browseDrag.current = {
+      id, sx: e.clientX, sy: e.clientY, started: false,
+      label: entry ? entry.title : "", srcEl: e.currentTarget as HTMLElement,
+    };
     window.addEventListener("pointermove", onEntryBrowseMove);
     window.addEventListener("pointerup", onEntryBrowseUp);
+    window.addEventListener("pointercancel", onEntryBrowseUp);
   };
   const onEntryBrowseMove = (e: PointerEvent) => {
     const d = browseDrag.current;
@@ -456,26 +632,43 @@ export default function WatchlistApp({
       if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 8) return;
       d.started = true;
       document.body.classList.add("k-entry-dragging");
+      if (d.srcEl) d.srcEl.classList.add("k-dragsrc");
       const g = document.createElement("div");
       g.className = "k-entrydrag-ghost";
       g.textContent = d.label || "Untitled";
       document.body.appendChild(g);
+      // start position so the entrance animation reads from under the cursor
+      g.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 18}px)`;
       d.ghost = g;
     }
     if (d.ghost) d.ghost.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 18}px)`;
     const hit = dropHitAt(e.clientX, e.clientY);
-    setBrowseArm(hit);
-    if (d.ghost) d.ghost.classList.toggle("on", !!hit);
+    clearReorderHint();
+    if (hit && hit.kind === "entry" && hit.id !== d.id) {
+      // reorder target: show an insertion line on the hovered entry
+      const tgt = document.querySelector(`[data-drop="entry"][data-entry-id="${hit.id}"]`) as HTMLElement | null;
+      if (tgt) { tgt.classList.add(hit.after ? "k-reorder-after" : "k-reorder-before"); reorderEl.current = tgt; }
+      setBrowseArm(null);
+      if (d.ghost) d.ghost.classList.add("on");
+    } else {
+      const tabHit = hit && hit.kind !== "entry" ? hit : null;
+      setBrowseArm(tabHit);
+      if (d.ghost) d.ghost.classList.toggle("on", !!tabHit);
+    }
   };
   const onEntryBrowseUp = (e: PointerEvent) => {
     window.removeEventListener("pointermove", onEntryBrowseMove);
     window.removeEventListener("pointerup", onEntryBrowseUp);
+    window.removeEventListener("pointercancel", onEntryBrowseUp);
     document.body.classList.remove("k-entry-dragging");
+    clearReorderHint();
     const d = browseDrag.current;
     browseDrag.current = null;
     setBrowseArm(null);
-    if (d && d.ghost) d.ghost.remove();
+    if (d?.srcEl) d.srcEl.classList.remove("k-dragsrc");
+    if (d?.ghost) d.ghost.remove();
     if (!d) return;
+    if (e.type === "pointercancel") return; // aborted — no drop, no select
     if (!d.started) {
       setSelectedId(d.id);
       return;
@@ -484,6 +677,15 @@ export default function WatchlistApp({
     if (!hit) return;
     if (hit.kind === "coll") addToGroup(d.id, hit.id);
     else if (hit.kind === "status") setEntryStatus(d.id, hit.status);
+    else if (hit.kind === "entry" && hit.id !== d.id) {
+      // manual reorder — if an automatic sort/grouping is active, confirm first
+      if (globals.sort.length > 0 || globals.group.length > 0) {
+        setPendingReorder({ draggedId: d.id, targetId: hit.id, after: hit.after });
+      } else {
+        const arr = moveInOrder(entries, d.id, hit.id, hit.after);
+        if (arr) commitOrder(arr);
+      }
+    }
   };
 
   const onGrabEntry = (e: RPointerEvent, id: string) => {
@@ -1159,11 +1361,20 @@ export default function WatchlistApp({
               entry={selected}
               glyphSet={GLYPH_SET}
               showScore={showScore}
+              customAxes={customAxes}
               onClose={() => setSelectedId(null)}
               onSetFeeling={setFeeling}
+              onSetRateMode={setRateMode}
+              onSetSymbol={setSymbol}
               onSetDim={setDim}
+              onAddAxis={addAxis}
+              onRemoveAxis={removeAxis}
               onSetTake={setTake}
               onRemove={removeEntryFromList}
+              watched={watchedSetOf(selected)}
+              onToggleWatched={toggleWatched}
+              onMarkAllWatched={markAllWatched}
+              onClearWatched={clearWatched}
             />
           </Fragment>
         )}
@@ -1211,6 +1422,33 @@ export default function WatchlistApp({
                 }}
               >
                 <Ico name="trash" s={13} /> Delete tab
+              </button>
+            </div>
+          </div>
+        </Fragment>
+      )}
+      {pendingReorder && (
+        <Fragment>
+          <div className="k-scrim k-scrim--modal" onClick={() => setPendingReorder(null)} />
+          <div className="k-modal" role="dialog" aria-modal="true" aria-labelledby="reorder-title">
+            <h3 className="k-modal__title" id="reorder-title">
+              Switch to a manual order?
+            </h3>
+            <p className="k-modal__desc">
+              {globals.group.length > 0 && globals.sort.length > 0
+                ? "A grouping and a sort are currently arranging this list."
+                : globals.group.length > 0
+                  ? "A grouping is currently arranging this list."
+                  : "A sort is currently arranging this list."}{" "}
+              Dragging a title into place will turn those off and keep your own custom order from now
+              on. You can re-apply a sort or grouping anytime.
+            </p>
+            <div className="k-modal__row">
+              <button className="k-modal__btn k-modal__btn--ghost" onClick={() => setPendingReorder(null)}>
+                Cancel
+              </button>
+              <button className="k-modal__btn" onClick={confirmReorder}>
+                Use manual order
               </button>
             </div>
           </div>

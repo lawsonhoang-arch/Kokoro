@@ -3,7 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { watchlists, watchlistEntries, titles } from "@/db/schema";
-import type { Entry, Feeling, Status, Dims } from "@/features/watchlist/types";
+import type { Entry, Feeling, Status, Dims, RateMode, SymbolRating } from "@/features/watchlist/types";
 import { hiResCover } from "@/lib/cover";
 
 type JoinedRow = {
@@ -11,11 +11,15 @@ type JoinedRow = {
   titleId: string;
   status: string;
   feeling: string | null;
+  rateMode: string | null;
+  symbol: unknown;
   progress: number | null;
+  watchedEps: number[] | null;
   watchedAt: string | null;
   take: string;
   dims: unknown;
   title: string;
+  english: string | null;
   year: number;
   genres: string[];
   episodes: number;
@@ -28,18 +32,21 @@ function toEntry(r: JoinedRow): Entry {
     id: r.entryId,
     titleId: r.titleId,
     cover: hiResCover(r.cover),
-    title: r.title,
+    title: r.english || r.title,
     year: r.year,
     genres: r.genres,
     episodes: r.episodes,
     seasons: r.seasons,
     status: r.status as Status,
     feeling: (r.feeling as Feeling | null) ?? null,
+    rateMode: (r.rateMode as RateMode | null) ?? "glyphs",
+    symbol: (r.symbol as SymbolRating | null) ?? null,
     watched: r.watchedAt,
     dims: (r.dims as Dims) ?? { story: 0, art: 0, music: 0, pacing: 0 },
     take: r.take,
     air: { day: "—", time: "" },
     progress: r.progress ?? undefined,
+    watchedEps: r.watchedEps ?? [],
   };
 }
 
@@ -48,11 +55,15 @@ const ENTRY_COLS = {
   titleId: watchlistEntries.titleId,
   status: watchlistEntries.status,
   feeling: watchlistEntries.feeling,
+  rateMode: watchlistEntries.rateMode,
+  symbol: watchlistEntries.symbol,
   progress: watchlistEntries.progress,
+  watchedEps: watchlistEntries.watchedEps,
   watchedAt: watchlistEntries.watchedAt,
   take: watchlistEntries.take,
   dims: watchlistEntries.dims,
   title: titles.title,
+  english: titles.englishTitle,
   year: titles.year,
   genres: titles.genres,
   episodes: titles.episodes,
@@ -97,6 +108,7 @@ export async function addEntry(
   const [t] = await db
     .select({
       title: titles.title,
+      english: titles.englishTitle,
       year: titles.year,
       genres: titles.genres,
       episodes: titles.episodes,
@@ -131,17 +143,20 @@ export async function addEntry(
     id: row.id,
     titleId,
     cover: hiResCover(t.cover),
-    title: t.title,
+    title: t.english || t.title,
     year: t.year,
     genres: t.genres,
     episodes: t.episodes,
     seasons: t.seasons,
     status: "planned",
     feeling: null,
+    rateMode: "glyphs",
+    symbol: null,
     watched: null,
     dims: { story: 0, art: 0, music: 0, pacing: 0 },
     take: "",
     air: { day: "—", time: "" },
+    watchedEps: [],
   };
   return { ok: true, entry };
 }
@@ -149,9 +164,12 @@ export async function addEntry(
 export type EntryPatch = {
   status?: Status;
   feeling?: Feeling | null;
+  rateMode?: RateMode;
+  symbol?: SymbolRating | null;
   progress?: number | null;
+  watchedEps?: number[];
   take?: string;
-  dims?: Dims;
+  dims?: Record<string, number>;
 };
 
 /** Verify the entry belongs to a watchlist the user owns, then update it. */
@@ -164,6 +182,29 @@ export async function updateEntry(userId: string, entryId: string, patch: EntryP
     .limit(1);
   if (!owned.length) return;
   await db.update(watchlistEntries).set(patch).where(eq(watchlistEntries.id, entryId));
+}
+
+/** Persist a manual order for a watchlist's entries (position = index in the
+ *  given list). Scoped to the user's own list; ids not in it are ignored. */
+export async function reorderEntries(
+  userId: string,
+  watchlistId: string,
+  orderedIds: string[],
+): Promise<void> {
+  if (!orderedIds.length) return;
+  if (!(await ownsWatchlist(userId, watchlistId))) return;
+  // bind the ordered ids as one jsonb array param. (Interpolating a JS array
+  // into Drizzle's sql`` spreads it into a tuple, which can't be cast to a
+  // Postgres array — so we pass JSON text and unwrap it server-side.)
+  await db.execute(sql`
+    update watchlist_entries as w
+    set position = (t.ord - 1)::int
+    from (
+      select value as id, ordinality as ord
+      from jsonb_array_elements_text(${JSON.stringify(orderedIds)}::jsonb) with ordinality
+    ) as t
+    where w.id = t.id::uuid and w.watchlist_id = ${watchlistId}::uuid
+  `);
 }
 
 export async function removeEntry(userId: string, entryId: string): Promise<void> {

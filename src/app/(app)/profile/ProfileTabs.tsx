@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui";
+import { signOutAction } from "@/lib/auth-actions";
+import { RatingBadge } from "@/features/community/RatingBadge";
+import { timeAgo } from "@/features/community/helpers";
+import { updateProfileAction, changeUsernameAction } from "./actions";
+import { toggleFavoriteAction } from "@/app/(app)/anime/actions";
+import { AddFavorites } from "./AddFavorites";
+import type {
+  ProfileUser,
+  ProfileSummary,
+  ProfileReview,
+  ActivityItem,
+  ProfileTitle,
+} from "@/lib/profile";
 
-// ---- Tab model -------------------------------------------------------------
 type Tab = "overview" | "stats" | "reviews" | "settings";
-
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "stats", label: "Stats" },
@@ -14,319 +24,430 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "settings", label: "Settings" },
 ];
 
-// ---- Overview data ---------------------------------------------------------
-type Fav = { hue: number; sub: string; title: string };
-const FAVS: Fav[] = [
-  { hue: 3, sub: "2023 · drama", title: "Frieren: Beyond Journey’s End" },
-  { hue: 1, sub: "2005 · slice of life", title: "Mushishi" },
-  { hue: 2, sub: "1998 · sci-fi", title: "Cowboy Bebop" },
-  { hue: 5, sub: "2016 · drama", title: "March Comes In Like a Lion" },
-];
-
-type Review = { hue: number; title: string; stars: string; text: string; when: string };
-const REVIEWS: Review[] = [
-  {
-    hue: 1,
-    title: "Frieren: Beyond Journey’s End",
-    stars: "★★★★★",
-    text: "Twenty-eight episodes of a show choosing tenderness over spectacle every single time it had the option.",
-    when: "2h ago · 128 ♡",
-  },
-  {
-    hue: 2,
-    title: "Vinland Saga · S2",
-    stars: "★★★★☆",
-    text: "Slow first half is the point. If you stop at episode 4 you’ve missed the whole thesis of the show.",
-    when: "4d ago · 64 ♡",
-  },
-  {
-    hue: 4,
-    title: "A Place Further Than the Universe",
-    stars: "★★★★★",
-    text: "A teenage-girl Antarctica show that earned every single one of its tears honestly. Restored my faith in a genre I’d written off.",
-    when: "1w ago · 92 ♡",
-  },
-];
-
-type Activity = { icon: "star" | "play" | "message" | "plus"; title: string; sub: string; when: string };
-const ACTIVITY: Activity[] = [
-  { icon: "star", title: "Rated Frieren 5/5", sub: "added to favorites", when: "2h" },
-  { icon: "play", title: "Logged Frieren · ep 18", sub: "Watching · 18/28", when: "2h" },
-  { icon: "message", title: "Posted a discussion", sub: "Late Night Mushishi · ep 4", when: "3d" },
-  { icon: "plus", title: "Added “Quiet Fantasy” to clubs", sub: "228 members", when: "1w" },
-];
-
-type Watching = { hue: number; title: string; progress: string; note: string };
-const WATCHING: Watching[] = [
-  { hue: 1, title: "Frieren", progress: "18/28", note: "Three weeks in. One per Sunday." },
-  { hue: 2, title: "Vinland Saga · S2", progress: "12/24", note: "Slow-burn re-engagement." },
-];
-
-// ---- Settings data ---------------------------------------------------------
-const SETTINGS_RAIL = [
-  "Account",
-  "Privacy",
-  "Notifications",
-  "Appearance",
-  "List defaults",
-  "Integrations",
-  "Data & export",
-];
-
-function ActIcon({ name }: { name: Activity["icon"] }) {
-  switch (name) {
-    case "star":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-        </svg>
-      );
-    case "play":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      );
-    case "message":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      );
-    case "plus":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      );
-  }
+// generated poster gradient for titles without cover art (matches anime page)
+function genPoster(seed: string): CSSProperties {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+  h = Math.abs(h);
+  const a = h % 360;
+  const bg = (a + 35 + (h % 30)) % 360;
+  return { backgroundImage: `linear-gradient(135deg, oklch(0.55 0.13 ${a}), oklch(0.4 0.13 ${bg}))` };
 }
 
-function Overview() {
+function Poster({ t, className }: { t: { id: string; title: string; cover: string | null }; className?: string }) {
   return (
-    <section id="pf-overview" className="pf-grid" aria-label="Overview">
-      {/* LEFT: favorites + reviews */}
+    <span className={"pf-poster " + (className ?? "")} style={t.cover ? undefined : genPoster(t.id)}>
+      {t.cover && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={t.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+      )}
+    </span>
+  );
+}
+
+function ActIcon({ kind }: { kind: ActivityItem["kind"] }) {
+  if (kind === "review")
+    return <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>;
+  if (kind === "discussion")
+    return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
+  if (kind === "completed")
+    return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>;
+  // note / take
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+}
+
+function FavCard({ t, onRemove }: { t: ProfileTitle; onRemove: (id: string) => void }) {
+  return (
+    <div className="pf-fav">
+      <Link href={`/anime/${encodeURIComponent(t.id)}`} className="pf-fav__link">
+        <Poster t={t} className="pf-fav__art" />
+        {t.score != null && <span className="pf-fav__score">★ {t.score % 1 === 0 ? t.score : t.score.toFixed(1)}</span>}
+        <span className="pf-fav__sub">{[t.year, t.genres[0]].filter(Boolean).join(" · ")}</span>
+        <span className="pf-fav__title">{t.title}</span>
+      </Link>
+      <button className="pf-fav__remove" onClick={() => onRemove(t.id)} aria-label={`Remove ${t.title} from favorites`} title="Remove from favorites">
+        ✕
+      </button>
+    </div>
+  );
+}
+
+function Overview({
+  summary,
+  reviews,
+  activity,
+  favorites,
+  onRemoveFavorite,
+  onOpenPicker,
+}: {
+  summary: ProfileSummary;
+  reviews: ProfileReview[];
+  activity: ActivityItem[];
+  favorites: ProfileTitle[];
+  onRemoveFavorite: (id: string) => void;
+  onOpenPicker: () => void;
+}) {
+  // cards shrink as the count grows (bigger when few) but stay within a compact
+  // footprint — never larger than the previous single-card size.
+  const n = favorites.length;
+  const favSize = n <= 2 ? 158 : n <= 4 ? 138 : n <= 6 ? 122 : 108;
+  return (
+    <section className="pf-grid" aria-label="Overview">
       <div>
         <section className="section" style={{ marginTop: 0 }}>
           <header className="section__head">
             <div>
               <h3 className="section__title">Favorites</h3>
-              <div className="section__sub">The four titles Riley wants you to watch</div>
+              <div className="section__sub">Titles you&apos;ve hand-picked · friends can see these</div>
             </div>
-            <a href="#" className="section__more">Full list →</a>
+            <button className="pf-addfav" onClick={onOpenPicker}>+ Add favorites</button>
           </header>
-          <div className="favs">
-            {FAVS.map((f) => (
-              <div key={f.title} className={`poster poster--h${f.hue}`}>
-                <span className="fav-mark" aria-hidden="true">★</span>
-                <div className="poster__sub">{f.sub}</div>
-                <div className="poster__title">{f.title}</div>
-              </div>
-            ))}
-          </div>
+          {favorites.length === 0 ? (
+            <button className="pf-empty pf-empty--cta" onClick={onOpenPicker}>
+              No favorites yet — <b>search and add</b> the anime you want on your profile.
+            </button>
+          ) : (
+            <div className="pf-favs" style={{ ["--fav-size"]: `${favSize}px` } as CSSProperties}>
+              {favorites.map((t) => <FavCard key={t.id} t={t} onRemove={onRemoveFavorite} />)}
+            </div>
+          )}
         </section>
 
         <section className="section">
           <header className="section__head">
             <div>
               <h3 className="section__title">Recent reviews</h3>
-              <div className="section__sub">Public micro-reviews from Riley</div>
+              <div className="section__sub">Your public micro-reviews</div>
             </div>
-            <a href="#" className="section__more">All reviews →</a>
+            <Link href="/community" className="section__more">Community →</Link>
           </header>
-          <div>
-            {REVIEWS.map((r) => (
-              <article key={r.title} className="pf-review">
-                <div className={`poster poster--h${r.hue} pf-review__cover`} style={{ aspectRatio: "auto", height: 84 }} />
+          {reviews.length === 0 ? (
+            <div className="pf-empty">No reviews yet — write one from any anime&apos;s community page.</div>
+          ) : (
+            reviews.slice(0, 3).map((r) => (
+              <article key={r.id} className="pf-review">
+                {r.titleId ? (
+                  <Link href={`/community/${encodeURIComponent(r.titleId)}`}>
+                    <Poster t={{ id: r.titleId, title: r.titleName ?? "", cover: r.cover }} className="pf-review__cover" />
+                  </Link>
+                ) : (
+                  <span className="pf-poster pf-review__cover" style={genPoster(r.id)} />
+                )}
                 <div>
                   <div className="pf-review__head">
-                    <span className="pf-review__title">{r.title}</span>
-                    <span className="pf-review__stars">{r.stars}</span>
+                    <span className="pf-review__title">{r.titleName ?? "Untitled"}</span>
+                    <RatingBadge post={r} />
                   </div>
-                  <p className="pf-review__text">{r.text}</p>
-                  <span className="pf-review__when">{r.when}</span>
+                  {r.heading && <div className="pf-review__heading">{r.heading}</div>}
+                  {r.body && <p className="pf-review__text">{r.body}</p>}
+                  <span className="pf-review__when">{timeAgo(r.createdAt)} · {r.likeCount} ♡</span>
                 </div>
               </article>
-            ))}
-          </div>
+            ))
+          )}
         </section>
       </div>
 
-      {/* RIGHT: activity + clubs */}
       <aside>
         <section className="section" style={{ marginTop: 0 }}>
-          <header className="section__head">
-            <div>
-              <h3 className="section__title">Recent activity</h3>
-            </div>
-          </header>
-          <div className="activity">
-            {ACTIVITY.map((a) => (
-              <div key={a.title} className="act">
-                <span className="act__icon" aria-hidden="true">
-                  <ActIcon name={a.icon} />
-                </span>
-                <div>
-                  <div className="act__title">{a.title}</div>
-                  <div className="act__sub">{a.sub}</div>
+          <header className="section__head"><div><h3 className="section__title">Recent activity</h3></div></header>
+          {activity.length === 0 ? (
+            <div className="pf-empty">Your reviews, discussions, and journal notes will appear here.</div>
+          ) : (
+            <div className="activity">
+              {activity.map((a) => (
+                <div key={a.id} className="act">
+                  <span className={"act__icon act__icon--" + a.kind} aria-hidden="true"><ActIcon kind={a.kind} /></span>
+                  <div>
+                    <div className="act__title">{a.text}</div>
+                    <div className="act__sub">
+                      {a.titleName ?? "General"}{a.episode ? ` · ${a.episode}` : ""}
+                    </div>
+                  </div>
+                  <span className="act__when">{timeAgo(a.createdAt)}</span>
                 </div>
-                <span className="act__when">{a.when}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="section">
           <header className="section__head">
             <div>
               <h3 className="section__title">Currently watching</h3>
-              <div className="section__sub">3 titles in rotation</div>
+              <div className="section__sub">{summary.stats.watching} in rotation</div>
             </div>
             <Link href="/watchlist" className="section__more">Lists →</Link>
           </header>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {WATCHING.map((w) => (
-              <div key={w.title} className="pf-review" style={{ gridTemplateColumns: "48px 1fr" }}>
-                <div className={`poster poster--h${w.hue} pf-review__cover`} style={{ aspectRatio: "auto", height: 66 }} />
-                <div>
-                  <div className="pf-review__head">
-                    <span className="pf-review__title">{w.title}</span>
-                    <span style={{ color: "var(--ink-faint)", fontFamily: "var(--font-mono)", fontSize: "10.5px" }}>{w.progress}</span>
+          {summary.watching.length === 0 ? (
+            <div className="pf-empty">Nothing in progress right now.</div>
+          ) : (
+            <div className="pf-watching">
+              {summary.watching.map((w) => (
+                <Link key={w.id} href={`/anime/${encodeURIComponent(w.id)}`} className="pf-watch">
+                  <Poster t={w} className="pf-watch__art" />
+                  <div className="pf-watch__body">
+                    <div className="pf-watch__title">{w.title}</div>
+                    <div className="pf-watch__bar">
+                      <span className="pf-watch__fill" style={{ width: `${w.episodes ? Math.round(((w.progress ?? 0) / w.episodes) * 100) : 0}%` }} />
+                    </div>
+                    <div className="pf-watch__num">{w.progress ?? 0}/{w.episodes || "?"}</div>
                   </div>
-                  <p className="pf-review__text" style={{ fontSize: "12.5px" }}>{w.note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
       </aside>
     </section>
   );
 }
 
-function Settings({ active }: { active: boolean }) {
+function Bar({ label, n, total, hue }: { label: string; n: number; total: number; hue?: string }) {
+  const pct = total ? Math.round((n / total) * 100) : 0;
   return (
-    <section id="pf-settings" className={"settings" + (active ? " on" : "")} aria-label="Account settings">
-      <div className="settings__grid">
-        <aside className="settings__rail">
-          {SETTINGS_RAIL.map((label, i) => (
-            <button key={label} className={i === 0 ? "on" : undefined}>
-              {label}
-            </button>
-          ))}
-        </aside>
-        <div className="settings__body">
-          <div className="settings__group">
-            <div className="settings__label">Profile</div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Display name</div>
-                <div className="setting-row__desc">How your name appears across Kokoro. Public.</div>
-              </div>
-              <button className="btn">Edit · Riley Okabe</button>
-            </div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Handle</div>
-                <div className="setting-row__desc">Your unique mention name. Used in URLs and tags.</div>
-              </div>
-              <button className="btn">Change · @riley</button>
-            </div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Bio</div>
-                <div className="setting-row__desc">Up to 240 characters. Markdown is supported.</div>
-              </div>
-              <button className="btn">Edit</button>
-            </div>
-          </div>
+    <div className="pf-bar">
+      <div className="pf-bar__row">
+        <span className="pf-bar__label">{label}</span>
+        <span className="pf-bar__n">{n}</span>
+      </div>
+      <div className="pf-bar__track">
+        <span className="pf-bar__fill" style={{ width: `${pct}%`, background: hue }} />
+      </div>
+    </div>
+  );
+}
 
-          <div className="settings__group">
-            <div className="settings__label">Visibility</div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Public profile</div>
-                <div className="setting-row__desc">When off, only people you follow can see your activity and lists.</div>
-              </div>
-              <div className="toggle on" role="switch" aria-checked="true"></div>
+function Stats({ summary }: { summary: ProfileSummary }) {
+  const s = summary.stats;
+  const statusTotal = s.completed + s.watching + s.planned;
+  const genreMax = summary.genres[0]?.n ?? 1;
+  return (
+    <section className="pf-grid" aria-label="Stats">
+      <section className="section" style={{ marginTop: 0 }}>
+        <header className="section__head"><div><h3 className="section__title">Status breakdown</h3><div className="section__sub">{statusTotal} titles tracked</div></div></header>
+        {statusTotal === 0 ? (
+          <div className="pf-empty">Add titles to your lists to see your breakdown.</div>
+        ) : (
+          <>
+            <div className="pf-statusbar">
+              {s.completed > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.completed / statusTotal) * 100}%`, background: "var(--feel-loved)" }} title={`Completed ${s.completed}`} />}
+              {s.watching > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.watching / statusTotal) * 100}%`, background: "var(--feel-liked)" }} title={`Watching ${s.watching}`} />}
+              {s.planned > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.planned / statusTotal) * 100}%`, background: "var(--line-strong)" }} title={`Planned ${s.planned}`} />}
             </div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Show on community feed</div>
-                <div className="setting-row__desc">Your micro-reviews and ratings appear in the public Feed tab.</div>
-              </div>
-              <div className="toggle on" role="switch" aria-checked="true"></div>
+            <div className="pf-legend">
+              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--feel-loved)" }} /> Completed <b>{s.completed}</b></span>
+              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--feel-liked)" }} /> Watching <b>{s.watching}</b></span>
+              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--line-strong)" }} /> Planned <b>{s.planned}</b></span>
             </div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Journal visibility</div>
-                <div className="setting-row__desc">Notes you write in the Journal tab are always private.</div>
-              </div>
-              <span className="chip">Locked · private</span>
-            </div>
-          </div>
+          </>
+        )}
+        <div className="pf-mini">
+          <div className="pf-mini__cell"><div className="pf-mini__v">{s.hours.toLocaleString()}</div><div className="pf-mini__l">hours watched</div></div>
+          <div className="pf-mini__cell"><div className="pf-mini__v">{s.reviews}</div><div className="pf-mini__l">reviews</div></div>
+          <div className="pf-mini__cell"><div className="pf-mini__v">{s.lists}</div><div className="pf-mini__l">lists</div></div>
+        </div>
+      </section>
 
-          <div className="settings__group">
-            <div className="settings__label">Appearance</div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Theme</div>
-                <div className="setting-row__desc">Pick the palette that matches your room&apos;s lighting.</div>
-              </div>
-              <div className="pill-select">
-                <button className="on">Warm dark</button>
-                <button>Paper</button>
-                <button>Clay</button>
-              </div>
-            </div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title">Reduce motion</div>
-                <div className="setting-row__desc">Disable morph transitions and animated background glows.</div>
-              </div>
-              <div className="toggle" role="switch" aria-checked="false"></div>
-            </div>
+      <section className="section" style={{ marginTop: 0 }}>
+        <header className="section__head"><div><h3 className="section__title">Top genres</h3><div className="section__sub">across your tracked titles</div></div></header>
+        {summary.genres.length === 0 ? (
+          <div className="pf-empty">No genre data yet.</div>
+        ) : (
+          <div className="pf-bars">
+            {summary.genres.map((g) => <Bar key={g.genre} label={g.genre} n={g.n} total={genreMax} hue="var(--accent)" />)}
           </div>
+        )}
+      </section>
+    </section>
+  );
+}
 
-          <div className="settings__group">
-            <div className="settings__label">Danger zone</div>
-            <div className="setting-row">
-              <div>
-                <div className="setting-row__title danger">Delete account</div>
-                <div className="setting-row__desc">Removes your profile, lists, and all journal entries. Cannot be undone.</div>
+function Reviews({ reviews }: { reviews: ProfileReview[] }) {
+  return (
+    <section className="section" style={{ marginTop: 0 }} aria-label="Reviews">
+      <header className="section__head"><div><h3 className="section__title">All reviews</h3><div className="section__sub">{reviews.length} {reviews.length === 1 ? "review" : "reviews"}</div></div></header>
+      {reviews.length === 0 ? (
+        <div className="pf-empty">No reviews yet — write one from any anime&apos;s community page.</div>
+      ) : (
+        reviews.map((r) => (
+          <article key={r.id} className="pf-review">
+            {r.titleId ? (
+              <Link href={`/community/${encodeURIComponent(r.titleId)}`}>
+                <Poster t={{ id: r.titleId, title: r.titleName ?? "", cover: r.cover }} className="pf-review__cover" />
+              </Link>
+            ) : (
+              <span className="pf-poster pf-review__cover" style={genPoster(r.id)} />
+            )}
+            <div>
+              <div className="pf-review__head">
+                <span className="pf-review__title">{r.titleName ?? "Untitled"}</span>
+                <RatingBadge post={r} />
               </div>
-              <button className="danger-btn">Delete account</button>
+              {r.heading && <div className="pf-review__heading">{r.heading}</div>}
+              {r.body && <p className="pf-review__text">{r.body}</p>}
+              <span className="pf-review__when">{timeAgo(r.createdAt)} · {r.likeCount} ♡</span>
             </div>
+          </article>
+        ))
+      )}
+    </section>
+  );
+}
+
+function Settings({ user }: { user: ProfileUser }) {
+  const [name, setName] = useState(user.name ?? "");
+  const [bio, setBio] = useState(user.bio);
+  const [username, setUsername] = useState(user.username);
+  const [savedId, setSavedId] = useState(false);
+  const [busyId, setBusyId] = useState(false);
+  const [uErr, setUErr] = useState<string | null>(null);
+  const [uSaved, setUSaved] = useState(false);
+  const [busyU, setBusyU] = useState(false);
+
+  const saveIdentity = async () => {
+    setBusyId(true);
+    setSavedId(false);
+    try {
+      await updateProfileAction({ name, bio });
+      setSavedId(true);
+    } finally {
+      setBusyId(false);
+    }
+  };
+  const saveUsername = async () => {
+    setBusyU(true);
+    setUErr(null);
+    setUSaved(false);
+    try {
+      const r = await changeUsernameAction(username);
+      if (r.ok) setUSaved(true);
+      else setUErr(r.error ?? "Couldn't update.");
+    } finally {
+      setBusyU(false);
+    }
+  };
+
+  const memberSince = new Date(user.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+  return (
+    <section className="pf-settings" aria-label="Settings">
+      <div className="settings__group">
+        <div className="settings__label">Identity</div>
+        <div className="pf-field">
+          <label htmlFor="pf-name">Display name</label>
+          <input id="pf-name" className="pf-input" value={name} maxLength={60} placeholder="Your name" onChange={(e) => { setName(e.target.value); setSavedId(false); }} />
+        </div>
+        <div className="pf-field">
+          <label htmlFor="pf-bio">Bio</label>
+          <textarea id="pf-bio" className="pf-input pf-textarea" value={bio} maxLength={240} rows={3} placeholder="A line or two about your taste…" onChange={(e) => { setBio(e.target.value); setSavedId(false); }} />
+          <span className="pf-counter">{bio.length}/240</span>
+        </div>
+        <div className="pf-saverow">
+          <button className="btn btn--primary" disabled={busyId} onClick={saveIdentity}>{busyId ? "Saving…" : "Save"}</button>
+          {savedId && <span className="pf-ok">Saved ✓</span>}
+        </div>
+      </div>
+
+      <div className="settings__group">
+        <div className="settings__label">Handle</div>
+        <div className="pf-field">
+          <label htmlFor="pf-username">Username</label>
+          <div className="pf-handle-edit">
+            <span className="pf-at">@</span>
+            <input id="pf-username" className="pf-input" value={username} maxLength={20} onChange={(e) => { setUsername(e.target.value.toLowerCase()); setUErr(null); setUSaved(false); }} />
           </div>
+          <span className="pf-counter">3–20 chars · letters, numbers, underscores</span>
+        </div>
+        <div className="pf-saverow">
+          <button className="btn btn--primary" disabled={busyU || username === user.username} onClick={saveUsername}>{busyU ? "Saving…" : "Change username"}</button>
+          {uSaved && <span className="pf-ok">Saved ✓</span>}
+          {uErr && <span className="pf-err">{uErr}</span>}
+        </div>
+      </div>
+
+      <div className="settings__group">
+        <div className="settings__label">Account</div>
+        <div className="setting-row">
+          <div><div className="setting-row__title">Email</div><div className="setting-row__desc">Used to sign in. Private.</div></div>
+          <span className="chip">{user.email}</span>
+        </div>
+        <div className="setting-row">
+          <div><div className="setting-row__title">Member since</div><div className="setting-row__desc">When you joined Kokoro.</div></div>
+          <span className="chip">{memberSince}</span>
+        </div>
+        <div className="setting-row">
+          <div><div className="setting-row__title">Role</div><div className="setting-row__desc">Your permissions on Kokoro.</div></div>
+          <span className="chip">{user.role}</span>
+        </div>
+        <div className="setting-row">
+          <div><div className="setting-row__title">Session</div><div className="setting-row__desc">Sign out of this device.</div></div>
+          <form action={signOutAction}><button className="btn" type="submit">Sign out</button></form>
         </div>
       </div>
     </section>
   );
 }
 
-export function ProfileTabs() {
+export function ProfileTabs({
+  user,
+  summary,
+  reviews,
+  activity,
+  favorites: initialFavorites,
+}: {
+  user: ProfileUser;
+  summary: ProfileSummary;
+  reviews: ProfileReview[];
+  activity: ActivityItem[];
+  favorites: ProfileTitle[];
+}) {
   const [tab, setTab] = useState<Tab>("overview");
+  const [favorites, setFavorites] = useState<ProfileTitle[]>(initialFavorites);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // pure local state updaters (the AddFavorites modal does its own server toggle)
+  const addFavLocal = (t: ProfileTitle) => setFavorites((fs) => (fs.some((f) => f.id === t.id) ? fs : [t, ...fs]));
+  const removeFavLocal = (id: string) => setFavorites((fs) => fs.filter((f) => f.id !== id));
+
+  // removing from a profile card both updates state AND persists the un-favorite
+  const removeFavorite = (id: string) => {
+    removeFavLocal(id);
+    toggleFavoriteAction(id).catch(() => {});
+  };
 
   return (
     <>
-      {/* SUB-TABS */}
       <nav className="pf-subtabs" aria-label="Profile sections">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={tab === t.id ? "on" : undefined}
-            data-tab={t.id}
-            onClick={() => setTab(t.id)}
-          >
+          <button key={t.id} className={tab === t.id ? "on" : undefined} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
       </nav>
 
-      {/* Overview is the default content; stats/reviews fall back to it.
-          Settings swaps in via the .on class on #pf-settings. */}
-      {tab !== "settings" ? <Overview /> : null}
-      <Settings active={tab === "settings"} />
+      {tab === "overview" && (
+        <Overview
+          summary={summary}
+          reviews={reviews}
+          activity={activity}
+          favorites={favorites}
+          onRemoveFavorite={removeFavorite}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
+      )}
+      {tab === "stats" && <Stats summary={summary} />}
+      {tab === "reviews" && <Reviews reviews={reviews} />}
+      {tab === "settings" && <Settings user={user} />}
+
+      {pickerOpen && (
+        <AddFavorites
+          onClose={() => setPickerOpen(false)}
+          existingIds={new Set(favorites.map((f) => f.id))}
+          onAdd={addFavLocal}
+          onRemove={removeFavLocal}
+        />
+      )}
     </>
   );
 }

@@ -66,7 +66,7 @@ export function SearchFilters() {
   const onQ = (val: string) => {
     setQ(val);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => update({ q: val.trim() || null }), 400);
+    timer.current = setTimeout(() => update({ q: val.trim() || null }), 200);
   };
 
   const type = g("type");

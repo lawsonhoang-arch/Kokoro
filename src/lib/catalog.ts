@@ -5,23 +5,15 @@ import { db } from "@/db";
 import type { SearchResult } from "@/features/search/types";
 import { type CatalogFilters, hasPersonalFilter } from "@/features/search/constants";
 import { hiResCover } from "@/lib/cover";
+import { indexSearch, indexQuery, indexBrowseManga, indexGetTitle, getNewNotable } from "@/lib/search-index";
 
 const DIM_KEYS = ["story", "art", "music", "pacing"] as const;
-
-// parse a "min-max" / "min-" bucket value into numeric bounds
-function parseRange(v: string): { min: number; max: number } | null {
-  const m = v.match(/^(\d+)-(\d*)$/);
-  if (!m) return null;
-  const min = parseInt(m[1], 10);
-  const max = m[2] ? parseInt(m[2], 10) : 1_000_000;
-  if (Number.isNaN(min)) return null;
-  return { min, max };
-}
 
 type Row = {
   id: string;
   kind: string | null;
   title: string;
+  english: string | null;
   native: string | null;
   year: number | null;
   episodes: number | null;
@@ -33,39 +25,19 @@ type Row = {
 // columns selected for every catalog query (kept in sync with toResult / Row).
 // Qualified with `titles.` so it stays unambiguous when joined with the
 // watchlist_entries / watchlists tables (which also have id / title columns).
-const COLS = sql`titles.id, titles.kind, titles.title, titles.native_title as native, titles.year, titles.episodes, titles.format, titles.genres, titles.cover`;
+const COLS = sql`titles.id, titles.kind, titles.title, titles.english_title as english, titles.native_title as native, titles.year, titles.episodes, titles.format, titles.genres, titles.cover`;
 
-// Self-hosted fuzzy search over your own catalog using pg_trgm. Ranks exact →
-// prefix → contains → fuzzy, shortest-title tiebreak. No external API.
+// Self-hosted search over the in-memory catalog index — no per-keystroke DB
+// round trip. Ranks exact → prefix → word-boundary → contains → synonym.
 export async function searchCatalog(query: string, limit = 20): Promise<SearchResult[]> {
-  const q = query.trim().toLowerCase();
-  if (q.length < 2) return [];
-  const like = `%${q}%`;
-  const prefix = `${q}%`;
-
-  const result = await db.execute(sql`
-    select ${COLS}
-    from titles
-    where search_text is not null
-      and (search_text ilike ${like} or similarity(search_text, ${q}) > 0.2)
-    order by
-      (lower(title) = ${q}) desc,
-      (lower(title) like ${prefix}) desc,
-      (search_text ilike ${like}) desc,
-      similarity(title, ${q}) desc,
-      length(title) asc
-    limit ${limit}
-  `);
-
-  const rows = result as unknown as Row[];
-  return rows.map(toResult);
+  return indexSearch(query, limit);
 }
 
 function toResult(r: Row): SearchResult {
   return {
     id: r.id,
     kind: r.kind === "manga" ? "manga" : "anime",
-    title: r.title,
+    title: r.english || r.title, // prefer English for display
     native: r.native,
     format: r.format,
     episodes: r.episodes && r.episodes > 0 ? r.episodes : null,
@@ -75,100 +47,50 @@ function toResult(r: Row): SearchResult {
   };
 }
 
-// Full results for the /search page: closest-match ranking, filters, paging.
+// The set of title ids in a user's library matching the personal-rating
+// filters (status / feeling / per-axis / overall) — the only part of a search
+// that still needs the DB, since ratings are per-user and not in the index.
+async function personalTitleIds(userId: string, f: CatalogFilters): Promise<Set<string>> {
+  const pc: SQL[] = [sql`w.user_id = ${userId}`];
+  if (f.status) pc.push(sql`e.status = ${f.status}`);
+  if (f.feeling) pc.push(sql`e.feeling = ${f.feeling}`);
+  for (const d of DIM_KEYS) {
+    const v = f[d];
+    if (v) {
+      const n = parseInt(v, 10);
+      if (!Number.isNaN(n) && n > 0) pc.push(sql`(e.dims->>${d})::int >= ${n}`);
+    }
+  }
+  if (f.rating) {
+    const n = parseFloat(f.rating);
+    if (!Number.isNaN(n) && n > 0)
+      pc.push(
+        sql`(((e.dims->>'story')::numeric + (e.dims->>'art')::numeric + (e.dims->>'music')::numeric + (e.dims->>'pacing')::numeric) / 4) >= ${n}`,
+      );
+  }
+  const res = await db.execute(
+    sql`select distinct e.title_id from watchlist_entries e join watchlists w on e.watchlist_id = w.id where ${sql.join(pc, sql` and `)}`,
+  );
+  return new Set((res as unknown as { title_id: string }[]).map((r) => r.title_id));
+}
+
+// Full results for the /search page — closest-match ranking, filters, paging.
+// Served from the in-memory index; only personal-rating filters touch the DB.
 export async function searchCatalogFull(
   q: string,
   f: CatalogFilters,
   page = 1,
   perPage = 30,
   userId?: string,
+  excludeNsfw = false,
 ): Promise<{ results: SearchResult[]; total: number }> {
-  const query = q.trim().toLowerCase();
-  const hasQ = query.length >= 2;
-
-  const conds: SQL[] = [sql`search_text is not null`];
-  if (hasQ) conds.push(sql`(search_text ilike ${"%" + query + "%"} or similarity(search_text, ${query}) > 0.2)`);
-  if (f.type === "anime" || f.type === "manga") conds.push(sql`kind = ${f.type}`);
-  if (f.format) conds.push(sql`format = ${f.format}`);
-  if (f.genre) conds.push(sql`${f.genre} = any(genres)`);
-  if (f.decade) {
-    const y = parseInt(f.decade, 10);
-    if (!Number.isNaN(y)) conds.push(sql`year between ${y} and ${y + 9}`);
-  }
-  // length — episodes for anime, chapters for manga (same column)
-  if (f.length) {
-    const r = parseRange(f.length);
-    if (r) conds.push(sql`episodes between ${r.min} and ${r.max}`);
-  }
-  // seasons (volumes for manga); "4" means 4 or more
-  if (f.seasons) {
-    const n = parseInt(f.seasons, 10);
-    if (!Number.isNaN(n)) conds.push(n >= 4 ? sql`seasons >= 4` : sql`seasons = ${n}`);
-  }
-  // minimum catalog score (stored ×100)
-  if (f.score) {
-    const s = parseFloat(f.score);
-    if (!Number.isNaN(s) && s > 0) conds.push(sql`score >= ${Math.round(s * 100)}`);
-  }
-
-  // personal ratings → require an entry in the user's library matching them
-  if (userId && hasPersonalFilter(f)) {
-    const pc: SQL[] = [sql`e.title_id = titles.id`, sql`w.user_id = ${userId}`];
-    if (f.status) pc.push(sql`e.status = ${f.status}`);
-    if (f.feeling) pc.push(sql`e.feeling = ${f.feeling}`);
-    for (const d of DIM_KEYS) {
-      const v = f[d];
-      if (v) {
-        const n = parseInt(v, 10);
-        if (!Number.isNaN(n) && n > 0) pc.push(sql`(e.dims->>${d})::int >= ${n}`);
-      }
-    }
-    if (f.rating) {
-      const n = parseFloat(f.rating);
-      if (!Number.isNaN(n) && n > 0)
-        pc.push(
-          sql`(((e.dims->>'story')::numeric + (e.dims->>'art')::numeric + (e.dims->>'music')::numeric + (e.dims->>'pacing')::numeric) / 4) >= ${n}`,
-        );
-    }
-    conds.push(
-      sql`exists (select 1 from watchlist_entries e join watchlists w on e.watchlist_id = w.id where ${sql.join(pc, sql` and `)})`,
-    );
-  }
-
-  const where = sql.join(conds, sql` and `);
-
-  let order: SQL;
-  if (f.sort === "newest") order = sql`year desc nulls last, length(title) asc`;
-  else if (f.sort === "oldest") order = sql`year asc nulls last`;
-  else if (f.sort === "title") order = sql`lower(title) asc`;
-  else if (f.sort === "rated") order = sql`score desc nulls last, year desc nulls last`;
-  else if (f.sort === "popular") order = sql`popularity desc nulls last, score desc nulls last`;
-  else if (hasQ)
-    order = sql`(lower(title) = ${query}) desc, (lower(title) like ${query + "%"}) desc, (search_text ilike ${"%" + query + "%"}) desc, similarity(title, ${query}) desc, length(title) asc`;
-  else order = sql`year desc nulls last`;
-
-  const offset = (page - 1) * perPage;
-  const rowsRes = await db.execute(sql`
-    select ${COLS}
-    from titles where ${where} order by ${order} limit ${perPage} offset ${offset}
-  `);
-  const countRes = await db.execute(sql`select count(*)::int as total from titles where ${where}`);
-
-  const rows = rowsRes as unknown as Row[];
-  const total = (countRes as unknown as { total: number }[])[0]?.total ?? 0;
-  return { results: rows.map(toResult), total: Number(total) };
+  const personalIds = userId && hasPersonalFilter(f) ? await personalTitleIds(userId, f) : null;
+  return indexQuery(q, f, page, perPage, personalIds, excludeNsfw);
 }
 
-/** Acclaimed manga for the Manga tab's browse grid (score desc, then recent). */
+/** Acclaimed manga for the Manga tab's browse grid (score desc), from the index. */
 export async function browseManga(limit = 30): Promise<SearchResult[]> {
-  const result = await db.execute(sql`
-    select ${COLS}
-    from titles
-    where kind = 'manga' and search_text is not null
-    order by score desc nulls last, year desc nulls last, length(title) asc
-    limit ${limit}
-  `);
-  return (result as unknown as Row[]).map(toResult);
+  return indexBrowseManga(limit);
 }
 
 /** The featured Home hero — the highest-scored anime that has cover art. */
@@ -178,7 +100,7 @@ export async function getHero(): Promise<
   const r = await db.execute(sql`
     select ${COLS}, description, score
     from titles
-    where kind = 'anime' and cover is not null and score is not null
+    where kind = 'anime' and cover is not null and score is not null and nsfw = false
     order by score desc nulls last
     limit 1
   `);
@@ -189,6 +111,75 @@ export async function getHero(): Promise<
     description: rows[0].description ?? null,
     score: rows[0].score ?? null,
   };
+}
+
+export type HeroSlide = SearchResult & {
+  description: string | null;
+  score: number | null;
+  eyebrow: string; // category label shown on the slide
+  banner: string | null; // wide hero art (AniList); falls back to cover when null
+};
+
+/**
+ * Featured Home hero carousel — a curated mix that changes each load: one random
+ * top-rated title, one random trending title (anime or manga), one random new &
+ * notable premiere, then the rest suggested from the signed-in user's lists
+ * (falling back to more from the pools for brand-new users). Enriched with
+ * description + score for display.
+ */
+export async function getHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
+  const [topRated, trending, newNotable, recs] = await Promise.all([
+    searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 30, undefined, true),
+    searchCatalogFull("", { sort: "popular" }, 1, 30, undefined, true),
+    getNewNotable(30),
+    userId
+      ? getRecommendations(userId, 30)
+      : Promise.resolve({ seedGenre: null, seedTitle: null, results: [] as SearchResult[] }),
+  ]);
+
+  const rand = (a: SearchResult[]) => (a.length ? a[Math.floor(Math.random() * a.length)] : null);
+  const shuffle = <T,>(a: T[]): T[] =>
+    a.map((v) => [Math.random(), v] as const).sort((x, y) => x[0] - y[0]).map(([, v]) => v);
+
+  type Cand = { item: SearchResult; eyebrow: string };
+  const seen = new Set<string>();
+  const chosen: Cand[] = [];
+  const add = (item: SearchResult | null, eyebrow: string) => {
+    if (!item || seen.has(item.id) || chosen.length >= limit) return;
+    seen.add(item.id);
+    chosen.push({ item, eyebrow });
+  };
+
+  // one from each headline category…
+  add(rand(topRated.results), "Top rated");
+  add(rand(trending.results), "Trending now");
+  add(rand(newNotable), "New & notable");
+  // …then fill the rest from the user's recommendations…
+  for (const r of shuffle(recs.results)) add(r, "Suggested for you");
+  // …and finally top up from the pools so the carousel is never short.
+  const pool: Cand[] = shuffle([
+    ...topRated.results.map((i) => ({ item: i, eyebrow: "Top rated" })),
+    ...trending.results.map((i) => ({ item: i, eyebrow: "Trending now" })),
+    ...newNotable.map((i) => ({ item: i, eyebrow: "New & notable" })),
+  ]);
+  for (const c of pool) add(c.item, c.eyebrow);
+
+  if (chosen.length === 0) return [];
+  const idList = sql.join(chosen.map((c) => sql`${c.item.id}`), sql`, `);
+  const r = await db.execute(sql`select id, description, score, banner from titles where id in (${idList})`);
+  const meta = new Map(
+    (r as unknown as { id: string; description: string | null; score: number | null; banner: string | null }[]).map(
+      (m) => [m.id, m],
+    ),
+  );
+  return chosen.map((c) => ({
+    ...c.item,
+    eyebrow: c.eyebrow,
+    description: meta.get(c.item.id)?.description ?? null,
+    score: meta.get(c.item.id)?.score ?? null,
+    // wide AniList banner art; '' means "checked, none" → fall back to the cover
+    banner: meta.get(c.item.id)?.banner || null,
+  }));
 }
 
 export type HomeEntry = SearchResult & {
@@ -253,6 +244,7 @@ export async function getRecommendations(
     select ${COLS} from titles
     where ${seedGenre} = any(genres)
       and search_text is not null
+      and nsfw = false
       and id not in (
         select e.title_id from watchlist_entries e
         join watchlists w on e.watchlist_id = w.id
@@ -270,10 +262,23 @@ export async function getRecommendations(
 
 /** A single catalog title by id — for the standalone /anime/[id] page. */
 export async function getTitle(id: string): Promise<SearchResult | null> {
+  // instant from the in-memory index; fall back to the DB for any row that
+  // isn't indexed (e.g. missing search_text, or index not yet warmed).
+  const fromIndex = await indexGetTitle(id);
+  if (fromIndex) return fromIndex;
   const result = await db.execute(sql`
     select ${COLS}
     from titles where id = ${id} limit 1
   `);
   const rows = result as unknown as Row[];
   return rows[0] ? toResult(rows[0]) : null;
+}
+
+/** Wide AniList banner art for one title (for the community/detail hero).
+ *  Returns null when none is available or the row isn't enriched yet, so
+ *  callers fall back to the cover. */
+export async function getTitleBanner(id: string): Promise<string | null> {
+  const r = await db.execute(sql`select banner from titles where id = ${id} limit 1`);
+  const rows = r as unknown as { banner: string | null }[];
+  return rows[0]?.banner || null;
 }

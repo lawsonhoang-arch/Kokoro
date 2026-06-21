@@ -529,7 +529,15 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .k-entry.colored .k-entry__stripe { width: 5px; }
 .k-entry.colored { padding-left: 21px; }
 
-.k-entry__glyph { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; }
+.k-entry__glyph { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: auto; min-width: 24px; height: 24px; }
+
+/* compact rating marks (symbols / axes) shown where a glyph would be */
+.k-mark { display: inline-flex; align-items: center; justify-content: center; color: currentColor; line-height: 1; }
+.k-mark--grade { font-family: var(--font-title); font-weight: 800; font-size: 14px; }
+.k-mark--axes { font-family: var(--font-mono); font-weight: 600; font-size: 12px; }
+.k-mark--stars { font-size: 13px; gap: 1px; }
+.k-mark--stars .k-mark__n { font-family: var(--font-mono); font-weight: 700; font-size: 11px; font-style: normal; }
+.k-mark--emoji { font-size: 15px; }
 .k-entry__main { flex: 1; min-width: 0; }
 .k-entry__title { font-family: var(--font-title); font-weight: 700; font-size: 15.5px; line-height: 1.25; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .k-entry__sub { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; }
@@ -946,8 +954,45 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .k-dim__pip { width: 15px; height: 15px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); cursor: pointer; transition: background .12s, transform .1s; }
 .k-dim__pip.on { background: var(--accent); border-color: var(--accent); }
 .k-dim__pip:hover { transform: scale(1.12); }
-.k-dim__addaxis { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); padding: 5px 9px; align-self: flex-start; margin-top: 6px; }
+.k-dim__addaxis { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); padding: 5px 9px; align-self: flex-start; margin-top: 6px; cursor: pointer; }
 .k-dim__addaxis:hover { color: var(--accent); border-color: var(--accent); }
+.k-dim--custom .k-dim__name { color: var(--ink); }
+.k-dim__del { margin-left: 2px; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ink-faint); flex: 0 0 auto; cursor: pointer; transition: color .12s, background .12s; }
+.k-dim__del:hover { color: var(--feel-dropped); background: var(--surface-2); }
+
+/* inline "add a personal axis" form */
+.k-axisadd { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.k-axisadd__input { flex: 1 1 150px; min-width: 0; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12.5px; }
+.k-axisadd__input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.k-axisadd__ok { padding: 6px 13px; border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--accent-ink); background: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 80%, var(--accent-ink)); cursor: pointer; }
+.k-axisadd__ok:hover { background: var(--accent-hi); }
+.k-axisadd__cancel { padding: 6px 11px; font-size: 12px; color: var(--ink-faint); cursor: pointer; }
+.k-axisadd__cancel:hover { color: var(--ink-soft); }
+
+/* rating-method selector + symbol-style selector (shared pill toggle) */
+.k-ratemode, .k-symstyle { display: inline-flex; gap: 3px; padding: 3px; margin-bottom: 16px; border-radius: 100px; background: var(--surface-2); border: 1px solid var(--line); align-self: flex-start; }
+.k-ratemode__opt, .k-symstyle__opt { padding: 6px 14px; border-radius: 100px; font-size: 12.5px; font-weight: 600; color: var(--ink-faint); cursor: pointer; transition: color .14s, background .14s, box-shadow .14s; }
+.k-symstyle__opt { padding: 5px 12px; font-size: 11.5px; }
+.k-ratemode__opt:hover, .k-symstyle__opt:hover { color: var(--ink-soft); }
+.k-ratemode__opt.on, .k-symstyle__opt.on { color: var(--ink); background: var(--surface); box-shadow: var(--shadow-1); }
+
+/* symbols rating row (stars / grades / mood) */
+.k-symrate { display: flex; gap: 8px; margin-bottom: 4px; }
+.k-sym {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; height: 44px; padding: 0 6px; cursor: pointer;
+  border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--ink-faint);
+  font-size: 20px; line-height: 1; transition: color .12s, background .12s, border-color .12s, transform .1s;
+}
+.k-sym:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+.k-sym.on { color: var(--ink); border-color: var(--accent); }
+.k-symrate--stars .k-sym { font-size: 23px; }
+.k-symrate--stars .k-sym.on { color: var(--accent); border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface-2)); }
+.k-symrate--grades .k-sym { font-family: var(--font-title); font-weight: 800; font-size: 17px; }
+.k-symrate--grades .k-sym.on { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.k-symrate--emoji .k-sym { filter: grayscale(0.5) opacity(0.7); }
+.k-symrate--emoji .k-sym.on { filter: none; background: color-mix(in oklab, var(--accent) 14%, var(--surface-2)); border-color: var(--accent); }
 
 /* written take */
 .k-take {
@@ -961,6 +1006,15 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .k-take::placeholder { color: var(--ink-faint); }
 .k-take-foot { display: flex; align-items: center; gap: 9px; margin-top: 9px; font-size: 11px; color: var(--ink-faint); }
 .k-privacy { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 100px; }
+.k-take-new {
+  display: inline-flex; align-items: center; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10.5px; padding: 4px 11px; border-radius: 100px;
+  color: var(--accent); background: color-mix(in oklab, var(--accent) 10%, var(--surface-2));
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--line));
+  transition: background .14s, border-color .14s;
+}
+.k-take-new:hover { background: color-mix(in oklab, var(--accent) 18%, var(--surface-2)); border-color: var(--accent); }
+.k-take-meta { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
 
 /* empty detail (legacy fallback) */
 .k-detail__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--ink-faint); text-align: center; padding: 40px; line-height: 1.5; }
@@ -1045,12 +1099,47 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   background: var(--ink); color: var(--surface);
   font-family: var(--font-ui); font-weight: 600; font-size: 13px;
   white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.28);
-  transform: translate(-9999px, -9999px);
-  transition: background .15s, color .15s;
+  box-shadow: 0 12px 34px rgba(0,0,0,0.34);
+  transition: background .15s, color .15s, scale .15s;
+  /* clean lift-in when the drag starts — `scale` composes with the inline
+     translate() that tracks the cursor, so it never fights the position */
+  animation: k-ghost-in 0.16s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transform-origin: 0 0;
 }
-.k-entrydrag-ghost.on { background: var(--accent); color: var(--accent-ink); }
+@keyframes k-ghost-in {
+  from { opacity: 0; scale: 0.7; }
+  to { opacity: 1; scale: 1; }
+}
+.k-entrydrag-ghost.on {
+  background: var(--accent); color: var(--accent-ink);
+  scale: 1.06;
+}
 body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; user-select: none !important; }
+/* the card being dragged fades back so the floating pill reads as "in hand" */
+.k-dragsrc { opacity: 0.4; transition: opacity 0.14s ease; }
+
+/* manual-reorder insertion marker: a short glowing bar on the edge the dragged
+   title will drop next to. grid cards (.k-card) get a vertical bar (before =
+   left, after = right); rows/hybrids get a horizontal bar (before = top, after =
+   bottom). drawn as a pseudo-element so it reads as a caret, not a card border. */
+.k-reorder-before, .k-reorder-after { position: relative; }
+/* uses ::before (the card's ::after is already a hover overlay) */
+.k-reorder-before::before, .k-reorder-after::before {
+  content: "";
+  position: absolute;
+  background: var(--accent);
+  border-radius: 99px;
+  box-shadow: 0 0 9px 1px var(--accent);
+  opacity: 1;
+  z-index: 6;
+  pointer-events: none;
+  animation: k-reorder-pop 0.12s ease-out;
+}
+.k-card.k-reorder-before::before { left: 3px; right: auto; top: 14%; bottom: 14%; width: 4px; }
+.k-card.k-reorder-after::before  { right: 3px; left: auto; top: 14%; bottom: 14%; width: 4px; }
+.k-hybrid.k-reorder-before::before, .k-entry.k-reorder-before::before { top: 2px; bottom: auto; left: 12%; right: 12%; height: 3px; }
+.k-hybrid.k-reorder-after::before,  .k-entry.k-reorder-after::before  { bottom: 2px; top: auto; left: 12%; right: 12%; height: 3px; }
+@keyframes k-reorder-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
 
 /* tab in the rail being dragged onto */
 .k-tab--pinned.drop-armed {
@@ -1073,6 +1162,98 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 .k-addmenu__empty { font-size: 11.5px; color: var(--ink-faint); padding: 3px 9px 7px; }
 
 /* detail-panel "remove from watchlist" (with inline confirm) */
+/* episode grid + per-episode notes */
+.k-eps { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+.k-eps__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.k-eps__lead { display: flex; align-items: baseline; gap: 9px; }
+.k-eps__tally { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.k-eps__bulk { display: inline-flex; gap: 6px; }
+.k-eps__bulk button {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint);
+  padding: 5px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer;
+  transition: color .12s, border-color .12s;
+}
+.k-eps__bulk button:hover:not(:disabled) { color: var(--ink); border-color: var(--line-strong); }
+.k-eps__bulk button:disabled { opacity: 0.4; cursor: default; }
+.k-eps__meter { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-top: 10px; }
+.k-eps__meterfill { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.k-eps__grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 8px; margin-top: 14px; max-height: 240px; overflow-y: auto; scrollbar-width: thin;
+  padding: 5px 4px 2px 0;
+}
+/* a cell = the watched toggle (fills the cell) + a small corner notes button */
+.k-eps__cell { position: relative; aspect-ratio: 1; min-height: 40px; }
+.k-eps__watch {
+  width: 100%; height: 100%; display: grid; place-items: center; cursor: pointer;
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--ink-soft);
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  transition: border-color .12s, background .12s, color .12s, transform .1s;
+}
+.k-eps__watch:hover { border-color: var(--line-strong); color: var(--ink); transform: translateY(-1px); }
+/* watched episode — solid accent fill */
+.k-eps__cell.watched .k-eps__watch {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+  box-shadow: 0 2px 10px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+/* selected for notes — accent ring */
+.k-eps__cell.on .k-eps__watch { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+/* has notes but not watched — subtle accent border */
+.k-eps__cell.has:not(.watched) .k-eps__watch { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); color: var(--ink); }
+.k-eps__note {
+  position: absolute; top: -5px; right: -5px; z-index: 2; min-width: 16px; height: 16px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 100px; cursor: pointer;
+  font-size: 9.5px; font-weight: 700; line-height: 1;
+  color: var(--ink-faint); background: var(--surface-3); border: 1px solid var(--line);
+  transition: color .12s, background .12s, border-color .12s, opacity .12s;
+}
+.k-eps__note:hover { color: var(--accent); border-color: var(--accent); }
+/* the "add a note" icon is faint until the cell is hovered */
+.k-eps__cell:not(.has) .k-eps__note { opacity: 0; }
+.k-eps__cell:hover .k-eps__note, .k-eps__cell.on .k-eps__note { opacity: 1; }
+.k-eps__cell.has .k-eps__note { color: var(--accent-ink); background: color-mix(in oklab, var(--accent) 88%, black); border-color: var(--surface); }
+
+/* selected-episode panel — makes the current episode unmistakable */
+.k-eps__panel {
+  margin-top: 14px; padding: 16px; border-radius: var(--radius);
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface-2));
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--line));
+}
+.k-eps__head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.k-eps__badge {
+  font-family: var(--font-title); font-weight: 800; font-size: 17px; letter-spacing: -0.01em;
+  color: var(--accent-ink); background: var(--accent);
+  padding: 4px 12px; border-radius: 100px;
+}
+.k-eps__of { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.k-eps__notes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.k-eps__empty { color: var(--ink-faint); font-size: 13px; margin: 2px 0 4px; }
+.k-eps__markbtn {
+  margin-left: auto; font-family: var(--font-mono); font-size: 11px; padding: 5px 13px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.k-eps__markbtn:hover { border-color: var(--accent); color: var(--accent); }
+.k-eps__markbtn.on { background: color-mix(in oklab, var(--accent) 14%, var(--surface)); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.k-eps__note-row {
+  display: flex; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--surface); border: 1px solid var(--line);
+}
+.k-eps__note-date { flex: 0 0 auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); padding-top: 2px; }
+.k-eps__note-body {
+  font-family: "Spectral", Georgia, serif; font-size: 14px; line-height: 1.55; color: var(--ink); min-width: 0;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.k-eps__compose {
+  width: 100%; resize: vertical; min-height: 64px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+  padding: 11px 13px; font-family: "Spectral", Georgia, serif; font-size: 14.5px; line-height: 1.55; color: var(--ink);
+}
+.k-eps__compose:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.k-eps__actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.k-eps__hint { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+
 .k-detail__danger { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
 .k-detail__danger-q { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
 .k-detail__danger-btn {
@@ -1128,10 +1309,16 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
   border-bottom: none;
 }
 
-/* dark scrim fades in on hover so the overlay copy stays readable on any art */
+/* dark scrim fades in on hover so the overlay copy stays readable on any art.
+   Carries a gentle wash all the way to the top too, so tags/elements that creep
+   up the card stay legible over busy cover art. */
 .k-card::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 28%, rgba(0,0,0,0) 60%);
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.90) 0%,
+    rgba(0,0,0,0.64) 30%,
+    rgba(0,0,0,0.34) 60%,
+    rgba(0,0,0,0.18) 100%);
   opacity: 0; transition: opacity .22s cubic-bezier(.2,.7,.3,1);
   z-index: 1;
 }
@@ -1139,7 +1326,8 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 
 /* feel orb stays visible always */
 .k-card__feel {
-  position: absolute; top: 11px; right: 11px; width: 30px; height: 30px; border-radius: 50%;
+  position: absolute; top: 11px; right: 11px; width: auto; min-width: 30px; height: 30px;
+  padding: 0 7px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; z-index: 4;
   background: rgba(14,10,7,0.6); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.16);
 }
@@ -1260,7 +1448,8 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
   background: linear-gradient(90deg, rgba(255,255,255,0.18), transparent);
 }
 .k-hybrid__feel {
-  position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%;
+  position: absolute; top: 8px; right: 8px; width: auto; min-width: 26px; height: 26px;
+  padding: 0 6px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
   background: rgba(14,10,7,0.6); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.16);
 }

@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm";
 const PAGES = Math.max(1, parseInt(process.argv[2] || "50", 10) || 50);
 const JIKAN = "https://api.jikan.moe/v4/top/anime";
 
-type JikanAnime = { mal_id: number; score?: number | null; members?: number | null };
+type JikanAnime = { mal_id: number; score?: number | null; members?: number | null; title_english?: string | null; rating?: string | null };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -37,16 +37,18 @@ async function fetchPage(page: number, attempt = 0): Promise<JikanAnime[]> {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) { console.error("DATABASE_URL not set."); process.exit(1); }
   const client = postgres(url, { prepare: false });
 
   await client`alter table titles add column if not exists mal_id integer`;
   await client`alter table titles add column if not exists popularity integer`;
+  await client`alter table titles add column if not exists english_title text`;
+  await client`alter table titles add column if not exists nsfw boolean not null default false`;
   await client`create index if not exists titles_mal_idx on titles(mal_id)`;
 
   console.log(`Fetching ${PAGES} pages of top anime from Jikan…`);
-  const rows: { malId: number; score: number | null; members: number | null }[] = [];
+  const rows: { malId: number; score: number | null; members: number | null; english: string | null; nsfw: boolean | null }[] = [];
   for (let page = 1; page <= PAGES; page++) {
     const data = await fetchPage(page);
     if (data.length === 0) { console.log(`  page ${page}: empty/failed — stopping.`); break; }
@@ -55,6 +57,8 @@ async function main() {
         malId: a.mal_id,
         score: a.score ? Math.round(a.score * 100) : null,
         members: a.members ?? null,
+        english: a.title_english?.trim() || null,
+        nsfw: a.rating?.startsWith("Rx") ? true : null, // only set, never unset
       });
     }
     if (page % 5 === 0) console.log(`  …${rows.length} ranked (page ${page}/${PAGES})`);
@@ -65,7 +69,9 @@ async function main() {
   let matched = 0;
   for (const r of rows) {
     const res = await client`
-      update titles set score = ${r.score}, popularity = ${r.members}
+      update titles set score = ${r.score}, popularity = ${r.members},
+        english_title = coalesce(${r.english}, english_title),
+        nsfw = coalesce(${r.nsfw}, nsfw)
       where mal_id = ${r.malId} and kind = 'anime'
     `;
     matched += res.count;

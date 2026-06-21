@@ -36,11 +36,19 @@ type RawAnime = {
   title: string;
   type?: string;
   episodes?: number;
-  animeSeason?: { year?: number | null };
+  status?: string; // FINISHED | ONGOING | UPCOMING | UNKNOWN
+  animeSeason?: { season?: string | null; year?: number | null }; // SPRING|SUMMER|FALL|WINTER|UNDEFINED
   picture?: string;
   synonyms?: string[];
   tags?: string[];
 };
+
+const SEASON: Record<string, string> = { SPRING: "spring", SUMMER: "summer", FALL: "fall", WINTER: "winter" };
+const STATUS: Record<string, string> = { FINISHED: "finished", ONGOING: "ongoing", UPCOMING: "upcoming" };
+// NOTE: the offline-db crowd tags are NOT reliable for adult detection (mainstream
+// titles carry spurious "pornography" tags), so `nsfw` is set ONLY from
+// authoritative sources — AniList isAdult (backfill) + MAL Rx rating (rankings/
+// season) + Jikan explicit_genres (manga). This importer never touches it.
 
 function hash(s: string): string {
   let h = 0;
@@ -80,7 +88,7 @@ function mapGenres(tags: string[] = []): string[] {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) { console.error("DATABASE_URL not set."); process.exit(1); }
 
   console.log("Downloading CC0 anime-offline-database…");
@@ -98,6 +106,8 @@ async function main() {
       kind: "anime",
       title: e.title,
       year: e.animeSeason?.year ?? 0,
+      season: e.animeSeason?.season ? (SEASON[e.animeSeason.season] ?? null) : null,
+      status: e.status ? (STATUS[e.status] ?? null) : null,
       episodes: e.episodes ?? 0,
       seasons: 1,
       format: e.type && e.type !== "UNKNOWN" ? (FORMAT[e.type] ?? e.type) : null,
@@ -121,6 +131,9 @@ async function main() {
   await db.execute(sql`alter table titles add column if not exists kind text not null default 'anime'`);
   await db.execute(sql`alter table titles add column if not exists mal_id integer`);
   await db.execute(sql`alter table titles add column if not exists popularity integer`);
+  await db.execute(sql`alter table titles add column if not exists season text`);
+  await db.execute(sql`alter table titles add column if not exists status text`);
+  await db.execute(sql`alter table titles add column if not exists nsfw boolean not null default false`);
 
   const BATCH = 1000;
   let done = 0;
@@ -134,6 +147,8 @@ async function main() {
         set: {
           title: sql`excluded.title`,
           year: sql`excluded.year`,
+          season: sql`excluded.season`,
+          status: sql`excluded.status`,
           episodes: sql`excluded.episodes`,
           format: sql`excluded.format`,
           genres: sql`excluded.genres`,
