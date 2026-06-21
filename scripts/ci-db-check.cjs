@@ -18,6 +18,15 @@ try {
 }
 
 console.log(`DB host: ${u.hostname}:${u.port || "(default)"}  db: ${u.pathname}`);
+// Surface the parsed username in the annotations summary (it's not a secret —
+// it appears in every connection string). For Supabase pooler hosts it MUST be
+// "postgres.<project-ref>"; a bare "postgres" is the wrong (direct) string.
+const usernameOk = u.username.includes(".") || !/pooler\.supabase\.com$/.test(u.hostname);
+console.log(`::warning::Preflight parsed user="${u.username}" (password length ${u.password.length}). Pooler hosts need user "postgres.<ref>".`);
+if (!usernameOk) {
+  console.log(`::error::Username is bare "${u.username}" but a pooler host needs "postgres.<project-ref>". You pasted the Direct-connection string; use the Session pooler string from .env.local's DIRECT_URL.`);
+  process.exit(1);
+}
 if (/^db\..*\.supabase\.co$/.test(u.hostname)) {
   console.log("::error::DATABASE_URL uses the IPv6-only Supabase direct host, unreachable from GitHub's IPv4 runners. Use the Session pooler string (…pooler.supabase.com:5432).");
   process.exit(1);
