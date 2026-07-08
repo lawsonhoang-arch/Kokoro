@@ -2,9 +2,18 @@ import "server-only";
 import { asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { newsStories } from "@/db/schema";
+import { newsStories, newsOverrides, newsWave } from "@/db/schema";
 
 export type NewsStory = typeof newsStories.$inferSelect;
+
+// News-tab placement of a story. "auto" = fall back to position-based tiering
+// (the historical behaviour); "card"/"list" are explicit moderator overrides.
+export type NewsLayout = "card" | "list";
+export type FeedLayout = NewsLayout | "auto";
+
+function asLayout(v: string | null | undefined): FeedLayout {
+  return v === "card" || v === "list" ? v : "auto";
+}
 
 // A normalised news item — from either the real wire (RSS) or the DB.
 export type NewsFeedItem = {
@@ -17,6 +26,8 @@ export type NewsFeedItem = {
   cover: string | null;
   hue: number;
   publishedAt: Date;
+  onHome: boolean; // appears in the Home news carousel
+  layout: FeedLayout; // news-tab placement (card | list | auto)
 };
 
 // Real anime news, pulled from several public RSS feeds for source variety.
@@ -75,6 +86,8 @@ function parseFeed(xml: string, source: string): NewsFeedItem[] {
       cover: null,
       hue: (i % 8) + 1,
       publishedAt: isNaN(when.getTime()) ? new Date() : when,
+      onHome: true, // real defaults; moderator overrides applied in getNewsFeed
+      layout: "auto",
     });
   }
   return items;
@@ -85,11 +98,13 @@ async function fetchFeed(source: string, url: string): Promise<NewsFeedItem[]> {
     const res = await fetch(url, {
       headers: { "user-agent": "Mozilla/5.0 (compatible; KokoroNews/1.0)" },
       next: { revalidate: 1800 },
+      // a slow/hanging source must never stall the page waiting on it
+      signal: AbortSignal.timeout(3500),
     });
     if (!res.ok) return [];
     return parseFeed(await res.text(), source);
   } catch {
-    return []; // one bad feed shouldn't sink the rest
+    return []; // one bad (or slow) feed shouldn't sink the rest
   }
 }
 
@@ -112,17 +127,238 @@ async function getRealNews(): Promise<NewsFeedItem[]> {
   return out;
 }
 
-/** The news feed: any mod-curated DB stories merged with the real wire, newest
- *  first. Real articles carry working `href`s to the source. */
+/** The news feed: any mod-curated DB stories merged with the released wave of
+ *  pulled stories, newest first. Real articles carry working `href`s. */
 export async function getNewsFeed(): Promise<NewsFeedItem[]> {
-  const [dbRows, real] = await Promise.all([getPublishedNews(), getRealNews()]);
+  const [dbRows, wave, overrides] = await Promise.all([getPublishedNews(), resolveWave(), getNewsOverrides()]);
   const dbItems: NewsFeedItem[] = dbRows.map((r) => ({
     id: r.id, category: r.category, title: r.title, excerpt: r.excerpt,
     source: r.source, href: r.href, cover: r.cover, hue: r.hue, publishedAt: r.publishedAt,
+    onHome: r.onHome, layout: asLayout(r.layout),
   }));
-  return [...dbItems, ...real].sort(
+  // pulled (RSS) stories: only the currently-released wave reaches readers, minus
+  // any story a moderator dismissed. Each carries the cover / home / layout the
+  // moderator set for it.
+  const realItems: NewsFeedItem[] = wave.live
+    .filter((w) => !overrides.get(w.id)?.hidden)
+    .map((w) => {
+      const o = overrides.get(w.id);
+      return {
+        id: w.id, category: w.category, title: w.title, excerpt: w.excerpt,
+        source: w.source, href: w.href, hue: w.hue, publishedAt: w.publishedAt,
+        cover: o?.cover ?? w.cover,
+        onHome: o?.onHome ?? true,
+        layout: asLayout(o?.layout),
+      };
+    });
+  return [...dbItems, ...realItems].sort(
     (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
   );
+}
+
+/** The stories that should appear in the Home news carousel — the merged feed,
+ *  minus anything a moderator pulled from Home (onHome = false). Newest first. */
+export async function getHomeNews(limit = 12): Promise<NewsFeedItem[]> {
+  const feed = await getNewsFeed();
+  return feed.filter((s) => s.onHome).slice(0, limit);
+}
+
+// ============================================================
+// NEWS WAVES — pulled stories arrive as a "wave" a moderator reviews and
+// publishes to replace the live set wholesale. An unreleased wave auto-releases
+// AUTO_RELEASE_MS after it first appears, so news never goes stale waiting.
+// ============================================================
+const AUTO_RELEASE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+
+export type WaveItem = {
+  id: string;
+  category: string;
+  title: string;
+  excerpt: string;
+  source: string;
+  href: string | null;
+  cover: string | null;
+  hue: number;
+  publishedAt: Date;
+};
+type StoredWaveItem = Omit<WaveItem, "publishedAt"> & { publishedAt: string };
+
+const toWaveItem = (n: NewsFeedItem): WaveItem => ({
+  id: n.id, category: n.category, title: n.title, excerpt: n.excerpt,
+  source: n.source, href: n.href, cover: n.cover, hue: n.hue, publishedAt: n.publishedAt,
+});
+const toStored = (w: WaveItem): StoredWaveItem => ({ ...w, publishedAt: w.publishedAt.toISOString() });
+const fromStored = (s: StoredWaveItem): WaveItem => ({ ...s, publishedAt: new Date(s.publishedAt) });
+
+async function writeWave(patch: { liveItems?: WaveItem[]; pendingSince?: Date | null }): Promise<void> {
+  const now = new Date();
+  const common: Record<string, unknown> = { updatedAt: now };
+  if (patch.liveItems !== undefined) { common.liveItems = patch.liveItems.map(toStored); common.liveAt = now; }
+  if (patch.pendingSince !== undefined) common.pendingSince = patch.pendingSince;
+  try {
+    await db
+      .insert(newsWave)
+      .values({ id: "singleton", ...(common as object) })
+      .onConflictDoUpdate({ target: newsWave.id, set: common });
+  } catch {
+    /* wave table not set up yet — non-fatal, feed falls back to the raw pull */
+  }
+}
+
+export type WaveState = {
+  live: WaveItem[]; // released stories readers currently see
+  pending: WaveItem[]; // an incoming wave awaiting review (empty if none)
+  autoReleaseAt: Date | null; // when the pending wave auto-releases
+  liveAt: Date; // when the live wave was published
+};
+
+/** Work out what readers should see: the released wave, plus (for the admin) any
+ *  incoming wave under review. Advances the wave lazily — starts the 2-day clock
+ *  when new stories first appear, and auto-releases once it elapses. */
+export async function resolveWave(): Promise<WaveState> {
+  const pullRaw = await getRealNews();
+  const pull = pullRaw.map(toWaveItem);
+
+  let row: typeof newsWave.$inferSelect | null = null;
+  try {
+    [row = null] = await db.select().from(newsWave).where(eq(newsWave.id, "singleton")).limit(1);
+  } catch {
+    // wave table missing → show the raw pull (pre-wave behaviour)
+    return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
+  }
+
+  // first run ever: publish the current pull immediately (nothing to replace)
+  if (!row) {
+    await writeWave({ liveItems: pull, pendingSince: null });
+    return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
+  }
+
+  const liveItems = (row.liveItems as StoredWaveItem[]).map(fromStored);
+  const liveIds = new Set(liveItems.map((i) => i.id));
+  const hasNew = pull.some((p) => !liveIds.has(p.id));
+
+  if (!hasNew) {
+    // pull matches what's live — no wave pending
+    if (row.pendingSince) await writeWave({ pendingSince: null });
+    return { live: liveItems, pending: [], autoReleaseAt: null, liveAt: row.liveAt };
+  }
+
+  // an incoming wave exists — start / read its 2-day clock
+  let since = row.pendingSince ?? null;
+  if (!since) { since = new Date(); await writeWave({ pendingSince: since }); }
+  const autoReleaseAt = new Date(since.getTime() + AUTO_RELEASE_MS);
+
+  if (Date.now() >= autoReleaseAt.getTime()) {
+    // clock elapsed → auto-release the incoming wave
+    await writeWave({ liveItems: pull, pendingSince: null });
+    return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
+  }
+
+  // within the window — readers keep the old wave; admin reviews the incoming one
+  return { live: liveItems, pending: pull, autoReleaseAt, liveAt: row.liveAt };
+}
+
+/** Publish the incoming wave now — the current pull replaces the live set. */
+export async function publishWave(): Promise<void> {
+  const pull = (await getRealNews()).map(toWaveItem);
+  await writeWave({ liveItems: pull, pendingSince: null });
+}
+
+// ============================================================
+// LIVE-FEED OVERRIDES — moderators can hide a pulled RSS story or give it a
+// cover, keyed by the article's stable id.
+// ============================================================
+export type NewsOverride = {
+  hidden: boolean; // dismissed from the review queue
+  approved: boolean; // verified & released to readers
+  cover: string | null;
+  onHome: boolean | null; // null = auto (shown on Home); false = pulled
+  layout: string | null; // null = auto tiering; card | list
+};
+
+/** All overrides as a map by news id. Resilient to an un-migrated DB: if the
+ *  newer columns aren't there yet it falls back to the original columns (and
+ *  treats non-hidden stories as approved, preserving pre-review behaviour) so
+ *  the public feed never blanks out. Empty if the table itself is absent. */
+export async function getNewsOverrides(): Promise<Map<string, NewsOverride>> {
+  try {
+    const rows = await db.select().from(newsOverrides);
+    return new Map(rows.map((r) => [r.newsId, { hidden: r.hidden, approved: r.approved, cover: r.cover, onHome: r.onHome, layout: r.layout }]));
+  } catch {
+    try {
+      const res = await db.execute(sql`select news_id, hidden, cover from news_overrides`);
+      const rows = res as unknown as { news_id: string; hidden: boolean; cover: string | null }[];
+      return new Map(rows.map((r) => [r.news_id, { hidden: r.hidden, approved: !r.hidden, cover: r.cover, onHome: null, layout: null }]));
+    } catch {
+      return new Map();
+    }
+  }
+}
+
+/** Approve/dismiss, set the cover, or set the Home/news-tab placement of a live
+ *  news item (upsert). */
+export async function upsertNewsOverride(
+  newsId: string,
+  patch: { hidden?: boolean; approved?: boolean; cover?: string | null; onHome?: boolean | null; layout?: string | null },
+): Promise<void> {
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.hidden !== undefined) set.hidden = patch.hidden;
+  if (patch.approved !== undefined) set.approved = patch.approved;
+  if (patch.cover !== undefined) set.cover = patch.cover;
+  if (patch.onHome !== undefined) set.onHome = patch.onHome;
+  if (patch.layout !== undefined) set.layout = patch.layout;
+  await db
+    .insert(newsOverrides)
+    .values({
+      newsId,
+      hidden: patch.hidden ?? false,
+      approved: patch.approved ?? false,
+      cover: patch.cover ?? null,
+      onHome: patch.onHome ?? null,
+      layout: patch.layout ?? null,
+    })
+    .onConflictDoUpdate({ target: newsOverrides.newsId, set });
+}
+
+export type LiveNewsItem = {
+  id: string;
+  title: string;
+  source: string;
+  href: string | null;
+  category: string;
+  publishedAt: Date;
+  hidden: boolean; // dismissed — excluded from the wave
+  cover: string | null;
+  onHome: boolean | null; // null = auto (shown); false = pulled from Home
+  layout: string | null; // null = auto; card | list
+};
+
+export type NewsroomWave = {
+  pending: LiveNewsItem[]; // incoming wave awaiting review (empty if none)
+  live: LiveNewsItem[]; // stories readers currently see
+  autoReleaseAt: Date | null; // when the incoming wave auto-releases
+  liveAt: Date; // when the live wave was published
+};
+
+/** The newsroom's view of the wave: the incoming (pending) stories to review and
+ *  the currently-live ones, each with its moderator override applied. */
+export async function getNewsroomWave(): Promise<NewsroomWave> {
+  const [wave, overrides] = await Promise.all([resolveWave(), getNewsOverrides()]);
+  const enrich = (w: WaveItem): LiveNewsItem => {
+    const o = overrides.get(w.id);
+    return {
+      id: w.id, title: w.title, source: w.source, href: w.href,
+      category: w.category, publishedAt: w.publishedAt,
+      hidden: o?.hidden ?? false, cover: o?.cover ?? w.cover,
+      onHome: o?.onHome ?? null, layout: o?.layout ?? null,
+    };
+  };
+  return {
+    pending: wave.pending.map(enrich),
+    live: wave.live.map(enrich),
+    autoReleaseAt: wave.autoReleaseAt,
+    liveAt: wave.liveAt,
+  };
 }
 
 /** What a viewer is into — the title names + genres they favourite, track, or
@@ -199,26 +435,72 @@ export type NewsInput = {
   cover: string | null;
   hue: number;
   published: boolean;
+  onHome: boolean;
+  layout: NewsLayout;
 };
 
 // Display order: most prominent first (lowest position), newest as the tiebreak.
 const ORDER = [asc(newsStories.position), desc(newsStories.publishedAt)] as const;
 
+/** Fallback read for before `db:setup-news-placement` has added the on_home /
+ *  layout columns — selects the original columns and synthesises the defaults so
+ *  /news and Home keep working regardless of deploy/migration ordering. */
+async function legacyNews(publishedOnly: boolean): Promise<NewsStory[]> {
+  const res = await db.execute(sql`
+    select id, category, title, excerpt, source, href, cover, hue,
+           published_at, position, published, author_id, created_at, updated_at
+    from news_stories
+    ${publishedOnly ? sql`where published = true` : sql``}
+    order by position asc, published_at desc
+  `);
+  const rows = res as unknown as Record<string, unknown>[];
+  return rows.map((r) => ({
+    id: r.id as string,
+    category: r.category as string,
+    title: r.title as string,
+    excerpt: r.excerpt as string,
+    source: r.source as string,
+    href: (r.href as string | null) ?? null,
+    cover: (r.cover as string | null) ?? null,
+    hue: r.hue as number,
+    publishedAt: new Date(r.published_at as string),
+    position: r.position as number,
+    published: r.published as boolean,
+    onHome: true,
+    layout: "card",
+    authorId: (r.author_id as string | null) ?? null,
+    createdAt: new Date(r.created_at as string),
+    updatedAt: new Date(r.updated_at as string),
+  }));
+}
+
 /** Published stories, biggest first. */
 export async function getPublishedNews(): Promise<NewsStory[]> {
-  return db.select().from(newsStories).where(eq(newsStories.published, true)).orderBy(...ORDER);
+  try {
+    return await db.select().from(newsStories).where(eq(newsStories.published, true)).orderBy(...ORDER);
+  } catch {
+    return legacyNews(true); // placement columns not migrated yet
+  }
 }
 
 /** Every story for the editor. */
 export async function getAllNews(): Promise<NewsStory[]> {
-  return db.select().from(newsStories).orderBy(...ORDER);
+  try {
+    return await db.select().from(newsStories).orderBy(...ORDER);
+  } catch {
+    return legacyNews(false);
+  }
 }
 
-export async function createNews(authorId: string, input: NewsInput): Promise<void> {
+export async function createNews(authorId: string, input: NewsInput): Promise<string> {
   const [{ next }] = await db
     .select({ next: sql<number>`coalesce(max(${newsStories.position}), -1) + 1` })
     .from(newsStories);
-  await db.insert(newsStories).values({ ...input, authorId, position: Number(next) });
+  const [row] = await db
+    .insert(newsStories)
+    .values({ ...input, authorId, position: Number(next) })
+    .returning({ id: newsStories.id });
+  return row.id;
 }
 
 export async function updateNews(id: string, input: NewsInput): Promise<void> {
@@ -231,6 +513,17 @@ export async function deleteNews(id: string): Promise<void> {
 
 export async function setNewsPublished(id: string, published: boolean): Promise<void> {
   await db.update(newsStories).set({ published, updatedAt: new Date() }).where(eq(newsStories.id, id));
+}
+
+/** Update a story's placement (Home carousel and/or news-tab card|list). */
+export async function setNewsPlacement(
+  id: string,
+  patch: { onHome?: boolean; layout?: NewsLayout },
+): Promise<void> {
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.onHome !== undefined) set.onHome = patch.onHome;
+  if (patch.layout !== undefined) set.layout = patch.layout;
+  await db.update(newsStories).set(set).where(eq(newsStories.id, id));
 }
 
 /** Swap a story with its neighbour to reorder (top of list = most prominent). */

@@ -70,12 +70,14 @@
 }
 .site-nav__icon:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
 .site-nav__avatar {
+  position: relative; overflow: hidden;
   width: 36px; height: 36px; border-radius: 50%;
   background:
     radial-gradient(circle at 32% 30%, color-mix(in oklab, var(--accent) 80%, var(--surface-3)) 0%, var(--surface-3) 70%);
   border: 1px solid var(--line-strong);
   transition: box-shadow .15s, transform .12s;
 }
+.site-nav__avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .site-nav__avatar:hover { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent); }
 
 /* ---- expanding search: tabs collapse to icons to make room ---- */
@@ -176,6 +178,34 @@
   border-top: 1px solid var(--line);
 }
 .navsrch__all:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+
+/* ---- command-palette rows (Jump to / Pages & actions) ---- */
+.navsrch__sec {
+  padding: 8px 9px 4px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.navsrch__sec:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 9px; }
+.navsrch__cmd {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 8px 8px; border: none; background: none; color: inherit; cursor: pointer;
+  border-radius: var(--radius-sm); transition: background .1s;
+}
+.navsrch__cmd-ico {
+  flex: 0 0 auto; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-soft);
+}
+.navsrch__cmd-txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.navsrch__cmd-label { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); }
+.navsrch__cmd-hint { font-size: 11px; color: var(--ink-faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.navsrch__kbd {
+  flex: 0 0 auto; font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; background: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+/* keyboard/hover highlight shared by command + title rows */
+.navsrch__cmd.is-active { background: color-mix(in oklab, var(--accent) 12%, var(--surface)); }
+.navsrch__cmd.is-active .navsrch__cmd-ico { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.navsrch__item.is-active { background: var(--surface-2); }
 
 /* ---- responsive: tighten the nav for tablets, then phones ---- */
 @media (max-width: 900px) {
@@ -360,11 +390,14 @@
 
 /* small avatar bubble */
 .avatar {
+  position: relative; overflow: hidden;
   display: inline-block; width: 36px; height: 36px; border-radius: 50%;
   background:
     radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--avatar-hue, var(--accent)) 70%, var(--surface-3)) 0%, var(--surface-3) 75%);
   border: 1px solid var(--line);
 }
+/* character-art avatar fills the circle */
+.avatar__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .avatar--lg { width: 96px; height: 96px; }
 .avatar--xl { width: 132px; height: 132px; border-width: 2px; }
 .avatar--h1 { --avatar-hue: oklch(0.72 0.13 30); }
@@ -409,3 +442,133 @@
 }
 .stars__count { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin-left: 6px; }
 
+
+/* ============================================================
+   LOADING SKELETONS (route loading.tsx fallbacks)
+   Instant feedback on tab switch while the dynamic page renders.
+   ============================================================ */
+.sk {
+  position: relative; overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+.sk::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ink) 9%, transparent), transparent);
+  animation: sk-shimmer 1.25s ease-in-out infinite;
+}
+@keyframes sk-shimmer { 100% { transform: translateX(100%); } }
+
+/* head placeholders */
+.sk-eyebrow { width: 130px; height: 12px; border-radius: 6px; margin-bottom: 14px; }
+.sk-title   { width: min(440px, 72%); height: 34px; border-radius: 9px; margin-bottom: 15px; }
+.sk-lede    { width: min(580px, 92%); height: 15px; border-radius: 6px; }
+
+/* home: shelves of covers */
+.sk-shelf { margin-top: 40px; }
+.sk-shelf__label { width: 200px; height: 18px; border-radius: 6px; margin-bottom: 18px; }
+.sk-row { display: flex; gap: 16px; overflow: hidden; }
+.sk-row .sk-poster { flex: 0 0 calc((100% - 6 * 16px) / 7); }
+.sk-poster { aspect-ratio: 2 / 3; border-radius: 12px; }
+
+/* watchlist / manga / search: grid of covers */
+.sk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; margin-top: 30px; }
+
+/* community feed / journal: two-column */
+.sk-two { display: grid; grid-template-columns: 1fr 320px; gap: 24px; margin-top: 30px; align-items: start; }
+.sk-two--rail { grid-template-columns: 300px 1fr; }
+.sk-post { height: 118px; border-radius: 14px; margin-bottom: 14px; }
+.sk-rail { height: 380px; border-radius: 14px; }
+.sk-chip { height: 56px; border-radius: 12px; margin-bottom: 10px; }
+.sk-note { height: 96px; border-radius: 12px; margin-bottom: 14px; }
+
+/* news: stacked briefing */
+.sk-brief { margin-top: 30px; display: flex; flex-direction: column; gap: 16px; }
+.sk-story { height: 84px; border-radius: 12px; }
+
+@media (max-width: 900px) {
+  .sk-two, .sk-two--rail { grid-template-columns: 1fr; }
+  .sk-rail { height: 220px; }
+  .sk-row .sk-poster:nth-child(n+5) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk::after { animation: none; }
+}
+
+/* ============================================================
+   STATUS TAG — anime/manga lifecycle (Airing / Publishing / Complete / Upcoming)
+   ============================================================ */
+.status-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  padding: 3px 8px; border-radius: 100px; border: 1px solid transparent; line-height: 1;
+}
+.status-tag--live { color: oklch(0.82 0.14 152); background: color-mix(in oklab, oklch(0.72 0.14 152) 15%, transparent); border-color: color-mix(in oklab, oklch(0.72 0.14 152) 34%, transparent); }
+.status-tag--soon { color: var(--accent-hi); background: color-mix(in oklab, var(--accent) 14%, transparent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); }
+.status-tag--done { color: var(--ink-soft); background: color-mix(in oklab, var(--ink) 7%, transparent); border-color: color-mix(in oklab, var(--ink) 12%, transparent); }
+.status-tag__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; position: relative; flex: none; }
+.status-tag__dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 0 currentColor; animation: status-pulse 2.4s ease-out infinite; }
+@keyframes status-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+
+/* overlay-on-cover variant (cards): dark scrim keeps the tone-coloured text legible over any art */
+.status-tag--overlay { position: absolute; top: 7px; right: 7px; z-index: 3; font-size: 9px; padding: 3px 7px;
+  background: rgba(9,7,5,0.66); border-color: rgba(255,255,255,0.14); backdrop-filter: blur(6px); box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+.status-tag--overlay.status-tag--done { color: rgba(255,255,255,0.74); }
+
+@media (prefers-reduced-motion: reduce) { .status-tag__dot::after { animation: none; } }
+
+/* ============================================================
+   SOCIAL — follow button + user cards (followers/following lists)
+   ============================================================ */
+.followbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 7px 18px; border-radius: 100px; min-width: 96px;
+  font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+  color: var(--accent-ink); background: var(--accent); border: 1px solid transparent;
+  cursor: pointer; transition: background .14s, color .14s, border-color .14s;
+}
+.followbtn:hover { background: color-mix(in oklab, var(--accent) 88%, white); }
+.followbtn:disabled { opacity: 0.7; cursor: default; }
+.followbtn--on { color: var(--ink-soft); background: transparent; border-color: var(--line-strong); }
+.followbtn--on:hover {
+  color: var(--feel-dropped); background: color-mix(in oklab, var(--feel-dropped) 10%, transparent);
+  border-color: color-mix(in oklab, var(--feel-dropped) 50%, var(--line));
+}
+
+.usercard-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.usercard-empty { color: var(--ink-faint); font-size: 14px; }
+.usercard { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: color-mix(in oklab, var(--surface) 90%, transparent); transition: border-color .14s; }
+.usercard:hover { border-color: var(--line-strong); }
+.usercard__main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-decoration: none; }
+.usercard__txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.usercard__name { font-family: var(--font-title); font-weight: 700; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usercard__main:hover .usercard__name { color: var(--accent); }
+.usercard__handle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.usercard__bio { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+/* follow button for external entities (studios / people / characters) */
+.entfollow {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--font-ui); font-weight: 700; white-space: nowrap;
+  border-radius: 100px; border: 1px solid var(--line);
+  color: var(--accent-ink); background: var(--accent);
+  transition: filter .14s, background .14s, color .14s, border-color .14s;
+}
+.entfollow--sm { padding: 4px 10px; font-size: 11.5px; }
+.entfollow--lg { padding: 8px 16px; font-size: 13.5px; }
+.entfollow:hover { filter: brightness(1.05); }
+.entfollow:disabled { opacity: 0.7; cursor: default; }
+.entfollow--on {
+  background: transparent; color: var(--ink-soft); border-color: var(--line-strong);
+}
+.entfollow--on:hover { color: var(--feel-dropped); border-color: color-mix(in oklab, var(--feel-dropped) 55%, var(--line)); background: color-mix(in oklab, var(--feel-dropped) 10%, transparent); }
+
+.usercard__match {
+  flex: 0 0 auto; font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  padding: 4px 9px; border-radius: 100px; border: 1px solid var(--line); white-space: nowrap;
+}
+.usercard__match i { font-style: normal; opacity: 0.65; font-size: 10px; }
+.usercard__match--hi { color: oklch(0.74 0.14 150); border-color: color-mix(in oklab, oklch(0.74 0.14 150) 40%, var(--line)); background: color-mix(in oklab, oklch(0.74 0.14 150) 12%, transparent); }
+.usercard__match--mid { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.usercard__match--lo { color: oklch(0.68 0.15 25); border-color: color-mix(in oklab, oklch(0.68 0.15 25) 40%, var(--line)); background: color-mix(in oklab, oklch(0.68 0.15 25) 12%, transparent); }
+.usercard__follow { flex: 0 0 auto; }

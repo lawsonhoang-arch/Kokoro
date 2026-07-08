@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { SearchResult } from "@/features/search/types";
+import { StatusTag } from "@/components/StatusTag";
 
 function genPoster(seed: string): CSSProperties {
   let h = 0;
@@ -28,6 +29,7 @@ export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: strin
         )}
         {rank != null && <span className="h-card__rank">{rank}</span>}
         {item.kind === "manga" && <span className="h-card__badge">Manga</span>}
+        <StatusTag kind={item.kind} status={item.status} overlay />
       </div>
       <div className="h-card__title">{item.title}</div>
       {meta && <div className="h-card__sub">{meta}</div>}

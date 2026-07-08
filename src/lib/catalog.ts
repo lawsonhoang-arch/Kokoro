@@ -1,11 +1,22 @@
 import "server-only";
 import { sql, type SQL } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import type { SearchResult } from "@/features/search/types";
 import { type CatalogFilters, hasPersonalFilter } from "@/features/search/constants";
 import { hiResCover } from "@/lib/cover";
 import { indexSearch, indexQuery, indexBrowseManga, indexGetTitle, getNewNotable } from "@/lib/search-index";
+
+// Period keys used to rotate cached carousels: the hero refreshes daily, the
+// recommendations weekly. Including the key in the cache key means a new
+// day/week is a fresh entry (recompute); within it, the pick stays stable.
+const dayKey = () => new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
+function weekKey(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // back up to Monday
+  return d.toISOString().slice(0, 10);
+}
 
 const DIM_KEYS = ["story", "art", "music", "pacing"] as const;
 
@@ -20,12 +31,13 @@ type Row = {
   format: string | null;
   genres: string[] | null;
   cover: string | null;
+  status: string | null;
 };
 
 // columns selected for every catalog query (kept in sync with toResult / Row).
 // Qualified with `titles.` so it stays unambiguous when joined with the
 // watchlist_entries / watchlists tables (which also have id / title columns).
-const COLS = sql`titles.id, titles.kind, titles.title, titles.english_title as english, titles.native_title as native, titles.year, titles.episodes, titles.format, titles.genres, titles.cover`;
+const COLS = sql`titles.id, titles.kind, titles.title, titles.english_title as english, titles.native_title as native, titles.year, titles.episodes, titles.format, titles.genres, titles.cover, titles.status`;
 
 // Self-hosted search over the in-memory catalog index — no per-keystroke DB
 // round trip. Ranks exact → prefix → word-boundary → contains → synonym.
@@ -44,6 +56,7 @@ function toResult(r: Row): SearchResult {
     year: r.year && r.year > 0 ? r.year : null,
     genres: r.genres ?? [],
     cover: hiResCover(r.cover),
+    status: r.status ?? null,
   };
 }
 
@@ -127,7 +140,17 @@ export type HeroSlide = SearchResult & {
  * (falling back to more from the pools for brand-new users). Enriched with
  * description + score for display.
  */
-export async function getHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
+/** Featured Home hero — a random-ish mix, frozen per day so it stays put across
+ *  refreshes and rotates once daily (also spares the DB the 4 sub-queries). */
+export function getHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
+  return unstable_cache(
+    () => computeHeroSlides(userId, limit),
+    ["hero-slides", userId ?? "anon", String(limit), dayKey()],
+    { revalidate: 86400 },
+  )();
+}
+
+async function computeHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
   const [topRated, trending, newNotable, recs] = await Promise.all([
     searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 30, undefined, true),
     searchCatalogFull("", { sort: "popular" }, 1, 30, undefined, true),
@@ -215,10 +238,19 @@ export async function getContinueWatching(userId: string, limit = 12): Promise<H
 }
 
 /** Genre-matched recommendations from the user's library (excludes owned titles). */
-export async function getRecommendations(
-  userId: string,
-  limit = 12,
-): Promise<{ seedGenre: string | null; seedTitle: string | null; results: SearchResult[] }> {
+type Recs = { seedGenre: string | null; seedTitle: string | null; results: SearchResult[] };
+
+/** Suggestions for the "Because you added …" shelf. Rotated weekly (a fresh
+ *  shuffle of the top matches each week), frozen in between via the week key. */
+export function getRecommendations(userId: string, limit = 12): Promise<Recs> {
+  return unstable_cache(
+    () => computeRecommendations(userId, limit),
+    ["recommendations", userId, String(limit), weekKey()],
+    { revalidate: 604800 },
+  )();
+}
+
+async function computeRecommendations(userId: string, limit = 12): Promise<Recs> {
   const topGenreRes = await db.execute(sql`
     select g as genre, count(*)::int as c from (
       select unnest(t.genres) as g
@@ -240,6 +272,8 @@ export async function getRecommendations(
   `);
   const seedTitle = (seedRes as unknown as { title: string }[])[0]?.title ?? null;
 
+  // pull a wider pool of strong matches, then take a shuffled slice — the
+  // shuffle is frozen for the week by the cache key, so recs rotate weekly
   const recRes = await db.execute(sql`
     select ${COLS} from titles
     where ${seedGenre} = any(genres)
@@ -251,13 +285,15 @@ export async function getRecommendations(
         where w.user_id = ${userId}
       )
     order by score desc nulls last, popularity desc nulls last, year desc nulls last
-    limit ${limit}
+    limit ${limit * 3}
   `);
-  return {
-    seedGenre,
-    seedTitle,
-    results: (recRes as unknown as Row[]).map(toResult),
-  };
+  const pool = (recRes as unknown as Row[]).map(toResult);
+  const results = pool
+    .map((v) => [Math.random(), v] as const)
+    .sort((a, b) => a[0] - b[0])
+    .map(([, v]) => v)
+    .slice(0, limit);
+  return { seedGenre, seedTitle, results };
 }
 
 /** A single catalog title by id — for the standalone /anime/[id] page. */

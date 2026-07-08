@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
@@ -225,12 +225,47 @@ export async function getHomeFeed(
 }
 
 /** A page of posts for one title's community, optionally filtered. */
+export type SeriesTitles = { ids: string[]; kinds: Record<string, string> };
+
+/** All title ids that share a title's franchise (its manga↔anime adaptation
+ *  link). Returns just the title itself when unlinked. Defensive: if the
+ *  series_id column isn't present yet (pre-migration), falls back to solo. */
+export async function getSeriesTitleIds(titleId: string): Promise<SeriesTitles> {
+  try {
+    const [self] = await db
+      .select({ seriesId: titles.seriesId, kind: titles.kind })
+      .from(titles)
+      .where(eq(titles.id, titleId))
+      .limit(1);
+    if (!self?.seriesId) return { ids: [titleId], kinds: { [titleId]: self?.kind ?? "anime" } };
+    const rows = await db
+      .select({ id: titles.id, kind: titles.kind })
+      .from(titles)
+      .where(eq(titles.seriesId, self.seriesId));
+    const kinds: Record<string, string> = {};
+    for (const r of rows) kinds[r.id] = r.kind;
+    return { ids: rows.map((r) => r.id), kinds };
+  } catch {
+    return { ids: [titleId], kinds: {} };
+  }
+}
+
+/** A page of posts for one title's community. When the title is linked to an
+ *  adaptation (shared series), this spans every title in the series; `medium`
+ *  narrows to only anime or only manga posts. */
 export async function getTitleFeed(
   titleId: string,
-  opts: { kind?: PostKind; episode?: string; viewerId?: string; sort?: FeedSort; cursor?: string | null } = {},
+  opts: {
+    kind?: PostKind; episode?: string; viewerId?: string; sort?: FeedSort;
+    cursor?: string | null; medium?: "anime" | "manga";
+  } = {},
 ): Promise<FeedPage> {
   const sort = opts.sort ?? "latest";
-  const conds: SQL[] = [eq(communityPosts.titleId, titleId)];
+  const { ids } = await getSeriesTitleIds(titleId);
+  const conds: SQL[] = [
+    ids.length > 1 ? inArray(communityPosts.titleId, ids) : eq(communityPosts.titleId, titleId),
+  ];
+  if (opts.medium) conds.push(eq(titles.kind, opts.medium));
   if (opts.kind) conds.push(eq(communityPosts.kind, opts.kind));
   if (opts.episode) conds.push(eq(communityPosts.episode, opts.episode));
   if (opts.cursor) conds.push(cursorCond(sort, opts.cursor));
@@ -388,10 +423,14 @@ export async function createPost(userId: string, input: PostInput): Promise<Comm
 
 /** Delete a post the user authored (replies/likes cascade). Returns the deleted
  *  post's titleId (for cache invalidation), or null if nothing was deleted. */
-export async function deletePost(userId: string, postId: string): Promise<string | null> {
+// A user can delete their own post; a moderator can delete anyone's.
+export async function deletePost(userId: string, postId: string, canModerate = false): Promise<string | null> {
+  const cond = canModerate
+    ? eq(communityPosts.id, postId)
+    : and(eq(communityPosts.id, postId), eq(communityPosts.userId, userId));
   const [row] = await db
     .delete(communityPosts)
-    .where(and(eq(communityPosts.id, postId), eq(communityPosts.userId, userId)))
+    .where(cond)
     .returning({ titleId: communityPosts.titleId });
   return row?.titleId ?? null;
 }
@@ -439,12 +478,15 @@ export async function recentReplyCount(userId: string, seconds: number): Promise
   return Number(rows[0]?.n ?? 0);
 }
 
-/** Delete a reply the user authored, decrementing the post's reply count. */
-export async function deleteReply(userId: string, replyId: string): Promise<void> {
+/** Delete a reply (author, or any reply for a moderator), decrementing count. */
+export async function deleteReply(userId: string, replyId: string, canModerate = false): Promise<void> {
+  const cond = canModerate
+    ? eq(communityReplies.id, replyId)
+    : and(eq(communityReplies.id, replyId), eq(communityReplies.userId, userId));
   const [r] = await db
     .select({ postId: communityReplies.postId })
     .from(communityReplies)
-    .where(and(eq(communityReplies.id, replyId), eq(communityReplies.userId, userId)))
+    .where(cond)
     .limit(1);
   if (!r) return;
   await db.delete(communityReplies).where(eq(communityReplies.id, replyId));

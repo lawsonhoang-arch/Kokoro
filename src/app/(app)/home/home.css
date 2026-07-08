@@ -391,3 +391,103 @@
   .hero__title { font-size: 32px; }
   .hero__body { padding: 32px 22px; gap: 16px; }
 }
+
+/* ============================================================
+   HOME RAIL — personal panels (up next · your lists) that lead the rail,
+   styled to match the rail's news/community items.
+   ============================================================ */
+.hrail-next { display: flex; flex-direction: column; gap: 4px; padding: 11px 0; }
+.hrail-next__meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hrail-next__day { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); font-weight: 700; }
+.hrail-next__time { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+.hrail-next__title { font-family: var(--font-ui); font-weight: 600; font-size: 13px; color: var(--ink); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrail-next:hover .hrail-next__title { color: var(--accent); }
+
+.hrail-mylist { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 11px 0 11px 13px; }
+.hrail-mylist::before { content: ""; position: absolute; left: 0; top: 11px; bottom: 11px; width: 3px; border-radius: 3px; background: var(--h, var(--accent)); }
+.hrail-mylist__title { font-family: var(--font-title); font-weight: 700; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrail-mylist:hover .hrail-mylist__title { color: var(--accent); }
+.hrail-mylist__meta { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+
+/* ============================================================
+   NEWS CAROUSEL — headline feed as a horizontal carousel in the main column
+   ============================================================ */
+.news-row { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.news-card {
+  flex: 0 0 300px; display: flex; flex-direction: column; scroll-snap-align: start; text-decoration: none;
+  border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--line); background: var(--surface);
+  transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .14s, box-shadow .18s;
+}
+.news-card:hover { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: var(--shadow-2); }
+.news-card__art { position: relative; aspect-ratio: 16 / 9; }
+.news-card__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.news-card__scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.48)); }
+.news-card__cat {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
+  background: rgba(0,0,0,0.5); padding: 4px 9px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(3px);
+}
+.news-card__body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.news-card__title {
+  font-family: var(--font-title); font-weight: 700; font-size: 14.5px; line-height: 1.3; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.news-card:hover .news-card__title { color: var(--accent); }
+.news-card__meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+
+/* ============================================================
+   RAIL — top-rated ranked panels (1 · cover · title)
+   ============================================================ */
+.hrail-toprow { display: grid; grid-template-columns: 16px 32px 1fr; gap: 10px; align-items: center; padding: 8px 0; }
+.hrail-toprow__rank { font-family: var(--font-title); font-weight: 800; font-size: 14px; color: var(--ink-faint); text-align: center; }
+.hrail-toprow__cover { position: relative; width: 32px; height: 44px; flex: none; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); background-size: cover; background-position: center; }
+.hrail-toprow__cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hrail-toprow__body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.hrail-toprow__title { font-family: var(--font-ui); font-weight: 600; font-size: 12.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrail-toprow:hover .hrail-toprow__title { color: var(--accent); }
+.hrail-toprow__meta { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .news-card:hover { transform: none; }
+}
+
+/* ============================================================
+   COMMUNITY CAROUSEL — popular reviews & discussions as a main carousel
+   ============================================================ */
+.comm-row { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.comm-card {
+  flex: 0 0 320px; display: flex; flex-direction: column; scroll-snap-align: start; text-decoration: none;
+  border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--line); background: var(--surface);
+  transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .14s, box-shadow .18s;
+}
+.comm-card:hover { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: var(--shadow-2); }
+.comm-card__art { position: relative; aspect-ratio: 16 / 9; }
+.comm-card__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.comm-card__scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.62)); }
+.comm-card__kind {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #fff;
+  background: rgba(0,0,0,0.5); padding: 4px 9px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(3px);
+}
+.comm-card__on { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 1; font-family: var(--font-title); font-weight: 700; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+.comm-card__body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; }
+.comm-card__top { display: flex; align-items: center; gap: 8px; }
+.comm-card__avatar { width: 22px; height: 22px; font-size: 9px; flex: none; }
+.comm-card__author { font-family: var(--font-ui); font-weight: 600; font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.comm-card__time { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); flex: none; }
+.comm-card__heading { font-family: var(--font-title); font-weight: 700; font-size: 14px; line-height: 1.3; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.comm-card:hover .comm-card__heading { color: var(--accent); }
+.comm-card__excerpt { font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.comm-card__spoiler { font-family: var(--font-mono); font-size: 11px; color: var(--feel-loved); }
+.comm-card__stats { display: flex; gap: 14px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .comm-card:hover { transform: none; }
+}
+
+/* reserves space for a streaming news/community carousel so content below
+   doesn't jump when it arrives */
+.carousel-skeleton { height: 310px; margin: 44px 0; border-radius: var(--radius-lg); background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 60%, transparent), transparent); }
+
+/* taste-matched recs: make the social-proof line pop */
+.shelf--recs .h-card__sub { color: var(--accent); font-family: var(--font-mono); font-size: 10.5px; }

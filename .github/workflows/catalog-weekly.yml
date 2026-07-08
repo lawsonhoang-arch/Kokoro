@@ -5,6 +5,8 @@ name: Catalog weekly sync
 #                        titles, refreshes facts; never touches community descriptions)
 #  - db:import-anime-rankings → refresh anime score/popularity from Jikan top/anime
 #  - db:import-manga   → refresh the manga catalog from Jikan top/manga
+#  - db:link-adaptations → link each manga to its anime adaptation via Jikan
+#                        relations (powers shared manga+anime communities)
 #
 # Requires a repository secret DATABASE_URL (Supabase session-pooler connection
 # string). Trigger manually any time from the Actions tab ("Run workflow").
@@ -22,7 +24,8 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # link-adaptations makes one Jikan call per manga (rate-limited), so allow headroom
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -48,5 +51,11 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Backfill English titles (AniList — fills missing only)
         run: npm run db:backfill-english
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Runs last, once both anime and manga are imported — it matches each
+      # manga's adaptation to an anime by mal_id, so both must already exist.
+      - name: Link manga ↔ anime adaptations (Jikan relations)
+        run: npm run db:link-adaptations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

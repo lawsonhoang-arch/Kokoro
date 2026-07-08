@@ -33,10 +33,12 @@ export function PostCard({
   post,
   showTitle,
   onDeleted,
+  canModerate = false,
 }: {
   post: CommunityPost;
   showTitle?: boolean;
   onDeleted?: (id: string) => void;
+  canModerate?: boolean;
 }) {
   const [liked, setLiked] = useState(post.liked);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -106,7 +108,10 @@ export function PostCard({
   };
 
   const removePost = async () => {
-    if (!confirm("Delete this post? This can't be undone.")) return;
+    const msg = !post.mine && canModerate
+      ? "Remove this post as a moderator? This can't be undone."
+      : "Delete this post? This can't be undone.";
+    if (!confirm(msg)) return;
     setRemoved(true);
     try {
       await deletePostAction(post.id);
@@ -127,16 +132,21 @@ export function PostCard({
           {initials(post.author.name)}
         </span>
         <div className="cpost__who">
-          <span className="cpost__name">{post.author.name}</span>
+          <Link className="cpost__name" href={`/u/${encodeURIComponent(post.author.username)}`}>{post.author.name}</Link>
           <span className="cpost__meta">
-            @{post.author.username} · {timeAgo(post.createdAt)}
+            <Link className="cpost__handle" href={`/u/${encodeURIComponent(post.author.username)}`}>@{post.author.username}</Link> · {timeAgo(post.createdAt)}
           </span>
         </div>
         <span className={"cpost__kind cpost__kind--" + post.kind}>
           {post.kind === "review" ? "Review" : "Discussion"}
         </span>
-        {post.mine && (
-          <button className="cpost__del" onClick={removePost} aria-label="Delete post" title="Delete post">
+        {(post.mine || canModerate) && (
+          <button
+            className={"cpost__del" + (!post.mine && canModerate ? " cpost__del--mod" : "")}
+            onClick={removePost}
+            aria-label={!post.mine && canModerate ? "Remove post (moderator)" : "Delete post"}
+            title={!post.mine && canModerate ? "Remove post (moderator)" : "Delete post"}
+          >
             <TrashIcon />
           </button>
         )}
@@ -192,8 +202,8 @@ export function PostCard({
                 <div className="creply__body">
                   <span className="creply__who">
                     <b>{r.author.name}</b> · {timeAgo(r.createdAt)}
-                    {r.mine && (
-                      <button className="creply__del" onClick={() => removeReply(r.id)} aria-label="Delete reply" title="Delete reply">
+                    {(r.mine || canModerate) && (
+                      <button className="creply__del" onClick={() => removeReply(r.id)} aria-label="Delete reply" title={!r.mine && canModerate ? "Remove reply (moderator)" : "Delete reply"}>
                         <TrashIcon />
                       </button>
                     )}

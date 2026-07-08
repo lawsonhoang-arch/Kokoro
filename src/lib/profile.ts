@@ -1,9 +1,11 @@
 import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
-import { users, watchlists, watchlistEntries, titles, communityPosts, journalEntries, completions } from "@/db/schema";
+import { users, watchlists, watchlistEntries, titles, communityPosts, completions } from "@/db/schema";
 import { hiResCover } from "@/lib/cover";
+import { getRewatchTotal } from "@/lib/rewatches";
 
 export type ProfileUser = {
   id: string;
@@ -13,7 +15,18 @@ export type ProfileUser = {
   role: string;
   bio: string;
   createdAt: string; // ISO
+  image: string | null; // chosen avatar image URL (character art) or null → hue circle
+  bannerTitleId: string | null;
+  bannerArt: string | null; // resolved art for the chosen banner title (or null)
+  bannerPos: string | null; // background-position "x% y%" for the banner art
 };
+
+// A title the user can pick as their profile banner (has wide art or a cover).
+export type BannerCandidate = { id: string; title: string; kind: string; art: string };
+
+// A title the user can pull a character avatar from (has a MAL id for the Jikan lookup).
+export type AvatarTitle = { id: string; title: string; cover: string | null; kind: string };
+export type Character = { name: string; image: string; role: string };
 
 export type ProfileTitle = {
   id: string;
@@ -29,22 +42,50 @@ export type ProfileTitle = {
 
 export type GenreCount = { genre: string; n: number };
 
+// per-medium slice: `units` = episodes (anime) or chapters (manga)
+export type MediumStats = {
+  tracked: number;
+  completed: number;
+  watching: number;
+  planned: number;
+  units: number;
+  hours: number;
+};
+
 export type ProfileStats = {
   tracked: number;
   completed: number;
   watching: number;
   planned: number;
   episodesWatched: number;
+  chaptersRead: number;
+  mangaCompleted: number;
   hours: number;
   lists: number;
   reviews: number;
+  rewatches: number; // total rewatch/reread passes logged
   topGenre: string | null;
+  genresDistinct: number; // count of distinct genres across tracked titles (badges)
+  // breakdown for the Both / Anime / Manga toggle on the profile
+  anime: MediumStats;
+  manga: MediumStats;
+};
+
+// A "record" card on the profile: the title that best exemplifies some superlative.
+export type Superlative = {
+  key: string; // top | longest | deepest | boldest
+  label: string;
+  titleId: string;
+  title: string;
+  cover: string | null;
+  value: string; // the record itself, pre-formatted (e.g. "★ 5.0", "1,096 eps")
 };
 
 export type ProfileSummary = {
   stats: ProfileStats;
   watching: ProfileTitle[];
   genres: GenreCount[];
+  superlatives: Superlative[];
 };
 
 export type ProfileReview = {
@@ -60,15 +101,6 @@ export type ProfileReview = {
   body: string;
   spoiler: boolean;
   likeCount: number;
-  createdAt: string;
-};
-
-export type ActivityItem = {
-  id: string;
-  kind: "review" | "discussion" | "note" | "take" | "completed";
-  titleName: string | null;
-  episode: string;
-  text: string;
   createdAt: string;
 };
 
@@ -94,22 +126,126 @@ export function entryScore(e: {
   return e.feeling ? FEELING_SCORE[e.feeling] ?? null : null;
 }
 
+/** Resolve a public handle to a user id (for /u/[username] pages). */
+export async function getUserIdByUsername(username: string): Promise<string | null> {
+  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.username, username.toLowerCase())).limit(1);
+  return u?.id ?? null;
+}
+
 export async function getProfileUser(userId: string): Promise<ProfileUser | null> {
-  const [u] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      username: users.username,
-      email: users.email,
-      role: users.role,
-      bio: users.bio,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!u) return null;
-  return { ...u, createdAt: u.createdAt.toISOString() };
+  const base = {
+    id: users.id, name: users.name, username: users.username,
+    email: users.email, role: users.role, bio: users.bio, createdAt: users.createdAt,
+    image: users.image,
+  };
+  try {
+    const [u] = await db
+      .select({ ...base, bannerTitleId: users.bannerTitleId, bannerPos: users.bannerPos, banner: titles.banner, cover: titles.cover })
+      .from(users)
+      .leftJoin(titles, eq(titles.id, users.bannerTitleId))
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!u) return null;
+    // prefer wide banner art; '' means "checked, none available" → fall back to cover
+    const bannerArt = u.banner || hiResCover(u.cover) || null;
+    return {
+      id: u.id, name: u.name, username: u.username, email: u.email, role: u.role,
+      bio: u.bio, createdAt: u.createdAt.toISOString(), image: u.image,
+      bannerTitleId: u.bannerTitleId, bannerArt, bannerPos: u.bannerPos,
+    };
+  } catch {
+    // banner columns not migrated yet — serve the profile without a banner
+    const [u] = await db.select(base).from(users).where(eq(users.id, userId)).limit(1);
+    if (!u) return null;
+    return { ...u, createdAt: u.createdAt.toISOString(), bannerTitleId: null, bannerArt: null, bannerPos: null };
+  }
+}
+
+/** Titles the user tracks/favorites/finished that have art, offered as banner
+ *  choices. Wide AniList banner art is preferred; falls back to the cover. */
+export async function getBannerCandidates(userId: string): Promise<BannerCandidate[]> {
+  const rows = await db.execute(sql`
+    select t.id,
+           coalesce(nullif(t.english_title, ''), t.title) as title,
+           t.kind, t.banner, t.cover
+    from titles t
+    where t.id in (
+      select e.title_id from watchlist_entries e
+        join watchlists w on w.id = e.watchlist_id where w.user_id = ${userId}
+      union select f.title_id from favorites f where f.user_id = ${userId}
+      union select c.title_id from completions c where c.user_id = ${userId}
+    )
+    and ((t.banner is not null and t.banner <> '') or t.cover is not null)
+    order by title
+    limit 120
+  `);
+  const out: BannerCandidate[] = [];
+  for (const r of rows as unknown as { id: string; title: string; kind: string; banner: string | null; cover: string | null }[]) {
+    const art = (r.banner && r.banner !== "" ? r.banner : hiResCover(r.cover)) || null;
+    if (art) out.push({ id: r.id, title: r.title, kind: r.kind, art });
+  }
+  return out;
+}
+
+/** The user's library titles that have a MAL id, offered as sources for a
+ *  character avatar (they pick a title, then a character from it). */
+export async function getAvatarTitles(userId: string): Promise<AvatarTitle[]> {
+  const rows = await db.execute(sql`
+    select t.id, coalesce(nullif(t.english_title, ''), t.title) as title, t.cover, t.kind
+    from titles t
+    where t.id in (
+      select e.title_id from watchlist_entries e
+        join watchlists w on w.id = e.watchlist_id where w.user_id = ${userId}
+      union select f.title_id from favorites f where f.user_id = ${userId}
+      union select c.title_id from completions c where c.user_id = ${userId}
+    )
+    and ((t.kind = 'anime' and t.mal_id is not null) or (t.kind = 'manga' and t.id like 'mga:%'))
+    order by title
+    limit 100
+  `);
+  return (rows as unknown as { id: string; title: string; cover: string | null; kind: string }[]).map((r) => ({
+    id: r.id, title: r.title, cover: hiResCover(r.cover), kind: r.kind,
+  }));
+}
+
+async function fetchCharacters(titleId: string): Promise<Character[]> {
+  const [t] = await db.select({ kind: titles.kind, malId: titles.malId }).from(titles).where(eq(titles.id, titleId)).limit(1);
+  if (!t) return [];
+  const manga = t.kind === "manga";
+  const malId = manga ? parseInt(titleId.replace(/^mga:/, ""), 10) : t.malId;
+  if (!malId) return [];
+  try {
+    const res = await fetch(`https://api.jikan.moe/v4/${manga ? "manga" : "anime"}/${malId}/characters`, {
+      headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const j = (await res.json()) as { data?: { character?: { name?: string; images?: { jpg?: { image_url?: string } } }; role?: string }[] };
+    const out: Character[] = [];
+    for (const c of j.data ?? []) {
+      const image = c.character?.images?.jpg?.image_url;
+      const name = c.character?.name;
+      if (image && name && !/questionmark|apple-touch/i.test(image)) out.push({ name, image, role: c.role ?? "" });
+    }
+    out.sort((a, b) => (a.role === "Main" ? 0 : 1) - (b.role === "Main" ? 0 : 1)); // main characters first
+    return out.slice(0, 48);
+  } catch {
+    return [];
+  }
+}
+
+/** A title's characters (name + portrait) from Jikan, cached a week. */
+export function getTitleCharacters(titleId: string): Promise<Character[]> {
+  return unstable_cache(() => fetchCharacters(titleId), ["title-characters", titleId], { revalidate: 604800 })();
+}
+
+/** Just the user's avatar image URL (for the nav). Defensive: null pre-migration. */
+export async function getUserAvatar(userId: string): Promise<string | null> {
+  try {
+    const [u] = await db.select({ image: users.image }).from(users).where(eq(users.id, userId)).limit(1);
+    return u?.image ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Stats + favorites + currently-watching + genre breakdown, computed from one
@@ -125,6 +261,7 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
       genres: titles.genres,
       episodes: titles.episodes,
       kind: titles.kind,
+      catalogScore: titles.score, // MAL 0–10 ×100 (e.g. 870); /200 → 0–5 personal scale
       status: watchlistEntries.status,
       progress: watchlistEntries.progress,
       watchedEps: watchlistEntries.watchedEps,
@@ -146,10 +283,30 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
     .select({ reviews: sql<number>`count(*)::int` })
     .from(communityPosts)
     .where(and(eq(communityPosts.userId, userId), eq(communityPosts.kind, "review")));
+  const rewatchTotal = await getRewatchTotal(userId);
 
   let completed = 0, watching = 0, planned = 0, minutes = 0, episodesWatched = 0;
+  let chaptersRead = 0, mangaCompleted = 0;
+  // per-medium tallies (a = anime, m = manga)
+  let aTracked = 0, mTracked = 0, aWatching = 0, mWatching = 0, aPlanned = 0, mPlanned = 0;
   const genreTally: Record<string, number> = {};
   const watchingList: ProfileTitle[] = [];
+
+  // running "record holders" for the profile superlatives
+  type Rec = { titleId: string; title: string; cover: string | null; year: number | null; episodes: number; kind: string; score: number | null; catalog: number | null };
+  let longest: Rec | null = null; // completed title with the most episodes/chapters
+  let topRated: Rec | null = null; // highest personal score
+  let deepest: Rec | null = null; // oldest title they rated highly (a classic they love)
+  let boldest: { rec: Rec; gap: number } | null = null; // biggest gap vs the crowd
+  const consider = (rec: Rec, completed: boolean) => {
+    if (completed && rec.episodes > 0 && (!longest || rec.episodes > longest.episodes)) longest = rec;
+    if (rec.score != null && (!topRated || rec.score > topRated.score!)) topRated = rec;
+    if (rec.score != null && rec.score >= 4 && rec.year && (!deepest || rec.year < deepest.year!)) deepest = rec;
+    if (rec.score != null && rec.catalog != null) {
+      const gap = rec.score - rec.catalog / 200; // both on 0–5
+      if (!boldest || Math.abs(gap) > Math.abs(boldest.gap)) boldest = { rec, gap };
+    }
+  };
 
   // de-dupe a title that appears in multiple lists (count it once)
   const seen = new Set<string>();
@@ -170,6 +327,10 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
       });
     if (seen.has(r.titleId)) continue;
     seen.add(r.titleId);
+    consider(
+      { titleId: r.titleId, title: name, cover: hiResCover(r.cover), year: r.year, episodes: r.episodes, kind: r.kind, score, catalog: r.catalogScore },
+      r.status === "completed",
+    );
 
     // episodes watched = the explicit set, falling back to progress (or full for
     // completed) for legacy/edge entries; capped at the title's episode count.
@@ -178,21 +339,20 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
       r.episodes || Infinity,
       we.length || (r.status === "completed" ? r.episodes : r.progress ?? 0),
     );
-    if (r.kind !== "manga") {
-      episodesWatched += watchedCount;
-      minutes += watchedCount * 24;
-    }
+    const isM = r.kind === "manga";
+    if (isM) { chaptersRead += watchedCount; mTracked++; }
+    else { episodesWatched += watchedCount; minutes += watchedCount * 24; aTracked++; }
 
-    if (r.status === "completed") completed++;
-    else if (r.status === "watching") watching++;
-    else planned++;
+    if (r.status === "completed") { completed++; if (isM) mangaCompleted++; }
+    else if (r.status === "watching") { watching++; if (isM) mWatching++; else aWatching++; }
+    else { planned++; if (isM) mPlanned++; else aPlanned++; }
     for (const g of r.genres ?? []) genreTally[g] = (genreTally[g] ?? 0) + 1;
   }
 
   // fold in standalone completions (marked watched without a list), skipping any
   // title already counted from a list so it's never double-counted.
   const comps = await db
-    .select({ titleId: titles.id, episodes: titles.episodes, kind: titles.kind, genres: titles.genres })
+    .select({ titleId: titles.id, title: titles.title, english: titles.englishTitle, cover: titles.cover, year: titles.year, episodes: titles.episodes, kind: titles.kind, genres: titles.genres })
     .from(completions)
     .innerJoin(titles, eq(completions.titleId, titles.id))
     .where(eq(completions.userId, userId));
@@ -200,7 +360,13 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
     if (seen.has(c.titleId)) continue;
     seen.add(c.titleId);
     completed++;
-    if (c.kind !== "manga") { episodesWatched += c.episodes; minutes += c.episodes * 24; }
+    // marked-watched titles are unrated, but still eligible for the "longest" record
+    consider(
+      { titleId: c.titleId, title: c.english || c.title, cover: hiResCover(c.cover), year: c.year, episodes: c.episodes, kind: c.kind, score: null, catalog: null },
+      true,
+    );
+    if (c.kind === "manga") { mangaCompleted++; mTracked++; chaptersRead += c.episodes; }
+    else { aTracked++; episodesWatched += c.episodes; minutes += c.episodes * 24; }
     for (const g of c.genres ?? []) genreTally[g] = (genreTally[g] ?? 0) + 1;
   }
 
@@ -213,6 +379,30 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
     .sort((a, b) => (b.progress ?? 0) - (a.progress ?? 0))
     .slice(0, 6);
 
+  // Assemble the superlative cards (only those with a record holder).
+  const fmtScore = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(1));
+  const superlatives: Superlative[] = [];
+  const card = (r: Rec, key: string, label: string, value: string): Superlative => ({
+    key, label, titleId: r.titleId, title: r.title, cover: r.cover, value,
+  });
+  if (topRated) {
+    const r = topRated as Rec;
+    superlatives.push(card(r, "top", "Top rated", `★ ${fmtScore(r.score!)}`));
+  }
+  if (longest) {
+    const r = longest as Rec;
+    const unit = r.kind === "manga" ? "ch" : "eps";
+    superlatives.push(card(r, "longest", r.kind === "manga" ? "Longest read" : "Longest finished", `${r.episodes.toLocaleString()} ${unit}`));
+  }
+  if (deepest) {
+    const r = deepest as Rec;
+    superlatives.push(card(r, "deepest", "Deepest cut", `${r.year}`));
+  }
+  if (boldest && Math.abs((boldest as { gap: number }).gap) >= 1) {
+    const b = boldest as { rec: Rec; gap: number };
+    superlatives.push(card(b.rec, "boldest", "Boldest take", `${b.gap > 0 ? "+" : "−"}${Math.abs(b.gap).toFixed(1)} vs crowd`));
+  }
+
   return {
     stats: {
       tracked: seen.size,
@@ -220,13 +410,34 @@ export async function getProfileSummary(userId: string): Promise<ProfileSummary>
       watching,
       planned,
       episodesWatched,
+      chaptersRead,
+      mangaCompleted,
       hours: Math.round(minutes / 60),
       lists: Number(lists),
       reviews: Number(reviews),
+      rewatches: rewatchTotal,
       topGenre: genres[0]?.genre ?? null,
+      genresDistinct: Object.keys(genreTally).length,
+      anime: {
+        tracked: aTracked,
+        completed: completed - mangaCompleted,
+        watching: aWatching,
+        planned: aPlanned,
+        units: episodesWatched,
+        hours: Math.round(minutes / 60),
+      },
+      manga: {
+        tracked: mTracked,
+        completed: mangaCompleted,
+        watching: mWatching,
+        planned: mPlanned,
+        units: chaptersRead,
+        hours: 0,
+      },
     },
     watching: watchingTop,
     genres: genres.slice(0, 8),
+    superlatives,
   };
 }
 
@@ -268,75 +479,4 @@ export async function getProfileReviews(userId: string, limit = 20): Promise<Pro
     likeCount: r.likeCount,
     createdAt: r.createdAt.toISOString(),
   }));
-}
-
-/** Merged recent activity: community posts + journal notes, newest first. */
-export async function getProfileActivity(userId: string, limit = 10): Promise<ActivityItem[]> {
-  const posts = await db
-    .select({
-      id: communityPosts.id,
-      kind: communityPosts.kind,
-      episode: communityPosts.episode,
-      heading: communityPosts.heading,
-      title: titles.title,
-      english: titles.englishTitle,
-      createdAt: communityPosts.createdAt,
-    })
-    .from(communityPosts)
-    .leftJoin(titles, eq(communityPosts.titleId, titles.id))
-    .where(eq(communityPosts.userId, userId))
-    .orderBy(desc(communityPosts.createdAt))
-    .limit(limit);
-
-  const notes = await db
-    .select({
-      id: journalEntries.id,
-      isTake: journalEntries.isTake,
-      episode: journalEntries.episode,
-      heading: journalEntries.heading,
-      title: titles.title,
-      english: titles.englishTitle,
-      createdAt: journalEntries.createdAt,
-    })
-    .from(journalEntries)
-    .leftJoin(titles, eq(journalEntries.titleId, titles.id))
-    .where(eq(journalEntries.userId, userId))
-    .orderBy(desc(journalEntries.createdAt))
-    .limit(limit);
-
-  const comps = await db
-    .select({ titleId: titles.id, title: titles.title, english: titles.englishTitle, createdAt: completions.createdAt })
-    .from(completions)
-    .innerJoin(titles, eq(completions.titleId, titles.id))
-    .where(eq(completions.userId, userId))
-    .orderBy(desc(completions.createdAt))
-    .limit(limit);
-
-  const items: ActivityItem[] = [
-    ...comps.map((c) => ({
-      id: "c" + c.titleId,
-      kind: "completed" as ActivityItem["kind"],
-      titleName: c.english || c.title || null,
-      episode: "",
-      text: "Marked as watched",
-      createdAt: c.createdAt.toISOString(),
-    })),
-    ...posts.map((p) => ({
-      id: "p" + p.id,
-      kind: (p.kind === "review" ? "review" : "discussion") as ActivityItem["kind"],
-      titleName: p.english || p.title || null,
-      episode: p.episode,
-      text: p.heading || (p.kind === "review" ? "Posted a review" : "Started a discussion"),
-      createdAt: p.createdAt.toISOString(),
-    })),
-    ...notes.map((n) => ({
-      id: "j" + n.id,
-      kind: (n.isTake ? "take" : "note") as ActivityItem["kind"],
-      titleName: n.english || n.title || null,
-      episode: n.episode,
-      text: n.heading || (n.isTake ? "Wrote an overall take" : "Wrote a journal note"),
-      createdAt: n.createdAt.toISOString(),
-    })),
-  ];
-  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }

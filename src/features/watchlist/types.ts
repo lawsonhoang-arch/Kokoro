@@ -26,8 +26,12 @@ export type Entry = {
   title: string;
   year: number;
   genres: string[];
+  /** episodes (anime) or chapters (manga) */
   episodes: number;
+  /** seasons (anime) or volumes (manga) */
   seasons: number;
+  /** "anime" | "manga" — drives episodes-vs-chapters/volumes labelling */
+  kind?: "anime" | "manga";
   status: Status;
   feeling: Feeling | null;
   /** preferred rating method for this title (defaults to "glyphs") */

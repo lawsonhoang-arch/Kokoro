@@ -1,6 +1,7 @@
 import "./home.css";
-import type { CSSProperties } from "react";
+import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Page, PageHead } from "@/shell/Page";
 import { Avatar } from "@/components/ui";
@@ -9,15 +10,30 @@ import {
   getHeroSlides, getRecommendations, searchCatalogFull,
 } from "@/lib/catalog";
 import { getGenreFeatureTiles, getSeasonal, getLatestUpdated, getUnderratedGems, getUpcoming } from "@/lib/search-index";
+import { getWatchlists } from "@/lib/watchlists";
+import { getTrackedTitles } from "@/lib/calendar";
 import { HeroCarousel } from "./HeroCarousel";
 import { getPublishedPicks } from "@/lib/editorial";
 import { isModerator } from "@/lib/submissions";
-import { getHomeFeed } from "@/lib/community";
-import { getNewsFeed } from "@/lib/news";
 import type { SearchResult } from "@/features/search/types";
 import { WelcomeOverlay } from "./WelcomeOverlay";
+import { HomeReadyBeacon } from "./HomeReadyBeacon";
+import { NewsCarousel } from "./NewsCarousel";
+import { CommunityCarousel } from "./CommunityCarousel";
+import { TasteRecs } from "./TasteRecs";
 import { TitleCard } from "./TitleCard";
 import { HomeRail } from "./HomeRail";
+
+// Resolve to a fallback if a fetch rejects OR takes too long. Bounds Home's
+// worst case so a slow-DB window can't hang the page (which would pile up failed
+// RSC prefetches and starve the small connection pool). The query keeps running
+// server-side, but the page renders promptly with a partial.
+function withTimeout<T>(p: Promise<T>, fallback: T, ms = 7000): Promise<T> {
+  return Promise.race([
+    p.catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 
 // Browse-by-genre tiles, each backed by a hand-picked title's cover.
 const GENRE_FEATURES = [
@@ -77,6 +93,11 @@ export default async function HomePage({
   const { welcome } = await searchParams;
   const session = await auth();
   const userId = session?.user?.id;
+  // Home is auth-gated (the layout redirects too, but bail here BEFORE the heavy
+  // Promise.all so an unauth request doesn't waste 14 catalog queries on work
+  // that's about to be redirected away.
+  if (!userId) redirect("/login");
+  const isMod = isModerator(session?.user?.role);
 
   let welcomeName: string | null = null;
   if (welcome === "1") {
@@ -85,30 +106,69 @@ export default async function HomePage({
       session?.user?.email?.split("@")[0] || "friend";
   }
 
-  const isMod = isModerator(session?.user?.role);
+  // After sign-in: paint the welcome overlay immediately and stream Home in
+  // behind it via <Suspense>, so the greeting animation plays WHILE Home's
+  // (slow, parallel) data loads. The overlay waits for HomeReadyBeacon before
+  // fading, so the reveal always lands on a fully-loaded page. The fallback is
+  // null because the opaque overlay covers it anyway.
+  if (welcomeName) {
+    return (
+      <>
+        <WelcomeOverlay username={welcomeName} />
+        <Suspense fallback={null}>
+          <HomeContent userId={userId} isMod={isMod} withBeacon />
+        </Suspense>
+      </>
+    );
+  }
 
-  // Discovery + personalization + editorial, fetched in parallel.
-  const [heroSlides, latestUpdated, seasonal, topAnime, trending, gems, topManga, recs, picks, genreTiles, news, topFeed, upcoming] = await Promise.all([
-    getHeroSlides(userId, 6),
+  // Normal visit: render Home directly (blocking) — no skeleton flash, matching
+  // the prior behavior.
+  return <HomeContent userId={userId} isMod={isMod} />;
+}
+
+async function HomeContent({
+  userId,
+  isMod,
+  withBeacon,
+}: {
+  userId: string | undefined;
+  isMod: boolean;
+  withBeacon?: boolean;
+}) {
+  // Discovery + personalization + editorial + the user's own library, in
+  // parallel. News (live RSS) and community are NOT here — they stream in their
+  // own <Suspense> boundaries so they never block the main page.
+  // Each fetch degrades to a safe fallback on failure, so a single slow/timed-out
+  // query renders a partial Home rather than 500-ing or hanging the whole page.
+  const noRecs = { seedGenre: null, seedTitle: null, results: [] };
+  const [heroSlides, latestUpdated, seasonal, topAnime, trending, gems, topManga, newManga, recs, picks, genreTiles, upcoming, lists, tracked] = await Promise.all([
+    withTimeout(getHeroSlides(userId, 6), []),
     getLatestUpdated(14),
     getSeasonal(14),
     searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 14, undefined, true),
     searchCatalogFull("", { type: "anime", sort: "popular" }, 1, 14, undefined, true),
     getUnderratedGems(14),
     searchCatalogFull("", { type: "manga", sort: "rated" }, 1, 14, undefined, true),
-    userId ? getRecommendations(userId, 14) : Promise.resolve({ seedGenre: null, seedTitle: null, results: [] }),
-    getPublishedPicks(),
+    // extra headroom so "New manga" stays full after de-duping against "Top manga"
+    searchCatalogFull("", { type: "manga", sort: "newest" }, 1, 28, undefined, true),
+    userId ? withTimeout(getRecommendations(userId, 14), noRecs) : Promise.resolve(noRecs),
+    withTimeout(getPublishedPicks(), []),
     getGenreFeatureTiles(GENRE_FEATURES),
-    getNewsFeed(),
-    getHomeFeed(userId, { sort: "top" }),
     getUpcoming(6),
+    userId ? withTimeout(getWatchlists(userId), []) : Promise.resolve([]),
+    userId ? withTimeout(getTrackedTitles(userId), []) : Promise.resolve([]),
   ]);
 
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  // Keep "New manga" distinct from "Top manga" (no repeated titles across shelves).
+  const topMangaItems = topManga.results;
+  const seenManga = new Set(topMangaItems.map((m) => m.id));
+  const newMangaItems = newManga.results.filter((m) => !seenManga.has(m.id)).slice(0, 14);
+
   return (
     <>
-      {welcomeName && <WelcomeOverlay username={welcomeName} />}
       {/* ambient top glow, tinted to the featured carousel cover by HeroCarousel */}
       <div className="feature-glow" aria-hidden="true" />
       <Page width="wide">
@@ -119,14 +179,30 @@ export default async function HomePage({
         />
 
         {/* Two-column body: hero + discovery shelves on the left, a sticky rail
-            of news + popular community posts on the right. The hero lives in the
-            left column so it aligns with the shelves and the rail fills the
-            space beside it (the whole grid stacks on narrow screens). */}
+            on the right that leads with the user's own library (up next + their
+            lists) and continues into news + popular community posts. The whole
+            grid stacks on narrow screens. */}
         <div className="home-grid">
           <div className="home-main">
 
         {/* HERO — a sliding carousel of the catalog's top-rated titles */}
         <HeroCarousel slides={heroSlides} />
+
+        {/* NEWS + COMMUNITY — headline carousels, streamed so they never block
+            the main page (news is live RSS; community is a DB feed) */}
+        <Suspense fallback={<div className="carousel-skeleton" aria-hidden="true" />}>
+          <NewsCarousel />
+        </Suspense>
+        <Suspense fallback={<div className="carousel-skeleton" aria-hidden="true" />}>
+          <CommunityCarousel userId={userId} />
+        </Suspense>
+
+        {/* FOR YOU — recs from your taste-neighbours (streamed; personalised) */}
+        {userId && (
+          <Suspense fallback={<div className="carousel-skeleton" aria-hidden="true" />}>
+            <TasteRecs userId={userId} />
+          </Suspense>
+        )}
 
         {/* DISCOVERY — stacked shelves, one after another */}
         <Shelf title={`${cap(seasonal.season)} ${seasonal.year}`} sub="This season's most popular anime"
@@ -135,10 +211,8 @@ export default async function HomePage({
           moreHref="/search?type=anime&sort=popular" items={latestUpdated} />
         <Shelf title="Trending" sub="What people are watching most"
           moreHref="/search?type=anime&sort=popular" items={trending.results} />
-        <Shelf title="Top rated" sub="The highest-scored anime in the catalog"
-          moreHref="/search?type=anime&sort=rated" items={topAnime.results} ranked />
-        <Shelf title="Top manga" sub="Acclaimed series to read"
-          moreHref="/search?type=manga&sort=rated" items={topManga.results} />
+        <Shelf title="New manga" sub="Recently added to the catalog"
+          moreHref="/search?type=manga&sort=newest" items={newMangaItems} />
         <Shelf title="Underrated gems" sub="Highly rated, under the radar"
           moreHref="/search?type=anime&sort=rated" items={gems} />
 
@@ -228,9 +302,11 @@ export default async function HomePage({
         )}
           </div>
 
-          <HomeRail news={news.slice(0, 6)} posts={topFeed.posts.slice(0, 6)} upcoming={upcoming} />
+          <HomeRail upcoming={upcoming} lists={lists} tracked={tracked} topAnime={topAnime.results.slice(0, 6)} topManga={topMangaItems.slice(0, 6)} />
         </div>
       </Page>
+      {/* signals the waiting WelcomeOverlay that Home has finished loading */}
+      {withBeacon && <HomeReadyBeacon />}
     </>
   );
 }

@@ -16,10 +16,11 @@ export default async function NewsPage() {
   const isMod = isModerator(session?.user?.role);
   const now = new Date();
 
+  const emptyInterests = { titles: [], genres: [] };
   const [rows, airing, interests] = await Promise.all([
-    getNewsFeed(),
+    getNewsFeed().catch(() => []),
     getLatestUpdated(6),
-    userId ? getUserInterests(userId) : Promise.resolve({ titles: [], genres: [] }),
+    userId ? getUserInterests(userId).catch(() => emptyInterests) : Promise.resolve(emptyInterests),
   ]);
 
   const stories = rows.map((r) => ({
@@ -30,6 +31,8 @@ export default async function NewsPage() {
     source: r.source,
     href: r.href,
     time: relativeTime(r.publishedAt, now),
+    cover: r.cover,
+    layout: r.layout,
   }));
   const trending = stories.slice(0, 5).map((s) => ({ title: s.title, href: s.href }));
   const releases = airing.map((a) => ({ title: a.title, tag: a.format || "Airing" }));

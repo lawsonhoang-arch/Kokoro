@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { searchCatalogFull } from "@/lib/catalog";
 import type { CatalogFilters } from "@/features/search/constants";
 import { SearchFilters } from "./SearchFilters";
+import { StatusTag } from "@/components/StatusTag";
 
 const PER_PAGE = 30;
 
@@ -35,7 +36,7 @@ export default async function SearchPage({
   // every filter param, in one place (also drives the pager's query string)
   const FILTER_KEYS = [
     "type", "format", "genre", "decade", "sort",
-    "length", "seasons", "score",
+    "airing", "length", "seasons", "score",
     "status", "feeling", "rating", "story", "art", "music", "pacing",
   ] as const satisfies readonly (keyof CatalogFilters)[];
   const filters: CatalogFilters = {};
@@ -83,6 +84,7 @@ export default async function SearchPage({
                     <div className="srch-card__gen" style={genPoster(r.id)} aria-hidden="true" />
                   )}
                   {r.kind === "manga" && <span className="srch-card__kind">Manga</span>}
+                  <StatusTag kind={r.kind} status={r.status} overlay />
                 </div>
                 <div className="srch-card__title">{r.title}</div>
                 <div className="srch-card__meta">

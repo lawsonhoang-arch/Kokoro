@@ -12,6 +12,7 @@ type NavUser = {
   email?: string | null;
   username?: string | null;
   role?: string | null;
+  image?: string | null;
 } | null;
 
 const TABS = [
@@ -20,7 +21,7 @@ const TABS = [
   { id: "journal", label: "Journal", href: "/journal" },
   { id: "community", label: "Community", href: "/community" },
   { id: "news", label: "News", href: "/news" },
-  { id: "manga", label: "Manga", href: "/manga" },
+  { id: "calendar", label: "Calendar", href: "/calendar" },
 ] as const;
 
 // Compact glyphs the tabs collapse to while the search bar is expanded.
@@ -52,11 +53,11 @@ const TAB_ICONS: Record<string, ReactNode> = {
       <path d="M7 8h7M7 11h7M7 14h5" />
     </>
   ),
-  manga: (
+  calendar: (
     <>
-      <path d="M12 6c-1.6-1-4-1.5-6-1.5S2.6 5 2 5.5v13c.6-.5 2.4-1 4-1s4.4.5 6 1.5" />
-      <path d="M12 6c1.6-1 4-1.5 6-1.5s3.4.5 4 1v13c-.6-.5-2.4-1-4-1s-4.4.5-6 1.5" />
-      <path d="M12 6v13.5" />
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M3 9h18M8 3v3M16 3v3" />
+      <path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2" />
     </>
   ),
 };
@@ -76,7 +77,8 @@ export function SiteNav({ user }: { user: NavUser }) {
   // stays fresh; null on the server keeps SSR markup matching (no hydration gap).
   const [lastListId, setLastListId] = useState<string | null>(null);
   useEffect(() => {
-    setLastListId(getLastList());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLastListId(getLastList()); // read localStorage after mount (SSR-safe)
   }, [pathname]);
   // Search collapses to a circle inside the centered tab group; clicking it
   // expands the bar inline and pushes the tabs aside. Labels fold to icons only
@@ -237,6 +239,15 @@ export function SiteNav({ user }: { user: NavUser }) {
             Newsroom
           </Link>
         )}
+        {isMod && (
+          <Link
+            className={"site-nav__tab site-nav__review" + (pathname.startsWith("/calendar/admin") ? " on" : "")}
+            href="/calendar/admin"
+            title="Manage calendar events & premieres"
+          >
+            Cal events
+          </Link>
+        )}
 
         {user ? (
           <>
@@ -245,7 +256,12 @@ export function SiteNav({ user }: { user: NavUser }) {
               href="/profile"
               title={user.username || user.name || user.email || "Your profile"}
               aria-label="Profile"
-            />
+            >
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="site-nav__avatar-img" src={user.image} alt="" referrerPolicy="no-referrer" />
+              ) : null}
+            </Link>
             <form action={signOutAction}>
               <button className="site-nav__icon" type="submit" title="Sign out" aria-label="Sign out">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

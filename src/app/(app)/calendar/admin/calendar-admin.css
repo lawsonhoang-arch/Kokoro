@@ -1,0 +1,75 @@
+/* Moderator editor for calendar events + premieres. */
+
+.cae { position: relative; }
+.cae--busy { opacity: 0.75; pointer-events: none; }
+
+.cae__toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.cae__hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); }
+
+.cae__list { display: flex; flex-direction: column; gap: 16px; }
+.cae__card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); padding: 16px 18px; }
+.cae__card--draft { opacity: 0.82; border-style: dashed; }
+.cae__card--premiere { border-left: 3px solid oklch(0.68 0.15 300); }
+
+.cae__cardhead { display: flex; align-items: center; gap: 10px; }
+.cae__badge { font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 100px; color: var(--accent-ink); background: var(--accent); flex: none; }
+.cae__badge--premiere { background: oklch(0.68 0.15 300); color: #fff; }
+.cae__saved { font-size: 12px; color: oklch(0.72 0.13 150); flex: none; }
+.cae__pub {
+  font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 5px 12px; border-radius: 100px; border: 1px solid var(--line); color: var(--ink-soft);
+}
+.cae__card:not(.cae__card--draft) .cae__pub { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+
+/* chevron toggle + clickable title summary */
+.cae__toggle {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px; border: none; background: transparent;
+  color: var(--ink-faint); cursor: pointer; transition: background .14s, color .14s;
+}
+.cae__toggle:hover { background: var(--surface-2); color: var(--ink); }
+.cae__chev { transition: transform .26s cubic-bezier(.2,.7,.3,1); }
+.cae__card--open .cae__chev { transform: rotate(90deg); }
+.cae__summary {
+  flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px;
+  background: none; border: none; padding: 4px 2px; text-align: left; cursor: pointer; color: inherit;
+}
+.cae__summary-title { font-family: var(--font-title); font-weight: 700; font-size: 15px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cae__card--draft .cae__summary-title { color: var(--ink-soft); }
+.cae__summary-when { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); flex: none; }
+.cae__summary:hover .cae__summary-title { color: var(--accent); }
+
+/* header quick actions: publish · save · delete */
+.cae__quick { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; }
+.cae__qbtn { padding: 6px 13px; font-size: 12.5px; }
+
+/* collapsible form (0fr → 1fr animates height across all browsers) */
+.cae__collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.7,.3,1); }
+.cae__collapse[data-open="true"] { grid-template-rows: 1fr; }
+.cae__collapse-inner { overflow: hidden; min-height: 0; }
+
+.cae__form { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }
+.cae__row { display: flex; gap: 12px; flex-wrap: wrap; }
+.cae__fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cae__fld { flex: 1 1 160px; }
+.cae__fld--grow { flex: 2 1 220px; }
+.cae__fld--sm { flex: 0 0 120px; }
+/* a field placed directly in the (column) form — e.g. Subtitle — must not take
+   a 160px height basis; size it to its content */
+.cae__form > .cae__fld { flex: none; }
+.cae__fld > span { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); }
+.cae__fld input, .cae__fld select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px; width: 100%;
+}
+.cae__fld input:focus, .cae__fld select:focus { outline: none; border-color: var(--accent); }
+.cae__fld input::placeholder { color: var(--ink-faint); }
+
+.cae__del, .cae__danger { color: oklch(0.62 0.16 25); border: 1px solid color-mix(in oklab, oklch(0.62 0.16 25) 40%, var(--line)); }
+.cae__del:hover, .cae__danger:hover { background: color-mix(in oklab, oklch(0.62 0.16 25) 14%, transparent); }
+.cae__empty { color: var(--ink-faint); font-size: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cae__collapse { transition: none; }
+  .cae__chev { transition: none; }
+}

@@ -20,6 +20,7 @@ import {
   type SymbolRating,
 } from "@/lib/community";
 import { searchCatalog } from "@/lib/catalog";
+import { isModerator } from "@/lib/submissions";
 import type { SearchResult } from "@/features/search/types";
 
 async function requireUserId(): Promise<string> {
@@ -108,13 +109,16 @@ export async function toggleLikeAction(postId: string): Promise<{ liked: boolean
 }
 
 export async function deletePostAction(postId: string): Promise<void> {
-  const userId = await requireUserId();
-  await deletePost(userId, postId);
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  // author deletes their own; a moderator can remove anyone's post
+  await deletePost(session.user.id, postId, isModerator(session.user.role));
 }
 
 export async function deleteReplyAction(replyId: string): Promise<void> {
-  const userId = await requireUserId();
-  await deleteReply(userId, replyId);
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  await deleteReply(session.user.id, replyId, isModerator(session.user.role));
 }
 
 export async function getRepliesAction(postId: string): Promise<CommunityReply[]> {
@@ -152,6 +156,7 @@ export async function getTitleFeedAction(
   episode: string | null,
   sort: FeedSort = "latest",
   cursor: string | null = null,
+  medium: "anime" | "manga" | null = null,
 ): Promise<FeedPage> {
   const session = await auth();
   return getTitleFeed(titleId, {
@@ -159,6 +164,7 @@ export async function getTitleFeedAction(
     episode: episode ?? undefined,
     sort,
     cursor,
+    medium: medium ?? undefined,
     viewerId: session?.user?.id,
   });
 }

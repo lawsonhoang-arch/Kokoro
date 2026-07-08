@@ -20,6 +20,15 @@ const client =
     idle_timeout: 20,
     max_lifetime: 60 * 30,                           // recycle conns
     connect_timeout: 10,
+    // A request-path query must never hang the page for tens of seconds. If the
+    // DB is overloaded, cancel the statement server-side after ~12s — this frees
+    // the pooled connection (so a few slow queries can't cascade-starve the
+    // pool) and callers degrade gracefully. Heavy work runs on getDbDirect(),
+    // which has no such cap.
+    connection: {
+      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 12000),
+      idle_in_transaction_session_timeout: 20000,
+    },
   });
 if (process.env.NODE_ENV !== "production") g._pg = client;
 export const db = drizzle(client, { schema, casing: "snake_case" });

@@ -14,7 +14,7 @@ const SORTS: { key: FeedSort; label: string }[] = [
   { key: "discussed", label: "Most discussed" },
 ];
 
-export function HomeFeed({ initial, initialCursor }: { initial: CommunityPost[]; initialCursor: string | null }) {
+export function HomeFeed({ initial, initialCursor, canModerate = false }: { initial: CommunityPost[]; initialCursor: string | null; canModerate?: boolean }) {
   const [posts, setPosts] = useState<CommunityPost[]>(initial);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [filter, setFilter] = useState<Filter>("all");
@@ -88,7 +88,7 @@ export function HomeFeed({ initial, initialCursor }: { initial: CommunityPost[];
           </div>
         ) : (
           posts.map((p) => (
-            <PostCard key={p.id} post={p} showTitle onDeleted={(id) => setPosts((ps) => ps.filter((x) => x.id !== id))} />
+            <PostCard key={p.id} post={p} showTitle canModerate={canModerate} onDeleted={(id) => setPosts((ps) => ps.filter((x) => x.id !== id))} />
           ))
         )}
       </div>

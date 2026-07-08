@@ -24,10 +24,18 @@
     "db:setup-watched": "tsx src/db/setup-watched.ts",
     "db:setup-completions": "tsx src/db/setup-completions.ts",
     "db:setup-favorites": "tsx src/db/setup-favorites.ts",
+    "db:setup-uploads": "tsx src/db/setup-uploads.ts",
+    "db:setup-follows": "tsx src/db/setup-follows.ts",
+    "db:setup-news-placement": "tsx src/db/setup-news-placement.ts",
+    "db:setup-rewatches": "tsx src/db/setup-rewatches.ts",
+    "db:setup-entity-follows": "tsx src/db/setup-entity-follows.ts",
+    "db:setup-title-mal-index": "tsx src/db/setup-title-mal-index.ts",
+    "db:setup-calendar": "tsx src/db/setup-calendar.ts",
     "db:setup-title-banner": "tsx src/db/setup-title-banner.ts",
     "db:enrich-banners": "tsx src/db/enrich-banners.ts",
     "db:refresh-events": "tsx src/db/refresh-events.ts",
     "db:backfill-english": "tsx src/db/backfill-english.ts",
+    "db:link-adaptations": "tsx src/db/link-adaptations.ts",
     "set-role": "tsx src/db/set-role.ts"
   },
   "dependencies": {

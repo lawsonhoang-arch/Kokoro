@@ -1375,6 +1375,7 @@ export default function WatchlistApp({
               onToggleWatched={toggleWatched}
               onMarkAllWatched={markAllWatched}
               onClearWatched={clearWatched}
+              onSetWatched={setWatched}
             />
           </Fragment>
         )}

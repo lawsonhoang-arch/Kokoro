@@ -28,34 +28,23 @@ body > x-site-nav { opacity: 1 !important; }
 body.kk-leaving .page,
 body.kk-leaving #root { animation: kk-page-fade-out 0.18s cubic-bezier(.4,0,.6,1) forwards; }
 
-/* Arriving state — page container fades in, then key elements stagger up */
-.page                  { animation: kk-page-fade-in 0.38s cubic-bezier(.2,.7,.3,1) both; }
-.page__head            { animation: kk-rise 0.5s cubic-bezier(.2,.7,.3,1) both; animation-delay: 0.06s; }
-.page > .section,
-.page > section,
-.page > .wl-grid,
-.page > .wl-tools,
-.page > .wl-empty,
-.page > .hero,
-.page > .mood-row,
-.page > .editorial,
-.page > .pf-banner,
-.page > .pf-stats,
-.page > .pf-subtabs,
-.page > .pf-grid,
-.page > .subtabs,
-.page > .community,
-.page > .journal { animation: kk-rise 0.55s cubic-bezier(.2,.7,.3,1) both; }
-/* small natural stagger between siblings — uses :nth-of-type so it works on
-   mixed-content pages without us having to hand-tune each one */
-.page > *:nth-of-type(2)  { animation-delay: 0.10s; }
-.page > *:nth-of-type(3)  { animation-delay: 0.16s; }
-.page > *:nth-of-type(4)  { animation-delay: 0.22s; }
-.page > *:nth-of-type(5)  { animation-delay: 0.28s; }
-.page > *:nth-of-type(6)  { animation-delay: 0.32s; }
-.page > *:nth-of-type(7)  { animation-delay: 0.36s; }
-.page > *:nth-of-type(8)  { animation-delay: 0.40s; }
-.page > *:nth-of-type(n+9) { animation-delay: 0.44s; }
+/* Arriving state — the page fades in, then every direct child staggers up.
+   Targeting all direct children (not an allowlist) means every tab animates the
+   same way, regardless of its markup — Home, News, Manga, etc. all match. Kept
+   quick so it reads as responsive, not sluggish. */
+.page       { animation: kk-page-fade-in 0.34s cubic-bezier(.2,.7,.3,1) both; }
+.page > *   { animation: kk-rise 0.46s cubic-bezier(.2,.7,.3,1) both; }
+.page__head { animation-duration: 0.42s; }
+
+/* small natural stagger between siblings */
+.page > *:nth-child(1)  { animation-delay: 0.03s; }
+.page > *:nth-child(2)  { animation-delay: 0.08s; }
+.page > *:nth-child(3)  { animation-delay: 0.13s; }
+.page > *:nth-child(4)  { animation-delay: 0.18s; }
+.page > *:nth-child(5)  { animation-delay: 0.23s; }
+.page > *:nth-child(6)  { animation-delay: 0.28s; }
+.page > *:nth-child(7)  { animation-delay: 0.32s; }
+.page > *:nth-child(n+8) { animation-delay: 0.36s; }
 
 /* In grids of cards (Home shelves, gallery, etc.) — also stagger the cards */
 .wl-grid > .wl-card,

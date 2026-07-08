@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { getTitle, getTitleBanner } from "@/lib/catalog";
-import { getTitleFeed, getEpisodeCounts, getTitlePulse } from "@/lib/community";
+import { getTitleFeed, getEpisodeCounts, getTitlePulse, getSeriesTitleIds } from "@/lib/community";
+import { isModerator } from "@/lib/submissions";
 import { TitleCommunity } from "@/features/community/TitleCommunity";
 import { PulseStrip } from "@/features/community/PulseStrip";
 
@@ -27,11 +28,16 @@ export default async function TitleCommunityPage({ params }: { params: Promise<{
   // prefer wide AniList banner art; fall back to the (portrait) cover
   const heroArt = banner || t.cover;
 
-  const [page, counts, pulse] = await Promise.all([
+  const [page, counts, pulse, series] = await Promise.all([
     getTitleFeed(t.id, { viewerId: session?.user?.id }),
     getEpisodeCounts(t.id),
     getTitlePulse(t.id),
+    getSeriesTitleIds(t.id),
   ]);
+
+  // the shared community spans both mediums only when the series has both
+  const seriesKinds = new Set(Object.values(series.kinds));
+  const crossMedium = seriesKinds.has("anime") && seriesKinds.has("manga");
 
   const kindLabel = t.kind === "manga" ? "Manga" : "Anime";
   const unit = t.kind === "manga" ? "ch" : "ep";
@@ -75,6 +81,8 @@ export default async function TitleCommunityPage({ params }: { params: Promise<{
           initialPosts={page.posts}
           initialCursor={page.nextCursor}
           initialCounts={counts}
+          crossMedium={crossMedium}
+          canModerate={isModerator(session?.user?.role)}
         />
       </div>
     </main>

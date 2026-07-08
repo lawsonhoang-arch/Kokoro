@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   TYPES, FORMATS, MANGA_FORMATS, GENRES, DECADES, SORTS,
-  EPISODE_BUCKETS, CHAPTER_BUCKETS, SEASON_OPTS, STATUSES, FEELINGS, DIMS,
+  EPISODE_BUCKETS, CHAPTER_BUCKETS, SEASON_OPTS, AIRING, STATUSES, FEELINGS, DIMS,
 } from "@/features/search/constants";
 
 // A 0→max "minimum" slider that commits to the URL on release (not every tick).
@@ -20,6 +20,8 @@ function RangeFilter({
   onCommit: (v: number) => void;
 }) {
   const [v, setV] = useState(value);
+  // keep the slider in sync when the committed value changes (e.g. Clear)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setV(value), [value]);
   const on = v > min;
   return (
@@ -50,6 +52,8 @@ export function SearchFilters() {
   const [q, setQ] = useState(urlQ);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // reflect the URL's q into the input (e.g. on back/forward or Clear)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setQ(urlQ), [urlQ]);
 
   const g = (k: string) => sp.get(k) ?? "";
@@ -74,30 +78,39 @@ export function SearchFilters() {
   const genre = g("genre");
   const sort = g("sort") || "relevance";
   const decade = g("decade");
+  const airing = g("airing");
   const length = g("length");
   const seasons = g("seasons");
   const isManga = type === "manga";
   const formatOptions = isManga ? MANGA_FORMATS : FORMATS;
   const lengthOptions = isManga ? CHAPTER_BUCKETS : EPISODE_BUCKETS;
+  // the "ongoing" label reads as Airing (anime) / Publishing (manga)
+  const airingOptions = AIRING.map((a) =>
+    a.v === "ongoing"
+      ? { v: a.v, l: type === "anime" ? "Airing" : type === "manga" ? "Publishing" : "Airing / Publishing" }
+      : a,
+  );
 
   const num = (k: string) => Number(g(k) || 0);
 
   // which advanced filters are active (drives the "More" badge + auto-open)
   const advCount = [
-    decade, length, seasons, g("score"),
+    airing, decade, length, seasons, g("score"),
     g("status"), g("feeling"), g("rating"), g("story"), g("art"), g("music"), g("pacing"),
   ].filter(Boolean).length;
   const anyFilter = advCount > 0 || !!type || !!format || !!genre || sort !== "relevance";
 
   const [open, setOpen] = useState(false);
   useEffect(() => {
+    // auto-open the advanced panel when an advanced filter is active
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (advCount > 0) setOpen(true);
   }, [advCount]);
 
   const clearAll = () =>
     update({
       type: null, format: null, genre: null, sort: null, decade: null,
-      length: null, seasons: null, score: null,
+      airing: null, length: null, seasons: null, score: null,
       status: null, feeling: null, rating: null, story: null, art: null, music: null, pacing: null,
     });
 
@@ -176,6 +189,15 @@ export function SearchFilters() {
           <div className="srch-adv__group">
             <div className="srch-adv__head">Catalog</div>
             <div className="srch-adv__grid">
+              <label className="srch-fld">
+                <span className="srch-fld__label">Release status</span>
+                <select className={"srch-select" + (airing ? " srch-select--on" : "")} value={airing}
+                  onChange={(e) => update({ airing: e.target.value || null })}>
+                  <option value="">Any status</option>
+                  {airingOptions.map((a) => <option key={a.v} value={a.v}>{a.l}</option>)}
+                </select>
+              </label>
+
               <label className="srch-fld">
                 <span className="srch-fld__label">Year</span>
                 <select className={"srch-select" + (decade ? " srch-select--on" : "")} value={decade}

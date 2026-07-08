@@ -43,9 +43,12 @@ type JikanManga = {
   title_english?: string | null;
   title_synonyms?: string[];
   type?: string | null;
+  // "Publishing" | "Finished" | "On Hiatus" | "Discontinued" | "Not yet published"
+  status?: string | null;
   chapters?: number | null;
   volumes?: number | null;
   score?: number | null;
+  members?: number | null; // readership size → popularity signal
   published?: { prop?: { from?: { year?: number | null } } };
   images?: { jpg?: { image_url?: string | null; large_image_url?: string | null } };
   genres?: { name: string }[];
@@ -66,9 +69,27 @@ type TitleRow = {
   genres: string[];
   cover: string | null;
   score: number | null;
+  popularity: number | null;
+  status: string | null;
   nsfw: boolean;
   searchText: string;
 };
+
+// Jikan's publication status → our catalog lifecycle (finished | ongoing | upcoming).
+function mapStatus(s: string | null | undefined): string | null {
+  switch ((s ?? "").trim().toLowerCase()) {
+    case "publishing":
+    case "on hiatus":
+      return "ongoing";
+    case "finished":
+    case "discontinued":
+      return "finished";
+    case "not yet published":
+      return "upcoming";
+    default:
+      return null;
+  }
+}
 
 function mapGenres(m: JikanManga): string[] {
   const tags = [
@@ -102,6 +123,8 @@ function toRow(m: JikanManga): TitleRow {
     cover: m.images?.jpg?.large_image_url ?? m.images?.jpg?.image_url ?? null,
     // MAL score ×100 as an int (9.12 → 912) — used to surface acclaimed manga
     score: m.score ? Math.round(m.score * 100) : null,
+    popularity: m.members ?? null, // powers the "Popular manga" shelf / sort
+    status: mapStatus(m.status),
     nsfw: (m.explicit_genres?.length ?? 0) > 0,
     searchText,
   };
@@ -162,6 +185,8 @@ async function main() {
       genres: f.genres,
       cover: null,
       score: null,
+      popularity: null,
+      status: f.status ?? "finished",
       nsfw: false,
       searchText: f.title.toLowerCase(),
     }));
@@ -196,6 +221,8 @@ async function main() {
           genres: sql`excluded.genres`,
           cover: sql`excluded.cover`,
           score: sql`excluded.score`,
+          popularity: sql`excluded.popularity`,
+          status: sql`excluded.status`,
           nsfw: sql`excluded.nsfw`,
           searchText: sql`excluded.search_text`,
         },
@@ -210,11 +237,11 @@ async function main() {
 
 // Small curated fallback so the import always produces something usable even if
 // Jikan is unreachable. Facts only.
-const FALLBACK: { title: string; year: number; chapters: number; format: string; genres: string[] }[] = [
-  { title: "Berserk", year: 1989, chapters: 374, format: "Manga", genres: ["Action", "Fantasy", "Horror", "Drama"] },
+const FALLBACK: { title: string; year: number; chapters: number; format: string; genres: string[]; status?: string }[] = [
+  { title: "Berserk", year: 1989, chapters: 374, format: "Manga", genres: ["Action", "Fantasy", "Horror", "Drama"], status: "ongoing" },
   { title: "Vagabond", year: 1998, chapters: 327, format: "Manga", genres: ["Action", "Historical", "Drama"] },
-  { title: "Vinland Saga", year: 2005, chapters: 210, format: "Manga", genres: ["Action", "Adventure", "Historical", "Drama"] },
-  { title: "One Piece", year: 1997, chapters: 1100, format: "Manga", genres: ["Action", "Adventure", "Comedy", "Fantasy"] },
+  { title: "Vinland Saga", year: 2005, chapters: 210, format: "Manga", genres: ["Action", "Adventure", "Historical", "Drama"], status: "ongoing" },
+  { title: "One Piece", year: 1997, chapters: 1100, format: "Manga", genres: ["Action", "Adventure", "Comedy", "Fantasy"], status: "ongoing" },
   { title: "Monster", year: 1994, chapters: 162, format: "Manga", genres: ["Mystery", "Drama", "Psychological", "Thriller"] },
   { title: "20th Century Boys", year: 1999, chapters: 249, format: "Manga", genres: ["Mystery", "Drama", "Sci-Fi", "Thriller"] },
   { title: "Oyasumi Punpun", year: 2007, chapters: 147, format: "Manga", genres: ["Drama", "Slice of Life", "Psychological"] },

@@ -57,6 +57,10 @@
 .anime-row--h4 { --row-hue: oklch(0.68 0.13 140); }
 .anime-row--h5 { --row-hue: oklch(0.64 0.14 350); }
 .anime-row--h6 { --row-hue: oklch(0.68 0.13 100); }
+/* let the middle (title/sub) cell shrink so long titles ellipsis instead of
+   pushing the count pill out of line — keeps every count circle right-aligned */
+.anime-row > div { min-width: 0; }
+.anime-row__count { justify-self: end; }
 .anime-row__title { font-family: var(--font-title); font-weight: 700; font-size: 13.5px; color: var(--ink); line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .anime-row__sub   { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }
 .anime-row__count {
@@ -411,3 +415,18 @@
   .rail { position: static; }
   .timeline__head { flex-wrap: wrap; }
 }
+
+/* ── woven-in diary events (marked watched / favourited) ── */
+.entry__dot--completed { border-color: oklch(0.72 0.14 150); box-shadow: 0 0 0 4px color-mix(in oklab, oklch(0.72 0.14 150) 18%, transparent); }
+.entry__dot--favorited { border-color: var(--feel-loved, oklch(0.66 0.16 25)); box-shadow: 0 0 0 4px color-mix(in oklab, var(--feel-loved, oklch(0.66 0.16 25)) 18%, transparent); }
+.entry__dot--rewatched { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent); }
+.entry__actverb--rewatched { color: var(--accent); }
+.entry__body--act { display: flex; align-items: center; gap: 12px; }
+.entry__actcover { flex: none; width: 40px; height: 54px; border-radius: 7px; overflow: hidden; background: var(--surface-3); display: block; }
+.entry__actcover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.entry__actmain { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.entry__actverb { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.03em; }
+.entry__actverb--completed { color: oklch(0.72 0.14 150); }
+.entry__actverb--favorited { color: var(--feel-loved, oklch(0.66 0.16 25)); }
+.entry__acttitle { font-family: var(--font-title); font-weight: 700; font-size: 15px; color: var(--ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry__acttitle:hover { color: var(--accent); }

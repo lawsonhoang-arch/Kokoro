@@ -37,6 +37,7 @@ type Props = {
   onToggleWatched: (id: string, ep: number) => void;
   onMarkAllWatched: (id: string) => void;
   onClearWatched: (id: string) => void;
+  onSetWatched: (id: string, eps: number[]) => void;
 };
 
 export function DetailPanel({
@@ -57,6 +58,7 @@ export function DetailPanel({
   onToggleWatched,
   onMarkAllWatched,
   onClearWatched,
+  onSetWatched,
 }: Props) {
   const ext = EXTERNAL_SCORES[entry.id];
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -321,9 +323,12 @@ export function DetailPanel({
             title={entry.title}
             episodes={entry.episodes}
             watched={watched}
+            kind={entry.kind}
+            volumes={entry.seasons}
             onToggleWatched={(ep) => onToggleWatched(entry.id, ep)}
             onMarkAll={() => onMarkAllWatched(entry.id)}
             onClear={() => onClearWatched(entry.id)}
+            onSetWatched={(eps) => onSetWatched(entry.id, eps)}
           />
         )}
 

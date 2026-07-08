@@ -109,6 +109,33 @@
 }
 .markwatched--on:hover { color: var(--feel-liked); border-color: color-mix(in oklab, var(--feel-liked) 62%, var(--line)); }
 
+/* rewatch / reread pass logger */
+.rewatch { display: inline-flex; align-items: stretch; }
+.rewatch__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line);
+  cursor: pointer; transition: color .14s, border-color .14s, background .14s;
+}
+.rewatch__btn:hover { color: var(--ink); border-color: var(--line-strong); }
+.rewatch__btn:disabled { opacity: 0.7; cursor: default; }
+.rewatch__btn--on {
+  color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--line));
+  border-top-right-radius: 0; border-bottom-right-radius: 0;
+}
+.rewatch__btn--on:hover { border-color: color-mix(in oklab, var(--accent) 62%, var(--line)); }
+.rewatch__undo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; margin-left: -1px; border-radius: 0 100px 100px 0;
+  font-size: 17px; line-height: 1; color: var(--ink-faint);
+  background: var(--surface-2); border: 1px solid var(--line); cursor: pointer;
+  transition: color .14s, border-color .14s;
+}
+.rewatch__undo:hover { color: var(--feel-dropped); border-color: color-mix(in oklab, var(--feel-dropped) 50%, var(--line)); }
+.rewatch__undo:disabled { opacity: 0.7; cursor: default; }
+
 /* favorite (hand-pick) toggle */
 .favbtn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -128,3 +155,105 @@
 /* favorite-button at-limit hint */
 .favbtn-wrap { display: inline-flex; flex-direction: column; gap: 5px; }
 .favbtn-limit { font-family: var(--font-mono); font-size: 10.5px; color: var(--feel-loved); }
+
+/* track weekly-releases toggle (matches favbtn; calendar "release" blue when on) */
+.trackbtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line);
+  cursor: pointer; transition: color .14s, border-color .14s, background .14s;
+}
+.trackbtn:hover { color: var(--ink); border-color: var(--line-strong); }
+.trackbtn:disabled { opacity: 0.7; cursor: default; }
+.trackbtn--on {
+  color: oklch(0.72 0.12 235); background: color-mix(in oklab, oklch(0.70 0.12 235) 14%, var(--surface));
+  border-color: color-mix(in oklab, oklch(0.70 0.12 235) 44%, var(--line));
+}
+.trackbtn--on:hover { border-color: color-mix(in oklab, oklch(0.70 0.12 235) 64%, var(--line)); }
+
+/* ============================================================
+   DETAIL EXTRAS — Discussion / Trailer links, characters & voice actors,
+   staff, and suggestions (from Jikan, streamed in).
+   ============================================================ */
+.anime-linkbtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 100px; text-decoration: none;
+  font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
+  color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line);
+  transition: color .14s, border-color .14s, background .14s;
+}
+.anime-linkbtn:hover { color: var(--ink); border-color: var(--line-strong); }
+
+/* trailer — click-to-play YouTube embed */
+.ytbox { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--line); background: #000; box-shadow: var(--shadow-1); }
+.ytbox__frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.ytbox__poster { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: #000; cursor: pointer; display: block; }
+.ytbox__thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ytbox__poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.32)); transition: background .15s; }
+.ytbox__poster:hover::after { background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.22)); }
+.ytbox__play { position: absolute; top: 50%; left: 50%; width: 68px; height: 48px; transform: translate(-50%, -50%); opacity: 0.9; transition: transform .16s cubic-bezier(.2,.7,.3,1), opacity .16s; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.45)); }
+.ytbox__play svg { display: block; width: 100%; height: 100%; }
+.ytbox__poster:hover .ytbox__play { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  .ytbox__poster:hover .ytbox__play { transform: translate(-50%, -50%); }
+}
+
+.ax__head { font-family: var(--font-title); font-weight: 800; font-size: 18px; letter-spacing: -0.01em; color: var(--ink); margin: 0 0 16px; }
+
+/* shared portrait "face" (character / voice actor / staff) */
+.ax-face { position: relative; display: block; width: 40px; height: 52px; flex: none; border-radius: 7px; overflow: hidden; background: var(--surface-3); }
+.ax-face img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+.ax-face--sm { width: 34px; height: 44px; }
+.ax-face__ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 11px; color: rgba(255,255,255,0.9); }
+
+.ax-char__body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.ax-char__name { font-family: var(--font-ui); font-weight: 650; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ax-char__role { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
+
+/* characters + voice actors: face · name/role ......... VA name · VA face */
+.ax-cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; }
+.ax-char, .ax-person {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: color-mix(in oklab, var(--surface) 88%, transparent);
+}
+.ax-char__main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.ax-char__main--link { text-decoration: none; border-radius: 8px; padding: 2px; margin: -2px; transition: background .14s; }
+.ax-char__main--link:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
+.ax-char__main--link:hover .ax-char__name { color: var(--accent); }
+.ax-char__va { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 46%; }
+.ax-char__vaname { font-family: var(--font-ui); font-size: 12px; color: var(--ink-soft); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* staff */
+.ax-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+
+/* suggestions: small poster grid */
+.ax-suggest { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px; }
+.ax-sg { display: flex; flex-direction: column; gap: 7px; text-decoration: none; }
+.ax-sg__art { position: relative; aspect-ratio: 2 / 3; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--line); background: var(--surface-2); transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .14s; }
+.ax-sg:hover .ax-sg__art { transform: translateY(-3px); border-color: var(--line-strong); }
+.ax-sg__art img, .ax-sg__gen { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ax-sg__title { font-family: var(--font-ui); font-weight: 600; font-size: 12px; color: var(--ink); line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ax-sg:hover .ax-sg__title { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-sg:hover .ax-sg__art { transform: none; }
+}
+
+/* Studios (followable) + linked VA/staff cards */
+.ax-studios { display: flex; flex-wrap: wrap; gap: 10px; }
+.ax-studio {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 14px; border-radius: 100px;
+  border: 1px solid var(--line); background: var(--surface-2);
+}
+.ax-studio__name { font-family: var(--font-title); font-weight: 700; font-size: 14px; color: var(--ink); text-decoration: none; }
+.ax-studio__name:hover { color: var(--accent); }
+.ax-char__va--link { text-decoration: none; border-radius: 8px; transition: background .14s; }
+.ax-char__va--link:hover { background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
+.ax-char__va--link:hover .ax-char__vaname { color: var(--accent); }
+.ax-person--link { text-decoration: none; border-radius: var(--radius); transition: background .14s; }
+.ax-person--link:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
+.ax-person--link:hover .ax-char__name { color: var(--accent); }

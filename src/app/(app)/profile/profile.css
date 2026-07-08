@@ -37,9 +37,8 @@
 }
 .pf-handle {
   font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
-  margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 5px; display: inline-flex; align-items: center;
 }
-.pf-handle::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--feel-liked); }
 .pf-bio {
   margin: 12px 0 0; color: var(--ink-soft); font-size: 14.5px;
   max-width: 60ch; line-height: 1.55;
@@ -47,9 +46,15 @@
 .pf-actions { display: flex; gap: 10px; padding-bottom: 10px; }
 
 /* Stats row */
+.pf-stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+.pf-stats-head__lbl { font-family: var(--font-title); font-weight: 700; font-size: 16px; color: var(--ink-soft); }
+.pf-stats-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
+.pf-stats-toggle__opt { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ink-faint); padding: 6px 14px; border: none; background: transparent; cursor: pointer; transition: color .12s, background .12s; }
+.pf-stats-toggle__opt.on { color: var(--accent-ink); background: var(--accent); }
+.pf-stats-toggle__opt:not(.on):hover { color: var(--ink); }
 .pf-stats {
   display: grid; grid-template-columns: repeat(5, 1fr);
-  gap: 14px; margin: 24px 0 32px;
+  gap: 14px; margin: 0 0 32px;
 }
 .pf-stat {
   padding: 16px 18px; border-radius: var(--radius-lg);
@@ -235,7 +240,8 @@
 /* favorites — fixed-size cards (--fav-size set inline; smaller as the count
    grows, bigger when few) that fill rows left-to-right, so the section stays
    compact instead of one giant card. */
-.pf-favs { display: grid; grid-template-columns: repeat(auto-fill, var(--fav-size, 138px)); gap: 14px; justify-content: start; }
+.pf-favs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+@media (max-width: 640px) { .pf-favs { grid-template-columns: repeat(3, 1fr); } }
 .pf-fav { position: relative; }
 .pf-fav__link { display: flex; flex-direction: column; }
 .pf-fav__art { aspect-ratio: 2/3; width: 100%; transition: transform .16s, border-color .16s; }
@@ -370,3 +376,358 @@
   background: color-mix(in oklab, var(--feel-loved) 12%, var(--surface-2));
   border: 1px solid color-mix(in oklab, var(--feel-loved) 34%, var(--line));
 }
+
+/* ============================================================
+   CUSTOM PROFILE BANNER (pick anime/manga art) + picker modal
+   ============================================================ */
+.pf-banner--art { background-size: cover; background-position: center 32%; background-repeat: no-repeat; }
+.pf-banner--art::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(10,8,6,0.22) 0%, transparent 38%, rgba(10,8,6,0.42) 100%);
+}
+/* owner controls sit top-right (the header card straddles the *bottom* of the
+   banner, so top-right is the one spot with no overlap / click trap) */
+.pf-banner__controls { position: absolute; right: 16px; top: 14px; z-index: 4; display: flex; gap: 8px; }
+.pf-banner__edit {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 600; color: #fff;
+  padding: 7px 13px; border-radius: 100px; cursor: pointer;
+  background: rgba(12,9,6,0.55); border: 1px solid rgba(255,255,255,0.22); backdrop-filter: blur(8px);
+  transition: background .15s, border-color .15s;
+}
+.pf-banner__edit:hover { background: rgba(12,9,6,0.74); border-color: rgba(255,255,255,0.42); }
+.pf-banner__edit:disabled { opacity: 0.6; cursor: default; }
+.pf-banner__edit--primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.pf-banner__edit--primary:hover { background: var(--accent-hi); border-color: transparent; }
+/* active "Customize" toggle */
+.pf-banner__edit--on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.pf-banner__edit--on:hover { background: var(--accent-hi); border-color: transparent; }
+
+/* the options that animate in when "Customize" is clicked */
+.pf-banner__reveal { display: flex; gap: 8px; }
+.pf-banner__reveal > * { animation: pf-ctrl-in 0.22s cubic-bezier(.2,.7,.3,1) both; }
+.pf-banner__reveal > *:nth-child(1) { animation-delay: 0.03s; }
+.pf-banner__reveal > *:nth-child(2) { animation-delay: 0.10s; }
+@keyframes pf-ctrl-in { from { opacity: 0; transform: translateX(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+/* exit animation when the menu collapses (double class overrides the in-delays) */
+.pf-banner__reveal.pf-banner__reveal--closing > * {
+  animation-name: pf-ctrl-out; animation-duration: 0.18s;
+  animation-timing-function: cubic-bezier(.4,0,.6,1); animation-delay: 0s;
+}
+@keyframes pf-ctrl-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(14px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .pf-banner__reveal > *, .pf-banner__reveal.pf-banner__reveal--closing > * { animation: none !important; }
+}
+
+/* reposition mode: the whole banner is grab-to-pan */
+.pf-banner--moving { cursor: grab; box-shadow: inset 0 0 0 2px var(--accent); }
+.pf-banner--moving:active { cursor: grabbing; }
+.pf-banner__movehint {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap;
+  padding: 8px 16px; border-radius: 100px;
+  background: rgba(12,9,6,0.6); border: 1px solid rgba(255,255,255,0.22); backdrop-filter: blur(8px);
+}
+
+.pfbp { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(8,6,4,0.6); backdrop-filter: blur(3px); animation: pfbp-fade .15s ease-out; }
+@keyframes pfbp-fade { from { opacity: 0; } to { opacity: 1; } }
+.pfbp__card { width: min(1180px, 94vw); height: min(88vh, 860px); display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px 24px 10px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+.pfbp__card--busy { opacity: .7; pointer-events: none; }
+.pfbp__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pfbp__head h2 { margin: 0; font-family: var(--font-title); font-weight: 700; font-size: 19px; color: var(--ink); }
+.pfbp__x { font-size: 15px; color: var(--ink-faint); background: none; border: none; cursor: pointer; padding: 4px 9px; border-radius: 8px; }
+.pfbp__x:hover { color: var(--ink); background: var(--surface-2); }
+.pfbp__search { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 12px; margin-bottom: 14px; }
+.pfbp__search:focus { outline: none; border-color: var(--accent); }
+.pfbp__search::placeholder { color: var(--ink-faint); }
+.pfbp__grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-rows: max-content; gap: 16px; align-content: start; overflow-y: auto; padding: 2px 2px 16px; }
+.pfbp__tile { display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; cursor: pointer; padding: 0; text-align: left;
+  border: 1px solid var(--line); background: var(--surface-2);
+  transition: transform .12s, border-color .12s, box-shadow .12s; }
+.pfbp__tile:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+.pfbp__tile.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+/* the banner fills the tile (wide banner art would letterbox to a sliver if
+   "contain"-ed). Fixed height + flex:none so the flex/grid can't squeeze it. */
+.pfbp__art { display: block; width: 100%; height: 150px; flex: none;
+  background-color: color-mix(in oklab, var(--ink) 5%, var(--surface-2));
+  background-size: cover; background-position: center; }
+.pfbp__art--default { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 22%, var(--surface-2)) 0 10px, var(--surface-2) 10px 20px); }
+.pfbp__cap { padding: 8px 11px 9px; font-size: 12.5px; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pfbp__empty { color: var(--ink-faint); font-size: 14px; padding: 16px 4px 24px; }
+
+/* ============================================================
+   AVATAR (character art) — edit control + picker
+   ============================================================ */
+.pf-avatar-wrap { position: relative; width: max-content; }
+.pf-avatar__edit {
+  position: absolute; right: 2px; bottom: 2px; z-index: 3;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent-ink); background: var(--accent); border: 2px solid var(--page); cursor: pointer;
+  box-shadow: var(--shadow-1); transition: background .15s, transform .12s;
+}
+.pf-avatar__edit:hover { background: var(--accent-hi); transform: translateY(-1px); }
+
+.pfbp__headleft { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pfbp__back { font-size: 18px; line-height: 1; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 2px 8px; border-radius: 8px; }
+.pfbp__back:hover { color: var(--ink); background: var(--surface-2); }
+
+.avp__grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); grid-auto-rows: max-content; gap: 14px; align-content: start; overflow-y: auto; padding: 2px 2px 16px; }
+.avp__tile { display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; cursor: pointer; padding: 0; text-align: left;
+  border: 1px solid var(--line); background: var(--surface-2); transition: transform .12s, border-color .12s, box-shadow .12s; }
+.avp__tile:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+.avp__tile.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.avp__tile:disabled { opacity: 0.6; cursor: default; }
+.avp__art { position: relative; display: block; width: 100%; aspect-ratio: 2 / 3;
+  background-color: var(--surface-3); background-size: cover; background-position: center top; }
+.avp__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.avp__art--default { background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--accent) 22%, var(--surface-2)) 0 10px, var(--surface-2) 10px 20px); }
+.avp__cap { padding: 7px 9px 8px; font-size: 11.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ============================================================
+   SUPERLATIVES (record cards, in the Overview aside) +
+   MILESTONES (badge grid)
+   ============================================================ */
+.pf-supers { display: flex; flex-direction: column; gap: 8px; }
+.pf-super {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 11px; align-items: center;
+  padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  transition: border-color .14s, transform .12s;
+}
+.pf-super:hover { border-color: var(--line-strong); transform: translateX(2px); }
+.pf-super__art { width: 34px; height: 48px; border-radius: 6px; flex: none; }
+.pf-super__body { min-width: 0; }
+.pf-super__label { font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--uppercase-spacing); text-transform: uppercase; color: var(--ink-faint); }
+.pf-super__title { font-family: var(--font-ui); font-weight: 650; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.pf-super__value { font-family: var(--font-title); font-weight: 800; font-size: 13px; color: var(--accent); white-space: nowrap; }
+
+.pf-badges { margin-top: 28px; }
+.pf-badgegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.pf-badge {
+  position: relative; width: 100%; appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  padding: 16px 12px 13px; border-radius: var(--radius-lg); border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  transition: border-color .2s, background .2s, transform .12s;
+}
+.pf-badge:hover { border-color: var(--line-strong); }
+.pf-badge:active { transform: translateY(1px); }
+.pf-badge.open { z-index: 5; border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); }
+.pf-badge.on {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+.pf-badge__ico { font-size: 30px; line-height: 1; filter: grayscale(1) opacity(0.4); transition: filter .2s, transform .2s; }
+.pf-badge.on .pf-badge__ico { filter: none; transform: translateY(-1px); }
+.pf-badge__label { font-family: var(--font-ui); font-weight: 700; font-size: 12.5px; color: var(--ink-soft); }
+.pf-badge.on .pf-badge__label { color: var(--ink); }
+.pf-badge__done { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.pf-badge__bar { width: 78%; height: 4px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.pf-badge__bar > span { display: block; height: 100%; background: var(--line-strong); border-radius: 99px; }
+.pf-badge__num { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+
+/* click-to-reveal requirement popover */
+.pf-badge__pop {
+  position: absolute; top: calc(100% + 9px); left: 50%; transform: translateX(-50%);
+  z-index: 10; width: max-content; max-width: 210px; cursor: default;
+  display: flex; flex-direction: column; gap: 7px; align-items: stretch; text-align: left;
+  padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line-strong);
+  background: var(--surface); box-shadow: var(--shadow-2);
+  animation: badge-pop-in .16s ease both;
+}
+.pf-badge__pop::before {
+  content: ""; position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg);
+  width: 9px; height: 9px; background: var(--surface); border-left: 1px solid var(--line-strong); border-top: 1px solid var(--line-strong);
+}
+.pf-badge__pop-req { font-family: var(--font-ui); font-weight: 650; font-size: 12.5px; color: var(--ink); line-height: 1.35; }
+.pf-badge__pop-bar { height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.pf-badge__pop-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.pf-badge__pop-status { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+.pf-badge__pop-status--done { color: var(--accent); font-weight: 700; }
+@keyframes badge-pop-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ============================================================
+   BADGE UNLOCK CELEBRATION (portal toast, bottom-center)
+   ============================================================ */
+.badgepop { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 200; pointer-events: none; }
+.badgepop__card {
+  pointer-events: auto; position: relative; display: flex; align-items: center; gap: 15px;
+  max-width: min(92vw, 380px); padding: 15px 22px 15px 16px; text-align: left; cursor: pointer;
+  border-radius: 16px; border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  box-shadow: var(--shadow-2), 0 0 44px color-mix(in oklab, var(--accent) 26%, transparent);
+  animation: badgepop-in .5s cubic-bezier(.2, 1.3, .4, 1) both;
+}
+.badgepop--out .badgepop__card { animation: badgepop-out .38s ease forwards; }
+
+.badgepop__iconwrap { position: relative; width: 50px; height: 50px; flex: none; display: grid; place-items: center; }
+.badgepop__burst {
+  position: absolute; inset: -8px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in oklab, var(--accent) 55%, transparent), transparent 68%);
+  animation: badge-burst .7s ease-out both;
+}
+.badgepop__ico { position: relative; z-index: 2; font-size: 40px; line-height: 1; animation: badge-ico-pop .6s .06s cubic-bezier(.2, 1.7, .45, 1) both; }
+
+.badgepop__confetti { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.badgepop__confetti i {
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 2px;
+  opacity: 0; animation: badge-confetti .9s .06s ease-out both;
+}
+.badgepop__confetti i:nth-child(3n)   { background: var(--accent); }
+.badgepop__confetti i:nth-child(3n+1) { background: var(--feel-loved); }
+.badgepop__confetti i:nth-child(3n+2) { background: var(--feel-liked); }
+
+.badgepop__meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.badgepop__kicker { font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.badgepop__label { font-family: var(--font-title); font-weight: 800; font-size: 17px; color: var(--ink); letter-spacing: -.01em; }
+.badgepop__desc { font-size: 12px; color: var(--ink-soft); }
+
+@keyframes badgepop-in {
+  0%   { opacity: 0; transform: translateY(28px) scale(.85); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes badgepop-out {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(12px) scale(.96); }
+}
+@keyframes badge-ico-pop {
+  0%   { transform: scale(0) rotate(-25deg); }
+  60%  { transform: scale(1.28) rotate(9deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes badge-burst {
+  0%   { opacity: .9; transform: scale(.3); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+@keyframes badge-confetti {
+  0%   { opacity: 0; transform: rotate(calc(var(--i) * 36deg)) translateY(-4px) scale(.5); }
+  18%  { opacity: 1; }
+  72%  { opacity: 1; transform: rotate(calc(var(--i) * 36deg)) translateY(-34px) scale(1); }
+  100% { opacity: 0; transform: rotate(calc(var(--i) * 36deg)) translateY(-42px) scale(.5); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badgepop__card, .badgepop__ico, .badgepop__burst { animation-duration: .01ms; }
+  .badgepop__confetti { display: none; }
+}
+
+/* follower/following counts + follow control in the profile header */
+.pf-follow { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+.pf-follow__counts { display: flex; gap: 18px; }
+.pf-follow__count { font-size: 13.5px; color: var(--ink-soft); text-decoration: none; }
+.pf-follow__count b { color: var(--ink); font-weight: 800; }
+.pf-follow__count:hover, .pf-follow__count:hover b { color: var(--accent); }
+.pf-follow__actions { display: flex; align-items: center; gap: 10px; }
+.pf-follow__badge { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); padding: 3px 8px; border-radius: 100px; border: 1px solid var(--line); }
+
+/* ============================================================
+   TASTE MATCH — affinity panel on a public profile (/u/[username])
+   ============================================================ */
+.pf-match {
+  margin: 0 0 22px; padding: 18px 20px; border-radius: var(--radius-lg);
+  border: 1px solid var(--line); background: var(--surface);
+  display: flex; flex-direction: column; gap: 16px;
+}
+.pf-match__head { display: flex; align-items: center; gap: 16px; }
+.pf-match__badge {
+  position: relative; width: 72px; height: 72px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: conic-gradient(var(--match-color) calc(var(--pct, 0) * 1%), color-mix(in oklab, var(--line) 70%, transparent) 0);
+}
+.pf-match__badge::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--surface); }
+.pf-match__badge--hi { --match-color: oklch(0.72 0.14 150); }
+.pf-match__badge--mid { --match-color: var(--accent); }
+.pf-match__badge--lo { --match-color: oklch(0.66 0.16 25); }
+.pf-match__badge--none { --match-color: var(--line-strong); }
+.pf-match__pct { position: relative; font-family: var(--font-title); font-weight: 800; font-size: 21px; color: var(--ink); line-height: 1; }
+.pf-match__pct i { font-size: 12px; font-style: normal; color: var(--ink-faint); }
+.pf-match__pct--dash { color: var(--ink-faint); }
+
+.pf-match__label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pf-match__title { font-family: var(--font-title); font-weight: 800; font-size: 17px; color: var(--ink); }
+.pf-match__sub { font-size: 13px; color: var(--ink-faint); line-height: 1.45; }
+
+.pf-match__row { display: flex; flex-direction: column; gap: 8px; }
+.pf-match__rowlabel { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); }
+.pf-match__chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.pf-match__chip {
+  display: flex; align-items: center; gap: 9px; padding: 6px 13px 6px 6px;
+  border-radius: 100px; border: 1px solid var(--line); background: var(--surface-2);
+  text-decoration: none; color: var(--ink); transition: border-color .15s, background .15s;
+}
+.pf-match__chip:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); background: var(--surface-3); }
+.pf-match__chipart { width: 30px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--surface-3); flex: none; }
+.pf-match__chipart img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-match__chiptxt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pf-match__chipname { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.pf-match__chipscore { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+
+/* ── Following: studios & people (entity follows) ── */
+.entgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+.entcard { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; text-align: center; }
+.entcard__art {
+  width: 74px; height: 74px; border-radius: var(--radius); overflow: hidden;
+  background: var(--surface-2); border: 1px solid var(--line);
+  display: grid; place-items: center; transition: border-color .14s, transform .14s;
+}
+.entcard__art--round { border-radius: 50%; }
+.entcard:hover .entcard__art { border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); transform: translateY(-2px); }
+.entcard__art img { width: 100%; height: 100%; object-fit: cover; }
+.entcard__ph { font-family: var(--font-title); font-weight: 800; font-size: 22px; color: var(--ink-faint); }
+.entcard__name { font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink); line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.entcard:hover .entcard__name { color: var(--accent); }
+.entcard__sub { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* import nudge for empty profiles */
+.pf-import {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between; flex-wrap: wrap;
+  margin: 0 0 22px; padding: 16px 20px; border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line));
+  background: color-mix(in oklab, var(--accent) 8%, var(--surface));
+  text-decoration: none; transition: border-color .15s, background .15s;
+}
+.pf-import:hover { border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); background: color-mix(in oklab, var(--accent) 12%, var(--surface)); }
+.pf-import__txt { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; min-width: 0; }
+.pf-import__txt b { color: var(--ink); font-weight: 700; }
+.pf-import__cta {
+  flex: none; font-family: var(--font-ui); font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
+  padding: 9px 16px; border-radius: 100px; background: var(--accent); white-space: nowrap;
+}
+
+/* Kokoro Wrapped entry point on the profile */
+.pf-wrapped {
+  display: flex; align-items: center; gap: 14px; margin: 0 0 22px; padding: 15px 20px;
+  border-radius: var(--radius-lg); text-decoration: none;
+  border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+  background:
+    radial-gradient(120% 200% at 0% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 60%),
+    var(--surface);
+  transition: border-color .15s, background .15s;
+}
+.pf-wrapped:hover { border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); }
+.pf-wrapped__spark {
+  flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+  color: var(--accent); background: color-mix(in oklab, var(--accent) 16%, var(--surface)); font-size: 16px;
+}
+.pf-wrapped__txt { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
+.pf-wrapped__txt b { color: var(--ink); font-weight: 800; }
+.pf-wrapped__cta { flex: none; font-family: var(--font-ui); font-weight: 700; font-size: 13px; color: var(--accent); white-space: nowrap; }
+
+/* share button — its own slot at the header's bottom-right */
+.pf-head__actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 8px; }
+.pf-share {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 8px 15px; border-radius: 100px; font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+  color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line);
+  transition: color .14s, border-color .14s, background .14s;
+}
+.pf-share:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); background: color-mix(in oklab, var(--accent) 8%, var(--surface-2)); }

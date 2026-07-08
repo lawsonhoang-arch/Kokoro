@@ -10,7 +10,9 @@ const sql = postgres((process.env.DIRECT_URL ?? process.env.DATABASE_URL)!, { pr
 
 async function main() {
   await sql`alter table users add column if not exists bio text not null default ''`;
-  console.log("users.bio ready.");
+  await sql`alter table users add column if not exists banner_title_id text`;
+  await sql`alter table users add column if not exists banner_pos text`;
+  console.log("users.bio + users.banner_title_id + users.banner_pos ready.");
   await sql.end();
 }
 

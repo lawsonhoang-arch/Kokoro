@@ -11,4 +11,6 @@ export type SearchResult = {
   year: number | null;
   genres: string[];
   cover: string | null;
+  // airing/publishing lifecycle: finished | ongoing | upcoming | null (unknown)
+  status: string | null;
 };

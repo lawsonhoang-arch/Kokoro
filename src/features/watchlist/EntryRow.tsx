@@ -65,7 +65,11 @@ export function EntryRow({
         sculpt ? (e) => onGrab(e, entry.id) : (e) => onBrowseGrab && onBrowseGrab(e, entry.id)
       }
       style={{
-        viewTransitionName: "entry-" + entry.id,
+        // Scope the transition name to the view mode so switching FORMAT
+        // (list <-> cards <-> hybrid) cross-fades instead of morphing a row
+        // into a card (that size stretch looked bad). Same-format changes
+        // (tab / layout) keep the same name, so those still move smoothly.
+        viewTransitionName: "entry-list-" + entry.id,
         ...(sculpt ? { cursor: "grab" } : null),
       }}
     >

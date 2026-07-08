@@ -5,6 +5,7 @@ import { Page, PageHead } from "@/shell/Page";
 import { Button } from "@/components/ui";
 import { browseManga, searchCatalogFull } from "@/lib/catalog";
 import { MANGA_FORMATS } from "@/features/search/constants";
+import { StatusTag } from "@/components/StatusTag";
 
 // Generated gradient poster fallback (matches the rest of the catalog) when a
 // manga has no cover image.
@@ -64,6 +65,7 @@ export default async function MangaPage() {
                 ) : (
                   <div className="mg-card__gen" style={genPoster(m.id)} aria-hidden="true" />
                 )}
+                <StatusTag kind={m.kind} status={m.status} overlay />
               </div>
               <div className="mg-card__meta-row">
                 <span className="mg-card__name">{m.title}</span>

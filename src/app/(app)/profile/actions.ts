@@ -5,6 +5,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { getTitleCharacters, type Character } from "@/lib/profile";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -27,6 +28,43 @@ export async function updateProfileAction(input: { name?: string; bio?: string }
     await db.update(users).set(patch).where(eq(users.id, userId));
     revalidatePath("/profile");
   }
+  return { ok: true };
+}
+
+/** Set (or clear, with null) the catalog title whose art fills the profile banner. */
+export async function setProfileBannerAction(titleId: string | null): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const value = titleId ? titleId.trim().slice(0, 200) : null;
+  await db.update(users).set({ bannerTitleId: value }).where(eq(users.id, userId));
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
+/** Set (or clear, with null) the profile avatar image. Only MAL cdn character
+ *  art (the picker's source) is accepted; anything else clears it. */
+export async function setAvatarAction(image: string | null): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const url = image?.trim() || null;
+  const value = url && /^https:\/\/cdn\.myanimelist\.net\//.test(url) ? url.slice(0, 500) : null;
+  await db.update(users).set({ image: value }).where(eq(users.id, userId));
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
+/** Fetch a catalog title's characters (for the avatar picker). */
+export async function getTitleCharactersAction(titleId: string): Promise<Character[]> {
+  await requireUserId();
+  return getTitleCharacters(titleId);
+}
+
+/** Save the banner's framing (CSS background-position "x% y%", each clamped 0–100). */
+export async function setProfileBannerPosAction(pos: string): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const m = pos.match(/^(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%$/);
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  const value = m ? `${clamp(parseFloat(m[1]))}% ${clamp(parseFloat(m[2]))}%` : "50% 32%";
+  await db.update(users).set({ bannerPos: value }).where(eq(users.id, userId));
+  revalidatePath("/profile");
   return { ok: true };
 }
 

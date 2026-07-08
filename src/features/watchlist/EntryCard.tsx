@@ -101,7 +101,7 @@ export function EntryCard({
     return (
       <div
         className={"k-hybrid" + (color ? " colored" : "") + (selected ? " selected" : "")}
-        style={{ viewTransitionName: "entry-" + entry.id }}
+        style={{ viewTransitionName: "entry-" + view + "-" + entry.id }}
         data-entry-id={entry.id}
         data-drop="entry"
         onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}
@@ -156,7 +156,7 @@ export function EntryCard({
   return (
     <div
       className={"k-card" + (selected ? " selected" : "")}
-      style={{ viewTransitionName: "entry-" + entry.id }}
+      style={{ viewTransitionName: "entry-" + view + "-" + entry.id }}
       data-entry-id={entry.id}
       data-drop="entry"
       onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}

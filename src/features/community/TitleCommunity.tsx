@@ -27,6 +27,13 @@ const epNum = (s: string): number | null => {
   return m ? parseInt(m[0], 10) : null;
 };
 
+type Medium = "all" | "anime" | "manga";
+const MEDIA: { key: Medium; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "anime", label: "Anime" },
+  { key: "manga", label: "Manga" },
+];
+
 export function TitleCommunity({
   titleId,
   titleName,
@@ -34,6 +41,8 @@ export function TitleCommunity({
   initialPosts,
   initialCursor,
   initialCounts,
+  crossMedium = false,
+  canModerate = false,
 }: {
   titleId: string;
   titleName: string;
@@ -41,12 +50,17 @@ export function TitleCommunity({
   initialPosts: CommunityPost[];
   initialCursor: string | null;
   initialCounts: Record<string, number>;
+  /** true when a manga + its anime share this community (show the medium filter) */
+  crossMedium?: boolean;
+  /** viewer is a moderator → can remove any post */
+  canModerate?: boolean;
 }) {
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [counts, setCounts] = useState<Record<string, number>>(initialCounts);
   const [sort, setSort] = useState<Sort>("all");
   const [order, setOrder] = useState<FeedSort>("latest");
+  const [medium, setMedium] = useState<Medium>("all");
   const [selEp, setSelEp] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,11 +85,13 @@ export function TitleCommunity({
   }, [menuOpen]);
 
   // re-fetch a fresh first page when the active filter changes
-  const refetch = async (kind: PostKind | null, episode: string | null, ord: FeedSort = order) => {
+  const medArg = (m: Medium): "anime" | "manga" | null => (m === "all" ? null : m);
+
+  const refetch = async (kind: PostKind | null, episode: string | null, ord: FeedSort = order, med: Medium = medium) => {
     const id = ++reqId.current;
     setLoading(true);
     try {
-      const res = await getTitleFeedAction(titleId, kind, episode, ord, null);
+      const res = await getTitleFeedAction(titleId, kind, episode, ord, null, medArg(med));
       if (id === reqId.current) {
         setPosts(res.posts);
         setCursor(res.nextCursor);
@@ -104,7 +120,7 @@ export function TitleCommunity({
     const id = reqId.current;
     try {
       const { kind, episode } = currentFilter();
-      const res = await getTitleFeedAction(titleId, kind, episode, order, cursor);
+      const res = await getTitleFeedAction(titleId, kind, episode, order, cursor, medArg(medium));
       if (id === reqId.current) {
         setPosts((ps) => {
           const seen = new Set(ps.map((p) => p.id));
@@ -116,7 +132,14 @@ export function TitleCommunity({
       setPaging(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paging, cursor, order, sort, selEp, titleId]);
+  }, [paging, cursor, order, sort, selEp, titleId, medium]);
+
+  const pickMedium = (m: Medium) => {
+    if (m === medium) return;
+    setMedium(m);
+    const { kind, episode } = currentFilter();
+    refetch(kind, episode, order, m);
+  };
 
   const pickEpisode = (n: number) => {
     const next = selEp === n ? null : n;
@@ -145,6 +168,19 @@ export function TitleCommunity({
 
       <div className="cfeed__bar">
         <span className="cfeed__count">{posts.length} {posts.length === 1 ? "post" : "posts"}</span>
+        {crossMedium && (
+          <div className="cseg-sort cseg-sort--sm cmedium" role="group" aria-label="Filter by medium">
+            {MEDIA.map((m) => (
+              <button
+                key={m.key}
+                className={"cseg-sort__opt" + (medium === m.key ? " on" : "")}
+                onClick={() => pickMedium(m.key)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="cseg-sort cseg-sort--sm">
           {ORDERS.map((o) => (
             <button key={o.key} className={"cseg-sort__opt" + (order === o.key ? " on" : "")} onClick={() => pickOrder(o.key)}>
@@ -204,7 +240,7 @@ export function TitleCommunity({
           </div>
         ) : (
           posts.map((p) => (
-            <PostCard key={p.id} post={p} onDeleted={(id) => setPosts((ps) => ps.filter((x) => x.id !== id))} />
+            <PostCard key={p.id} post={p} canModerate={canModerate} onDeleted={(id) => setPosts((ps) => ps.filter((x) => x.id !== id))} />
           ))
         )}
       </div>

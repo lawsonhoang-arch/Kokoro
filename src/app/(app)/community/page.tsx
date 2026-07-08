@@ -4,27 +4,30 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { Page, PageHead } from "@/shell/Page";
 import { getHomeFeed, getTrending } from "@/lib/community";
+import { getFollowingFeed } from "@/lib/activity";
+import { isModerator } from "@/lib/submissions";
 import { HomeFeed } from "@/features/community/HomeFeed";
 import { CommunitySearch } from "@/features/community/CommunitySearch";
+import { ActivityFeed } from "@/features/social/ActivityFeed";
+import { CommunityTabs } from "./CommunityTabs";
 
 export default async function CommunityPage() {
   const session = await auth();
-  const [page, trending] = await Promise.all([getHomeFeed(session?.user?.id), getTrending(8)]);
+  const userId = session?.user?.id;
+  const [page, trending, following] = await Promise.all([
+    getHomeFeed(userId).catch(() => ({ posts: [], nextCursor: null })),
+    getTrending(8).catch(() => []),
+    getFollowingFeed(userId, 60), // already graceful
+  ]);
+  const canModerate = isModerator(session?.user?.role);
 
-  return (
-    <Page width="wide">
-      <PageHead
-        eyebrow="Community · Public"
-        title="What everyone's watching"
-        lede="Discussions, reviews, and hot takes from across the catalog — jump into any anime's community to go deeper."
-      />
-
+  const discussions = (
+    <>
       <CommunitySearch />
-
       <div className="community">
         {/* MAIN COLUMN: feed */}
         <section aria-label="Feed">
-          <HomeFeed initial={page.posts} initialCursor={page.nextCursor} />
+          <HomeFeed initial={page.posts} initialCursor={page.nextCursor} canModerate={canModerate} />
         </section>
 
         {/* RIGHT RAIL: trending */}
@@ -59,6 +62,28 @@ export default async function CommunityPage() {
           </div>
         </aside>
       </div>
+    </>
+  );
+
+  const followingTab = (
+    <>
+      <ActivityFeed events={following} empty="No activity from people you follow yet." />
+      {following.length === 0 && (
+        <p className="act-empty-cta">
+          Follow people from a post or their profile and what they watch &amp; rate shows up here.
+        </p>
+      )}
+    </>
+  );
+
+  return (
+    <Page width="wide">
+      <PageHead
+        eyebrow="Community · Public"
+        title="What everyone's watching"
+        lede="Discussions, reviews, and hot takes from across the catalog — plus a feed of what the people you follow are into."
+      />
+      <CommunityTabs discussions={discussions} following={followingTab} followingCount={following.length} />
     </Page>
   );
 }

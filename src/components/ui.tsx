@@ -66,16 +66,22 @@ type AvatarProps = {
   size?: "default" | "lg" | "xl";
   className?: string;
   style?: React.CSSProperties;
+  src?: string | null; // character art (or null → the hue circle)
 };
 
-export function Avatar({ hue, size = "default", className, style }: AvatarProps) {
+export function Avatar({ hue, size = "default", className, style, src }: AvatarProps) {
   const s = size === "lg" ? " avatar--lg" : size === "xl" ? " avatar--xl" : "";
   return (
     <span
-      className={"avatar" + s + (hue ? ` avatar--h${hue}` : "") + (className ? " " + className : "")}
+      className={"avatar" + s + (hue ? ` avatar--h${hue}` : "") + (src ? " avatar--img" : "") + (className ? " " + className : "")}
       style={style}
       aria-hidden="true"
-    />
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="avatar__img" src={src} alt="" referrerPolicy="no-referrer" />
+      ) : null}
+    </span>
   );
 }
 

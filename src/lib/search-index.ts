@@ -39,7 +39,10 @@ export type IndexRow = {
 let cache: IndexRow[] | null = null;
 let loadedAt = 0;
 let loading: Promise<IndexRow[]> | null = null;
-const TTL = 3 * 60 * 1000; // refresh at most every 3 minutes
+// The 43k-row load is heavy (and brutal on a struggling DB), while the catalog
+// barely changes mid-session — so refresh sparingly. Stale-while-revalidate
+// means reads stay instant regardless; this just cuts how often we re-query.
+const TTL = 15 * 60 * 1000; // refresh at most every 15 minutes
 
 type Raw = {
   id: string; kind: string; title: string; english_title: string | null; native: string | null;
@@ -49,15 +52,26 @@ type Raw = {
   nsfw: boolean | null; search_text: string | null;
 };
 
+// search_text is title + synonyms (built up to 2000 chars). Across 43k rows its
+// long tail dominates the cold-load payload, yet the important terms (title,
+// romaji, common alternate titles) sit up front — so cap what we pull. Deep,
+// rarely-queried synonyms drop out; primary + common-synonym search is intact.
+const HAY_MAX = 280;
+
 async function load(): Promise<IndexRow[]> {
   // Runs on the DIRECT connection (session pooler / direct), never the
   // transaction pooler — this one big streaming query would be cancelled there.
+  const t0 = Date.now();
   const res = await getDbDirect().execute(sql`
     select id, kind, title, english_title, native_title as native, year, episodes, seasons,
-           format, genres, cover, score, popularity, season, status, nsfw, search_text
+           format, genres, cover, score, popularity, season, status, nsfw,
+           left(search_text, ${HAY_MAX}) as search_text
     from titles where search_text is not null
   `);
-  const rows = res as unknown as Raw[];
+  // filter(Boolean) drops any nullish/holes before mapping, so the index never
+  // contains an undefined row (defensive against a partial/streaming result)
+  const rows = (res as unknown as Raw[]).filter(Boolean);
+  console.log(`[search-index] loaded ${rows.length} rows in ${Date.now() - t0}ms`);
   return rows.map((r) => {
     // prefer the English title for display; keep romaji searchable
     const display = r.english_title || r.title;
@@ -83,17 +97,34 @@ async function load(): Promise<IndexRow[]> {
   });
 }
 
-/** The in-memory catalog. Serves a slightly stale copy while refreshing. */
+// On a cold start the full 43k-row load can take many seconds on a loaded DB.
+// Don't block a page render for the whole thing: wait briefly, then serve an
+// empty index and let the load finish in the background (it populates the cache
+// for the next request). Callers already handle an empty index gracefully.
+const COLD_WAIT_MS = 5000;
+
+/** The in-memory catalog. Serves a slightly stale copy while refreshing, and
+ *  degrades to an empty index (never rejects) if a load fails — a transient DB
+ *  timeout should mean "no results this once", not a 500. Crucially, the
+ *  background load resolves (never rejects), so serving a stale copy while it
+ *  runs can't leak an unhandled rejection. */
 export async function getIndex(): Promise<IndexRow[]> {
   const fresh = cache && Date.now() - loadedAt < TTL;
   if (fresh) return cache!;
   if (!loading) {
     loading = load()
-      .then((rows) => { cache = rows; loadedAt = Date.now(); loading = null; return rows; })
-      .catch((e) => { loading = null; throw e; });
+      .then((rows) => { cache = rows; loadedAt = Date.now(); return rows; })
+      .catch((e) => {
+        console.error("[search-index] load failed:", (e as Error)?.message ?? e);
+        return cache ?? []; // resolve to the stale copy (or empty) — never reject
+      })
+      .finally(() => { loading = null; });
   }
-  // stale-while-revalidate: return the old copy immediately if we have one
-  return cache ?? loading;
+  // stale-while-revalidate: serve the old copy immediately if we have one
+  if (cache) return cache;
+  // no cache yet — wait only briefly, then serve empty while the load continues
+  const bail = new Promise<IndexRow[]>((res) => setTimeout(() => res([]), COLD_WAIT_MS));
+  return Promise.race([loading, bail]);
 }
 
 export function toResult(r: IndexRow): SearchResult {
@@ -107,6 +138,7 @@ export function toResult(r: IndexRow): SearchResult {
     year: r.year > 0 ? r.year : null,
     genres: r.genres,
     cover: r.cover,
+    status: r.status,
   };
 }
 
@@ -132,6 +164,7 @@ export async function indexSearch(query: string, limit = 20): Promise<SearchResu
   const rows = await getIndex();
   const hits: Array<{ s: number; r: IndexRow }> = [];
   for (const r of rows) {
+    if (!r) continue;
     const s = relevance(r, q);
     if (s > 0) hits.push({ s, r });
   }
@@ -176,10 +209,12 @@ export async function indexQuery(
 
   const matched: Array<{ s: number; r: IndexRow }> = [];
   for (const r of rows) {
+    if (!r) continue; // defensive: never let a stray row 500 the search page
     if (excludeNsfw && r.nsfw) continue;
     if (personalIds && !personalIds.has(r.id)) continue;
     if ((f.type === "anime" || f.type === "manga") && r.kind !== f.type) continue;
     if (f.format && r.format !== f.format) continue;
+    if (f.airing && r.status !== f.airing) continue;
     if (f.genre && !r.genres.includes(f.genre)) continue;
     if (!Number.isNaN(decade) && (r.year < decade || r.year > decade + 9)) continue;
     if (lenTest && !lenTest(r.episodes)) continue;
@@ -225,7 +260,7 @@ export async function indexBrowseManga(limit: number): Promise<SearchResult[]> {
 /** A single title by id, from the index (instant). Returns null if absent. */
 export async function indexGetTitle(id: string): Promise<SearchResult | null> {
   const rows = await getIndex();
-  const r = rows.find((x) => x.id === id);
+  const r = rows.find((x) => x && x.id === id);
   return r ? toResult(r) : null;
 }
 
@@ -326,6 +361,62 @@ export async function getUnderratedGems(limit: number): Promise<SearchResult[]> 
         !SEQUEL_RE.test(r.title),
     )
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (a.popularity ?? 0) - (b.popularity ?? 0))
+    .slice(0, limit)
+    .map(toResult);
+}
+
+/** Acclaimed titles within the given genres, best-scored first, skipping ids the
+ *  viewer has already seen. Backs "blind spots" recommendations. */
+export async function getTopInGenres(genres: string[], exclude: Set<string>, limit: number): Promise<SearchResult[]> {
+  if (genres.length === 0) return [];
+  const want = new Set(genres.map((g) => g.toLowerCase()));
+  const rows = await getIndex();
+  return rows
+    .filter(
+      (r) =>
+        !r.nsfw &&
+        r.cover &&
+        r.score != null && r.score >= 750 &&
+        !exclude.has(r.id) &&
+        r.genres.some((g) => want.has(g.toLowerCase())),
+    )
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, limit)
+    .map(toResult);
+}
+
+// A mood is a filter over the catalog: genres (any / all / excluded), length,
+// and a quality floor. Everything runs against the in-memory index (no DB).
+export type MoodCriteria = {
+  anyGenres?: string[];
+  allGenres?: string[];
+  notGenres?: string[];
+  minScore?: number;
+  minEpisodes?: number;
+  maxEpisodes?: number;
+  includeManga?: boolean;
+};
+
+/** Titles matching a mood, best-scored first. Anime only unless `includeManga`. */
+export async function getByMood(c: MoodCriteria, limit: number): Promise<SearchResult[]> {
+  const rows = await getIndex();
+  const any = c.anyGenres?.map((g) => g.toLowerCase());
+  const all = c.allGenres?.map((g) => g.toLowerCase());
+  const not = c.notGenres?.map((g) => g.toLowerCase());
+  return rows
+    .filter((r) => {
+      if (r.nsfw || !r.cover) return false;
+      if (!c.includeManga && r.kind !== "anime") return false;
+      if (c.minScore != null && (r.score == null || r.score < c.minScore)) return false;
+      if (c.minEpisodes != null && (!r.episodes || r.episodes < c.minEpisodes)) return false;
+      if (c.maxEpisodes != null && (!r.episodes || r.episodes > c.maxEpisodes)) return false;
+      const g = r.genres.map((x) => x.toLowerCase());
+      if (any && !any.some((x) => g.includes(x))) return false;
+      if (all && !all.every((x) => g.includes(x))) return false;
+      if (not && not.some((x) => g.includes(x))) return false;
+      return true;
+    })
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, limit)
     .map(toResult);
 }

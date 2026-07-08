@@ -26,17 +26,47 @@ export function WelcomeOverlay({ username }: { username: string }) {
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
+    // time-based greeting is client-only (deferred so SSR/first render agree)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGreet(greeting(new Date().getHours()));
     // strip ?welcome=1 so a refresh won't replay the greeting
     window.history.replaceState(null, "", "/home");
 
-    const HOLD = 2600; // visible time before it starts leaving
+    const MIN_HOLD = 2600; // minimum on-screen time so the greeting fully plays
     const FADE = 950; // fade-out duration (matches CSS) before unmount
-    const t1 = setTimeout(() => setLeaving(true), HOLD);
-    const t2 = setTimeout(() => setGone(true), HOLD + FADE);
+    const MAX_WAIT = 9000; // failsafe: reveal even if the ready signal never comes
+    const start = Date.now();
+
+    let holdT: ReturnType<typeof setTimeout>;
+    let goneT: ReturnType<typeof setTimeout>;
+    let left = false;
+
+    const leave = () => {
+      if (left) return; // guard: the failsafe may still fire after a normal leave
+      left = true;
+      setLeaving(true);
+      goneT = setTimeout(() => setGone(true), FADE);
+    };
+    // Home has loaded — but still let the greeting finish its minimum hold, so a
+    // fast load doesn't cut the animation short.
+    const onReady = () => {
+      holdT = setTimeout(leave, Math.max(0, MIN_HOLD - (Date.now() - start)));
+    };
+
+    const w = window as unknown as { __kokoroHomeReady?: boolean };
+    if (w.__kokoroHomeReady) {
+      onReady(); // Home streamed in before we subscribed
+    } else {
+      window.addEventListener("kokoro:home-ready", onReady, { once: true });
+    }
+    // never get stuck if the beacon never fires (e.g. Home errored)
+    const failsafeT = setTimeout(leave, MAX_WAIT);
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      window.removeEventListener("kokoro:home-ready", onReady);
+      clearTimeout(holdT);
+      clearTimeout(goneT);
+      clearTimeout(failsafeT);
     };
   }, []);
 

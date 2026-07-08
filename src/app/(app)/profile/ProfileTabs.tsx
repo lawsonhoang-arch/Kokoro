@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { signOutAction } from "@/lib/auth-actions";
 import { RatingBadge } from "@/features/community/RatingBadge";
@@ -8,11 +8,13 @@ import { timeAgo } from "@/features/community/helpers";
 import { updateProfileAction, changeUsernameAction } from "./actions";
 import { toggleFavoriteAction } from "@/app/(app)/anime/actions";
 import { AddFavorites } from "./AddFavorites";
+import { computeBadges, type Badge } from "./badges";
+import { BadgeCelebration } from "./BadgeCelebration";
 import type {
   ProfileUser,
   ProfileSummary,
   ProfileReview,
-  ActivityItem,
+  Superlative,
   ProfileTitle,
 } from "@/lib/profile";
 
@@ -45,15 +47,95 @@ function Poster({ t, className }: { t: { id: string; title: string; cover: strin
   );
 }
 
-function ActIcon({ kind }: { kind: ActivityItem["kind"] }) {
-  if (kind === "review")
-    return <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>;
-  if (kind === "discussion")
-    return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
-  if (kind === "completed")
-    return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>;
-  // note / take
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>;
+function Superlatives({ items }: { items: Superlative[] }) {
+  if (items.length === 0)
+    return <div className="pf-empty">Rate a few titles and your superlatives will show up here.</div>;
+  return (
+    <div className="pf-supers">
+      {items.map((s) => (
+        <Link key={s.key} href={`/anime/${encodeURIComponent(s.titleId)}`} className="pf-super">
+          <Poster t={{ id: s.titleId, title: s.title, cover: s.cover }} className="pf-super__art" />
+          <div className="pf-super__body">
+            <div className="pf-super__label">{s.label}</div>
+            <div className="pf-super__title">{s.title}</div>
+          </div>
+          <div className="pf-super__value">{s.value}</div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function Milestones({ badges }: { badges: Badge[] }) {
+  const earned = badges.filter((b) => b.earned).length;
+  // Clicking a badge reveals a popover with the requirement + progress (the
+  // hover title alone isn't discoverable and doesn't work on touch).
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!openKey) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".pf-badge")) setOpenKey(null);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpenKey(null);
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openKey]);
+
+  return (
+    <section className="section pf-badges">
+      <header className="section__head">
+        <div>
+          <h3 className="section__title">Milestones</h3>
+          <div className="section__sub">{earned} of {badges.length} badges earned · tap a badge for details</div>
+        </div>
+      </header>
+      <div className="pf-badgegrid">
+        {badges.map((b) => {
+          const open = openKey === b.key;
+          const pct = Math.round(b.progress * 100);
+          return (
+            <button
+              key={b.key}
+              type="button"
+              className={"pf-badge" + (b.earned ? " on" : "") + (open ? " open" : "")}
+              aria-expanded={open}
+              onClick={() => setOpenKey((k) => (k === b.key ? null : b.key))}
+            >
+              <span className="pf-badge__ico" aria-hidden="true">{b.icon}</span>
+              <span className="pf-badge__label">{b.label}</span>
+              {b.earned ? (
+                <span className="pf-badge__done">Earned</span>
+              ) : (
+                <>
+                  <span className="pf-badge__bar"><span style={{ width: `${b.progress * 100}%` }} /></span>
+                  <span className="pf-badge__num">{b.value.toLocaleString()}/{b.goal.toLocaleString()}</span>
+                </>
+              )}
+              {open && (
+                <span className="pf-badge__pop" role="tooltip" onClick={(e) => e.stopPropagation()}>
+                  <span className="pf-badge__pop-req">{b.desc}</span>
+                  {b.earned ? (
+                    <span className="pf-badge__pop-status pf-badge__pop-status--done">Unlocked ✓</span>
+                  ) : (
+                    <>
+                      <span className="pf-badge__pop-bar"><span style={{ width: `${b.progress * 100}%` }} /></span>
+                      <span className="pf-badge__pop-status">
+                        {b.value.toLocaleString()} / {b.goal.toLocaleString()} · {pct}% · {(b.goal - b.value).toLocaleString()} to go
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function FavCard({ t, onRemove }: { t: ProfileTitle; onRemove: (id: string) => void }) {
@@ -75,15 +157,15 @@ function FavCard({ t, onRemove }: { t: ProfileTitle; onRemove: (id: string) => v
 function Overview({
   summary,
   reviews,
-  activity,
   favorites,
+  badges,
   onRemoveFavorite,
   onOpenPicker,
 }: {
   summary: ProfileSummary;
   reviews: ProfileReview[];
-  activity: ActivityItem[];
   favorites: ProfileTitle[];
+  badges: Badge[];
   onRemoveFavorite: (id: string) => void;
   onOpenPicker: () => void;
 }) {
@@ -92,6 +174,7 @@ function Overview({
   const n = favorites.length;
   const favSize = n <= 2 ? 158 : n <= 4 ? 138 : n <= 6 ? 122 : 108;
   return (
+    <>
     <section className="pf-grid" aria-label="Overview">
       <div>
         <section className="section" style={{ marginTop: 0 }}>
@@ -150,25 +233,8 @@ function Overview({
 
       <aside>
         <section className="section" style={{ marginTop: 0 }}>
-          <header className="section__head"><div><h3 className="section__title">Recent activity</h3></div></header>
-          {activity.length === 0 ? (
-            <div className="pf-empty">Your reviews, discussions, and journal notes will appear here.</div>
-          ) : (
-            <div className="activity">
-              {activity.map((a) => (
-                <div key={a.id} className="act">
-                  <span className={"act__icon act__icon--" + a.kind} aria-hidden="true"><ActIcon kind={a.kind} /></span>
-                  <div>
-                    <div className="act__title">{a.text}</div>
-                    <div className="act__sub">
-                      {a.titleName ?? "General"}{a.episode ? ` · ${a.episode}` : ""}
-                    </div>
-                  </div>
-                  <span className="act__when">{timeAgo(a.createdAt)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <header className="section__head"><div><h3 className="section__title">Superlatives</h3><div className="section__sub">Records from your library</div></div></header>
+          <Superlatives items={summary.superlatives} />
         </section>
 
         <section className="section">
@@ -200,6 +266,9 @@ function Overview({
         </section>
       </aside>
     </section>
+
+    <Milestones badges={badges} />
+    </>
   );
 }
 
@@ -393,18 +462,54 @@ export function ProfileTabs({
   user,
   summary,
   reviews,
-  activity,
   favorites: initialFavorites,
 }: {
   user: ProfileUser;
   summary: ProfileSummary;
   reviews: ProfileReview[];
-  activity: ActivityItem[];
   favorites: ProfileTitle[];
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [favorites, setFavorites] = useState<ProfileTitle[]>(initialFavorites);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Badges recompute live off the (stateful) favorites count + summary stats,
+  // so crossing a threshold while on the page (e.g. adding a 6th favorite)
+  // updates them immediately.
+  const badges = useMemo(() => computeBadges(summary.stats, favorites.length), [summary.stats, favorites.length]);
+
+  // Celebrate newly-unlocked badges. We remember which badges the user has
+  // already been congratulated for in localStorage (badges aren't persisted
+  // server-side). First ever visit seeds a silent baseline so we don't fire a
+  // toast for every badge already earned; after that, any freshly-earned badge
+  // pops a one-at-a-time celebration queue.
+  const [celebrations, setCelebrations] = useState<Badge[]>([]);
+  useEffect(() => {
+    const key = `kokoro:badges:${user.id}`;
+    const earnedKeys = badges.filter((b) => b.earned).map((b) => b.key);
+    let known: string[] | null = null;
+    try {
+      const raw = localStorage.getItem(key);
+      known = raw ? (JSON.parse(raw) as string[]) : null;
+    } catch {
+      known = null;
+    }
+    if (known === null) {
+      // no baseline yet → establish one without celebrating existing badges
+      try { localStorage.setItem(key, JSON.stringify(earnedKeys)); } catch {}
+      return;
+    }
+    const knownSet = new Set(known);
+    const fresh = badges.filter((b) => b.earned && !knownSet.has(b.key));
+    if (fresh.length) {
+      // Reacting to an external system (persisted baseline + stat changes) by
+      // enqueuing a toast — inherent to unlock detection, and only on the rare
+      // render where a badge actually crosses its threshold.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCelebrations((q) => [...q, ...fresh.filter((f) => !q.some((x) => x.key === f.key))]);
+      try { localStorage.setItem(key, JSON.stringify(earnedKeys)); } catch {}
+    }
+  }, [badges, user.id]);
 
   // pure local state updaters (the AddFavorites modal does its own server toggle)
   const addFavLocal = (t: ProfileTitle) => setFavorites((fs) => (fs.some((f) => f.id === t.id) ? fs : [t, ...fs]));
@@ -430,8 +535,8 @@ export function ProfileTabs({
         <Overview
           summary={summary}
           reviews={reviews}
-          activity={activity}
           favorites={favorites}
+          badges={badges}
           onRemoveFavorite={removeFavorite}
           onOpenPicker={() => setPickerOpen(true)}
         />
@@ -446,6 +551,14 @@ export function ProfileTabs({
           existingIds={new Set(favorites.map((f) => f.id))}
           onAdd={addFavLocal}
           onRemove={removeFavLocal}
+        />
+      )}
+
+      {celebrations[0] && (
+        <BadgeCelebration
+          key={celebrations[0].key}
+          badge={celebrations[0]}
+          onDismiss={() => setCelebrations((q) => q.slice(1))}
         />
       )}
     </>

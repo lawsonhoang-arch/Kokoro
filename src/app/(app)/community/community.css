@@ -307,6 +307,8 @@
 /* delete controls (author-only) */
 .cpost__del { flex: 0 0 auto; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--ink-faint); cursor: pointer; transition: background .14s, color .14s; }
 .cpost__del:hover { background: color-mix(in oklab, var(--feel-dropped) 16%, var(--surface)); color: var(--feel-dropped); }
+/* moderator removing someone else's post — hint the elevated action */
+.cpost__del--mod { color: color-mix(in oklab, var(--feel-dropped) 60%, var(--ink-faint)); }
 .creply__del { margin-left: 7px; color: var(--ink-faint); cursor: pointer; vertical-align: middle; }
 .creply__del:hover { color: var(--feel-dropped); }
 
@@ -481,3 +483,55 @@
 .chero__tag--genre { color: var(--ink-faint); }
 .cpage__body { max-width: 920px; margin: 28px auto 0; }
 @media (max-width: 720px) { .chero { margin: -38px -20px 0; min-height: 280px; } }
+
+/* linked author name/handle → profile */
+a.cpost__name { text-decoration: none; }
+a.cpost__name:hover { color: var(--accent); }
+.cpost__handle { color: inherit; text-decoration: none; }
+.cpost__handle:hover { color: var(--accent); }
+
+/* ============================================================
+   FOLLOWING ACTIVITY — the "Following" sub-tab timeline
+   ============================================================ */
+.act-list { display: flex; flex-direction: column; max-width: 720px; }
+.act {
+  display: flex; align-items: flex-start; gap: 13px;
+  padding: 14px 2px; border-bottom: 1px solid var(--line);
+}
+.act:last-child { border-bottom: none; }
+.act__avatar {
+  flex: none; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; overflow: hidden;
+  font-family: var(--font-title); font-weight: 700; font-size: 14px;
+  text-decoration: none;
+}
+.act__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.act__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.act__line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
+.act__user { font-family: var(--font-title); font-weight: 700; font-size: 14px; color: var(--ink); text-decoration: none; }
+.act__user:hover { color: var(--accent); }
+.act__verb { font-size: 13.5px; color: var(--ink-faint); }
+.act__title { font-size: 13.5px; font-weight: 600; color: var(--ink); text-decoration: none; }
+.act__title:hover { color: var(--accent); }
+.act__ep { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); padding: 1px 6px; border-radius: 99px; border: 1px solid var(--line); }
+.act__nth { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--accent); padding: 1px 8px; border-radius: 99px; background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.act__rating {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 1px 8px; border-radius: 99px; color: var(--feel-loved, var(--accent));
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.act__rating--loved { color: var(--feel-loved); background: color-mix(in oklab, var(--feel-loved) 14%, transparent); }
+.act__rating--liked { color: var(--feel-liked); background: color-mix(in oklab, var(--feel-liked) 14%, transparent); }
+.act__rating--mixed { color: var(--feel-mixed); background: color-mix(in oklab, var(--feel-mixed) 14%, transparent); }
+.act__rating--dropped { color: var(--feel-dropped); background: color-mix(in oklab, var(--feel-dropped) 14%, transparent); }
+.act__time { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.act__note {
+  margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.act__cover { flex: none; width: 44px; height: 60px; border-radius: 8px; overflow: hidden; background: var(--surface-3); }
+.act__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.act-empty { color: var(--ink-faint); font-size: 14px; padding: 24px 2px; }
+.act-empty-cta { color: var(--ink-faint); font-size: 13.5px; margin-top: 4px; }
+.act-empty-cta a { color: var(--accent); text-decoration: none; }
+.act-empty-cta a:hover { text-decoration: underline; }

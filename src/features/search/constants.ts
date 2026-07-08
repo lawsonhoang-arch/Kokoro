@@ -79,6 +79,14 @@ export const FEELINGS = [
 // the four 0–5 rating axes stored on each entry
 export const DIMS = ["story", "art", "music", "pacing"] as const;
 
+// catalog lifecycle (titles.status) — the anime/manga's own airing/publishing
+// state, distinct from the personal watchlist `status` above.
+export const AIRING = [
+  { v: "ongoing", l: "Airing / Publishing" },
+  { v: "finished", l: "Completed" },
+  { v: "upcoming", l: "Upcoming" },
+];
+
 export type CatalogFilters = {
   type?: string; // "" | "anime" | "manga"
   format?: string;
@@ -86,6 +94,7 @@ export type CatalogFilters = {
   decade?: string;
   sort?: string;
   // catalog facts
+  airing?: string; // lifecycle: ongoing | finished | upcoming
   length?: string; // episode/chapter bucket "min-max" (max omitted = open-ended)
   seasons?: string; // "1".."4" ("4" = 4+)
   score?: string; // minimum catalog score, 0–10

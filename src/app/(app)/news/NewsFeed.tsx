@@ -10,8 +10,22 @@ export type FeedStory = {
   source: string;
   href: string | null;
   time: string;
+  cover?: string | null; // admin-set picture (RSS items have none)
   reason?: string; // present on "For you" picks — why it was surfaced
+  layout?: "card" | "list" | "auto"; // moderator-set news-tab placement
 };
+
+// A story's picture — only rendered when a cover is set, so text-only stories
+// (e.g. RSS articles) keep their clean look.
+function NewsArt({ cover, className }: { cover: string | null | undefined; className: string }) {
+  if (!cover) return null;
+  return (
+    <span className={className} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="news-art__img" src={cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+    </span>
+  );
+}
 
 type Props = {
   stories: FeedStory[];
@@ -49,9 +63,20 @@ export function NewsFeed({ stories, curated, trending, releases }: Props) {
     : active === "Top stories"
       ? stories
       : stories.filter((s) => s.category === active);
-  const lead = list[0];
-  const grid = list.slice(1, 7);
-  const rest = list.slice(7);
+
+  // Resolve each story to card or list. Explicit moderator placement wins;
+  // otherwise fall back to position-based tiering (top stories lead as cards).
+  // "For you" is per-user and not admin-shaped, so it always auto-tiers.
+  const resolved = list.map((s, i) => {
+    const explicit = !forYou && (s.layout === "card" || s.layout === "list");
+    const lay = explicit ? (s.layout as "card" | "list") : i < 7 ? "card" : "list";
+    return { s, lay };
+  });
+  const cards = resolved.filter((r) => r.lay === "card").map((r) => r.s);
+  const listRows = resolved.filter((r) => r.lay === "list").map((r) => r.s);
+  const lead = cards[0];
+  const grid = cards.slice(1, 7);
+  const rest = [...cards.slice(7), ...listRows];
 
   const meta = (s: FeedStory) => (
     <div className="news-meta">
@@ -91,6 +116,7 @@ export function NewsFeed({ stories, curated, trending, releases }: Props) {
             <>
               {lead && (
                 <Shell href={lead.href} className="news-lead card">
+                  <NewsArt cover={lead.cover} className="news-lead__art" />
                   <div className="news-lead__body">
                     <span className="news-cat-row">
                       <span className="news-cat">{lead.category}</span>
@@ -108,6 +134,7 @@ export function NewsFeed({ stories, curated, trending, releases }: Props) {
                 <div className="news-grid">
                   {grid.map((s) => (
                     <Shell key={s.id} href={s.href} className="news-card card">
+                      <NewsArt cover={s.cover} className="news-card__art" />
                       <div className="news-card__body">
                         <span className="news-cat-row">
                           <span className="news-cat">{s.category}</span>

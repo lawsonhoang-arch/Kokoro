@@ -102,6 +102,18 @@ type Group = {
 };
 type Target = { id: string | null; title: string; episodes?: number | null };
 
+// A non-note diary event woven into the timeline — a title you marked watched or
+// favourited. Read-only (edited from the title/watchlist, not here).
+export type DiaryEvent = {
+  id: string;
+  kind: "completed" | "favorited" | "rewatched";
+  at: string; // ISO
+  titleId: string;
+  title: string;
+  cover: string | null;
+  ordinal?: number; // rewatched: which time through
+};
+
 // pull the episode number out of a free-text marker ("EP 17" → 17, "" → null)
 const epNum = (s: string): number | null => {
   const m = s.match(/\d+/);
@@ -470,14 +482,57 @@ function EntryView({
   );
 }
 
+// n → "2nd", "3rd" …
+function nth(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// ---- a woven-in diary event (marked watched / favourited / rewatched) --------
+function ActivityRow({ ev, now }: { ev: DiaryEvent; now: number }) {
+  const label =
+    ev.kind === "completed"
+      ? "✓ Marked watched"
+      : ev.kind === "favorited"
+        ? "♥ Added to favourites"
+        : `↻ Rewatched${ev.ordinal ? ` · ${nth(ev.ordinal)} time` : ""}`;
+  return (
+    <article className="entry entry--act">
+      <div className="entry__rail">
+        <span className={"entry__dot entry__dot--" + ev.kind} aria-hidden="true" />
+        <div className="entry__date">
+          <span className="entry__date-day">{fmtDay(ev.at)}</span>
+          <span>{fmtTime(ev.at)}</span>
+        </div>
+      </div>
+      <div className="entry__body entry__body--act">
+        <Link href={`/anime/${encodeURIComponent(ev.titleId)}`} className="entry__actcover" aria-hidden="true">
+          {ev.cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={ev.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+          ) : null}
+        </Link>
+        <div className="entry__actmain">
+          <span className={"entry__actverb entry__actverb--" + ev.kind}>{label}</span>
+          <Link href={`/anime/${encodeURIComponent(ev.titleId)}`} className="entry__acttitle">{ev.title}</Link>
+        </div>
+        <span className="entry__time">{relative(ev.at, now)}</span>
+      </div>
+    </article>
+  );
+}
+
+// A unified timeline item: a written note or a diary event.
+type TLItem = { at: string; note?: JournalEntry; act?: DiaryEvent };
+
 // ---- the app ----------------------------------------------------------------
-export function JournalApp({ entries: initial, now }: { entries: JournalEntry[]; now: number }) {
+export function JournalApp({ entries: initial, activity, now }: { entries: JournalEntry[]; activity: DiaryEvent[]; now: number }) {
   const [entries, setEntries] = useState<JournalEntry[]>(initial);
   const [railQuery, setRailQuery] = useState("");
-  // default to the most-recent title (entries arrive newest-first)
-  const [selected, setSelected] = useState<string>(() =>
-    initial.length ? initial[0].titleId ?? FREE_KEY : "all",
-  );
+  // open on the full diary timeline (notes + marked-watched + favourited woven
+  // together); the rail narrows to a single title on demand
+  const [selected, setSelected] = useState<string>("all");
   const [composerOpen, setComposerOpen] = useState(false);
   // filters (applied to the selected group's notes)
   const [fQuery, setFQuery] = useState("");
@@ -521,31 +576,60 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
       g.count++;
       if (e.createdAt > g.last) g.last = e.createdAt;
     }
+    // titles you marked watched / favourited join the rail too, so the journal is
+    // a complete diary — not only the titles you wrote about
+    for (const a of activity) {
+      let g = m.get(a.titleId);
+      if (!g) {
+        g = { key: a.titleId, titleId: a.titleId, title: a.title, cover: a.cover, year: null, episodes: null, count: 0, last: a.at };
+        m.set(a.titleId, g);
+      } else if (!g.cover && a.cover) g.cover = a.cover;
+      g.count++;
+      if (a.at > g.last) g.last = a.at;
+    }
     return [...m.values()].sort((a, b) => b.last.localeCompare(a.last));
-  }, [entries]);
+  }, [entries, activity]);
 
   // Resolve the selection at render: if the chosen group was deleted, fall back
   // to "all" (no effect needed).
   const effSelected = selected !== "all" && groups.some((g) => g.key === selected) ? selected : "all";
   const selGroup = effSelected === "all" ? null : groups.find((g) => g.key === effSelected) ?? null;
-  const shown = effSelected === "all" ? entries : entries.filter((e) => (e.titleId ?? FREE_KEY) === effSelected);
 
-  const filtered = useMemo(() => {
+  // Does the current scope hold anything at all (before filters)?
+  const scopeHasItems =
+    effSelected === "all"
+      ? entries.length + activity.length > 0
+      : entries.some((e) => (e.titleId ?? FREE_KEY) === effSelected) || activity.some((a) => a.titleId === effSelected);
+
+  // The merged, filtered, sorted timeline for the selected scope — written notes
+  // and diary events (marked-watched / favourited) woven together by date.
+  const timeline = useMemo<TLItem[]>(() => {
+    const scopedNotes = effSelected === "all" ? entries : entries.filter((e) => (e.titleId ?? FREE_KEY) === effSelected);
+    const scopedActs = effSelected === "all" ? activity : activity.filter((a) => a.titleId === effSelected);
     const q = fQuery.trim().toLowerCase();
     const day = 86400000;
     const cutoff = fDate === "today" ? now - day : fDate === "7d" ? now - 7 * day : fDate === "30d" ? now - 30 * day : 0;
-    const list = shown.filter((e) => {
+    const items: TLItem[] = [];
+    for (const e of scopedNotes) {
       if (q) {
         const hay = `${headings.get(e.id) ?? ""} ${e.title ?? ""} ${e.episode} ${e.body} ${e.quote}`.toLowerCase();
-        if (!hay.includes(q)) return false;
+        if (!hay.includes(q)) continue;
       }
-      if (cutoff && new Date(e.createdAt).getTime() < cutoff) return false;
-      if (fRate !== "any" && (e.rateMode || "glyphs") !== fRate) return false;
-      return true;
-    });
-    list.sort((a, b) => (fSort === "old" ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt)));
-    return list;
-  }, [shown, fQuery, fDate, fRate, fSort, headings, now]);
+      if (cutoff && new Date(e.createdAt).getTime() < cutoff) continue;
+      if (fRate !== "any" && (e.rateMode || "glyphs") !== fRate) continue;
+      items.push({ at: e.createdAt, note: e });
+    }
+    // diary events have no rating system, so they drop out when filtering by one
+    if (fRate === "any") {
+      for (const a of scopedActs) {
+        if (q && !a.title.toLowerCase().includes(q)) continue;
+        if (cutoff && new Date(a.at).getTime() < cutoff) continue;
+        items.push({ at: a.at, act: a });
+      }
+    }
+    items.sort((x, y) => (fSort === "old" ? x.at.localeCompare(y.at) : y.at.localeCompare(x.at)));
+    return items;
+  }, [entries, activity, effSelected, fQuery, fDate, fRate, fSort, headings, now]);
   const filtersActive = fQuery.trim() !== "" || fDate !== "all" || fRate !== "any";
 
   const railGroups = railQuery.trim()
@@ -566,7 +650,7 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
     setEntries((es) => es.filter((e) => e.id !== id));
   };
 
-  const totalNotes = entries.length;
+  const totalItems = entries.length + activity.length; // whole diary (notes + events)
 
   return (
     <div className="journal">
@@ -597,9 +681,9 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
             <span className="anime-row__thumb jrail-all__thumb" aria-hidden="true" />
             <div>
               <div className="anime-row__title">All entries</div>
-              <div className="anime-row__sub">{totalNotes} note{totalNotes === 1 ? "" : "s"}</div>
+              <div className="anime-row__sub">{totalItems} entr{totalItems === 1 ? "y" : "ies"}</div>
             </div>
-            <span className="anime-row__count">{totalNotes}</span>
+            <span className="anime-row__count">{totalItems}</span>
           </li>
           {railGroups.map((g, i) => (
             <li
@@ -615,7 +699,7 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
               </span>
               <div>
                 <div className="anime-row__title">{g.title}</div>
-                <div className="anime-row__sub">last note {relative(g.last, now)}</div>
+                <div className="anime-row__sub">last activity {relative(g.last, now)}</div>
               </div>
               <span className="anime-row__count">{g.count}</span>
             </li>
@@ -625,7 +709,7 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
           )}
         </ul>
         <div className="rail__footer">
-          <span>{groups.length} title{groups.length === 1 ? "" : "s"} · {totalNotes} entr{totalNotes === 1 ? "y" : "ies"}</span>
+          <span>{groups.length} title{groups.length === 1 ? "" : "s"} · {totalItems} entr{totalItems === 1 ? "y" : "ies"}</span>
         </div>
       </aside>
 
@@ -646,10 +730,10 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
                 <>
                   {selGroup.year ? (<><span>{selGroup.year}</span><span className="sep" /></>) : null}
                   {selGroup.episodes ? (<><span>{selGroup.episodes} episodes</span><span className="sep" /></>) : null}
-                  <span>{selGroup.count} note{selGroup.count === 1 ? "" : "s"}</span>
+                  <span>{selGroup.count} entr{selGroup.count === 1 ? "y" : "ies"}</span>
                 </>
               ) : (
-                <span>{totalNotes} note{totalNotes === 1 ? "" : "s"} across {groups.length} title{groups.length === 1 ? "" : "s"}</span>
+                <span>{totalItems} entr{totalItems === 1 ? "y" : "ies"} across {groups.length} title{groups.length === 1 ? "" : "s"}</span>
               )}
             </div>
           </div>
@@ -664,12 +748,12 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
 
         <Composer key={effSelected} open={composerOpen} setOpen={setComposerOpen} defaultTarget={defaultTarget} onCreate={onCreate} allEntries={entries} />
 
-        {shown.length > 0 && (
+        {scopeHasItems && (
           <div className="jfilters">
             <div className="jfilters__search">
               <Icon name="search" size={13} />
               <input
-                placeholder="Search notes…"
+                placeholder="Search your diary…"
                 value={fQuery}
                 onChange={(e) => setFQuery(e.target.value)}
               />
@@ -693,18 +777,22 @@ export function JournalApp({ entries: initial, now }: { entries: JournalEntry[];
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {timeline.length === 0 ? (
           <p className="journal-empty">
-            {totalNotes === 0
-              ? "Your journal is empty. Write your first note above — pick a title and jot what a show left you with."
+            {totalItems === 0
+              ? "Your diary is empty. Write a note above, or mark titles watched and rate them — it all shows up here."
               : filtersActive
-                ? "No notes match your filters."
-                : "No notes here yet."}
+                ? "Nothing matches your filters."
+                : "Nothing here yet."}
           </p>
         ) : (
-          filtered.map((e) => (
-            <EntryView key={e.id} entry={e} heading={headings.get(e.id) ?? ""} now={now} allEntries={entries} onUpdate={onUpdate} onDelete={onDelete} />
-          ))
+          timeline.map((it) =>
+            it.note ? (
+              <EntryView key={it.note.id} entry={it.note} heading={headings.get(it.note.id) ?? ""} now={now} allEntries={entries} onUpdate={onUpdate} onDelete={onDelete} />
+            ) : (
+              <ActivityRow key={it.act!.id} ev={it.act!} now={now} />
+            ),
+          )
         )}
       </section>
     </div>

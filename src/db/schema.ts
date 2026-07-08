@@ -8,8 +8,16 @@ import {
   jsonb,
   primaryKey,
   index,
+  customType,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+
+// raw binary column (Postgres bytea) — postgres.js round-trips it as a Buffer
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // ============================================================
 // AUTH.JS TABLES (Drizzle adapter shape + a passwordHash for the
@@ -30,6 +38,12 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   // public profile bio (markdown-free plain text)
   bio: text("bio").notNull().default(""),
+  // catalog title id whose art fills the profile banner (null = default gradient).
+  // plain text (no FK) so a deleted title just falls back to the default.
+  bannerTitleId: text("banner_title_id"),
+  // CSS background-position for the banner art ("x% y%"), so users can shift the
+  // art to frame its key area. null = the default framing.
+  bannerPos: text("banner_pos"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -110,7 +124,15 @@ export const titles = pgTable("titles", {
   }),
   // lowercased title + synonyms, for the self-hosted pg_trgm search index
   searchText: text("search_text"),
-});
+  // franchise key linking a manga to its anime adaptation(s) (and vice versa),
+  // so they can share one community. Filled by `db:link-adaptations` from Jikan
+  // relations; null when unlinked. Titles with the same seriesId are one series.
+  seriesId: text("series_id"),
+}, (t) => [
+  // studio/person/character pages map Jikan works back to our catalog by MAL id;
+  // without this the lookup seq-scans all ~43k titles (run `db:setup-title-mal-index`)
+  index("titles_mal_idx").on(t.malId),
+]);
 
 // A user's watchlist (one card in the gallery).
 export const watchlists = pgTable(
@@ -288,6 +310,8 @@ export const newsStories = pgTable(
     publishedAt: timestamp("published_at").notNull().defaultNow(),
     position: integer("position").notNull().default(0), // prominence: lower = bigger / higher up
     published: boolean("published").notNull().default(true),
+    onHome: boolean("on_home").notNull().default(true), // show in the Home news carousel
+    layout: text("layout").notNull().default("card"), // news-tab placement: card | list
     authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -337,6 +361,47 @@ export const completions = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.titleId] })],
 );
 
+// A user following an entity that lives outside our catalog (a studio, a person
+// — voice actor / staff, or a character). These come from Jikan (MAL), so we
+// snapshot the display fields here rather than joining a catalog table.
+export const entityFollows = pgTable(
+  "entity_follows",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // studio | person | character
+    entityId: text("entity_id").notNull(), // MAL id (as text)
+    name: text("name").notNull(),
+    image: text("image"),
+    subtitle: text("subtitle").notNull().default(""), // e.g. "Voice actor", "Studio"
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.kind, t.entityId] }),
+    index("entity_follows_user_idx").on(t.userId),
+  ],
+);
+
+// Each row = one rewatch (anime) / reread (manga) pass the user logged for a
+// title. The count of rows is how many times they've been back; the original
+// watch isn't stored here (it's the completion / watchlist entry).
+export const rewatches = pgTable(
+  "rewatches",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    titleId: text("title_id")
+      .notNull()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("rewatches_user_title_idx").on(t.userId, t.titleId)],
+);
+
 // Titles the user has hand-picked as favorites (manually curated, independent
 // of list ratings) — shown on their profile.
 export const favorites = pgTable(
@@ -348,6 +413,59 @@ export const favorites = pgTable(
     titleId: text("title_id")
       .notNull()
       .references(() => titles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.titleId] })],
+);
+
+// ============================================================
+// CALENDAR
+// ============================================================
+
+// Curated calendar entries: major anime events (conventions like Anime Expo)
+// and hand-picked premieres of highly anticipated titles. Managed in-app at
+// /calendar/admin by moderators/admins (mirrors editorial / news).
+export const calendarEvents = pgTable(
+  "calendar_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kind: text("kind").notNull().default("event"), // event | premiere
+    title: text("title").notNull(),
+    subtitle: text("subtitle").notNull().default(""),
+    // date-only (mode:"string" -> "YYYY-MM-DD") so calendar math is timezone-safe.
+    startsOn: text("starts_on").notNull(), // event date / premiere date
+    endsOn: text("ends_on"), // multi-day events (conventions); null = single day
+    location: text("location").notNull().default(""), // conventions
+    url: text("url"), // optional outbound link
+    cover: text("cover"), // optional art (else a hue gradient)
+    accent: text("accent"), // optional CSS color for the chip/glow
+    // optional link to a catalog title (premieres) — powers "add to list" etc.
+    titleId: text("title_id").references(() => titles.id, { onDelete: "set null" }),
+    hue: integer("hue").notNull().default(1), // 1–6, drives the gradient when no cover
+    position: integer("position").notNull().default(0),
+    published: boolean("published").notNull().default(true),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("calendar_events_start_idx").on(t.startsOn)],
+);
+
+// A user is "tracking" an ongoing anime: its weekly episode releases appear on
+// the calendar. `weekday` (0=Sun … 6=Sat) + `time` are fetched once from Jikan
+// when the user starts tracking, so no global broadcast sync is needed.
+export const calendarTracks = pgTable(
+  "calendar_tracks",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    titleId: text("title_id")
+      .notNull()
+      .references(() => titles.id, { onDelete: "cascade" }),
+    malId: integer("mal_id"), // cached for the Jikan broadcast lookup
+    weekday: integer("weekday"), // 0=Sun … 6=Sat; null if unknown / not airing
+    time: text("time"), // broadcast time e.g. "23:00" (JST); null if unknown
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.titleId] })],
@@ -418,6 +536,59 @@ export const communityReplies = pgTable(
   (t) => [index("community_replies_post_idx").on(t.postId)],
 );
 
+// Directed social graph: `follower_id` follows `following_id` (like AniList /
+// Twitter — not mutual by default; a mutual pair is surfaced as "friends").
+export const follows = pgTable(
+  "follows",
+  {
+    followerId: uuid("follower_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followingId: uuid("following_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.followerId, t.followingId] }),
+    index("follows_following_idx").on(t.followingId),
+  ],
+);
+
+// Moderator overrides for the live (RSS) news feed, keyed by the article's
+// stable id (guid/link). Lets admins hide a pulled story or attach a cover.
+// The currently-released "wave" of pulled news — a frozen snapshot readers see.
+// A single row (id = 'singleton'). Incoming pulled stories replace live_items
+// when a moderator publishes, or automatically 2 days after they first appear.
+export const newsWave = pgTable("news_wave", {
+  id: text("id").primaryKey(), // always 'singleton'
+  liveItems: jsonb("live_items").notNull().default([]), // snapshot of released stories
+  liveAt: timestamp("live_at").notNull().defaultNow(), // when the live wave was published
+  pendingSince: timestamp("pending_since"), // when an unreleased incoming wave first appeared
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const newsOverrides = pgTable("news_overrides", {
+  newsId: text("news_id").primaryKey(),
+  hidden: boolean("hidden").notNull().default(false), // dismissed/rejected from the review queue
+  approved: boolean("approved").notNull().default(false), // released to readers (must be verified first)
+  cover: text("cover"),
+  onHome: boolean("on_home"), // null = auto (shown); false = pulled from Home; true = kept
+  layout: text("layout"), // null = auto tiering; card | list  (news-tab placement)
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Admin-uploaded images (e.g. news covers), stored inline. Served as binary at
+// /api/uploads/[id]; the referencing row just keeps that short URL.
+export const uploads = pgTable("uploads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  mime: text("mime").notNull(),
+  bytes: bytea("bytes").notNull(),
+  size: integer("size").notNull(),
+  authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type DbUser = typeof users.$inferSelect;
 export type DbEditorialPick = typeof editorialPicks.$inferSelect;
 export type DbEventBanner = typeof eventBanners.$inferSelect;
@@ -428,3 +599,5 @@ export type DbTitle = typeof titles.$inferSelect;
 export type DbSubmission = typeof descriptionSubmissions.$inferSelect;
 export type DbCommunityPost = typeof communityPosts.$inferSelect;
 export type DbCommunityReply = typeof communityReplies.$inferSelect;
+export type DbCalendarEvent = typeof calendarEvents.$inferSelect;
+export type DbCalendarTrack = typeof calendarTracks.$inferSelect;

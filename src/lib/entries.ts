@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { watchlists, watchlistEntries, titles } from "@/db/schema";
+import { watchlists, watchlistEntries, titles, completions } from "@/db/schema";
 import type { Entry, Feeling, Status, Dims, RateMode, SymbolRating } from "@/features/watchlist/types";
 import { hiResCover } from "@/lib/cover";
 
@@ -24,6 +24,7 @@ type JoinedRow = {
   genres: string[];
   episodes: number;
   seasons: number;
+  kind: string;
   cover: string | null;
 };
 
@@ -37,6 +38,7 @@ function toEntry(r: JoinedRow): Entry {
     genres: r.genres,
     episodes: r.episodes,
     seasons: r.seasons,
+    kind: r.kind === "manga" ? "manga" : "anime",
     status: r.status as Status,
     feeling: (r.feeling as Feeling | null) ?? null,
     rateMode: (r.rateMode as RateMode | null) ?? "glyphs",
@@ -68,6 +70,7 @@ const ENTRY_COLS = {
   genres: titles.genres,
   episodes: titles.episodes,
   seasons: titles.seasons,
+  kind: titles.kind,
   cover: titles.cover,
 };
 
@@ -113,6 +116,7 @@ export async function addEntry(
       genres: titles.genres,
       episodes: titles.episodes,
       seasons: titles.seasons,
+      kind: titles.kind,
       cover: titles.cover,
     })
     .from(titles)
@@ -148,6 +152,7 @@ export async function addEntry(
     genres: t.genres,
     episodes: t.episodes,
     seasons: t.seasons,
+    kind: t.kind === "manga" ? "manga" : "anime",
     status: "planned",
     feeling: null,
     rateMode: "glyphs",
@@ -175,14 +180,33 @@ export type EntryPatch = {
 /** Verify the entry belongs to a watchlist the user owns, then update it. */
 export async function updateEntry(userId: string, entryId: string, patch: EntryPatch): Promise<void> {
   const owned = await db
-    .select({ id: watchlistEntries.id })
+    .select({ id: watchlistEntries.id, status: watchlistEntries.status, titleId: watchlistEntries.titleId })
     .from(watchlistEntries)
     .innerJoin(watchlists, eq(watchlistEntries.watchlistId, watchlists.id))
     .where(and(eq(watchlistEntries.id, entryId), eq(watchlists.userId, userId)))
     .limit(1);
   if (!owned.length) return;
   await db.update(watchlistEntries).set(patch).where(eq(watchlistEntries.id, entryId));
+
+  // Finishing every episode flips the entry to "completed" (see setWatched).
+  // Keep the standalone "watched" mark (completions) in sync so the title reads
+  // as watched everywhere — its own page's button, and the profile's stats and
+  // activity. Only act on a real transition, so mid-progress episode toggles
+  // (which re-send status "watching") never churn the mark.
+  if (patch.status !== undefined) {
+    const prev = owned[0].status;
+    const next = patch.status;
+    const titleId = owned[0].titleId;
+    if (next === "completed" && prev !== "completed") {
+      await db.insert(completions).values({ userId, titleId }).onConflictDoNothing();
+    } else if (prev === "completed" && next !== "completed") {
+      await db
+        .delete(completions)
+        .where(and(eq(completions.userId, userId), eq(completions.titleId, titleId)));
+    }
+  }
 }
+
 
 /** Persist a manual order for a watchlist's entries (position = index in the
  *  given list). Scoped to the user's own list; ids not in it are ignored. */

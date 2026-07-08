@@ -1,0 +1,33 @@
+/* ============================================================
+   MOOD DISCOVERY — pick a feeling, get titles that deliver it
+   ============================================================ */
+.mood-picker {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px;
+  margin-bottom: 10px;
+}
+.mood-card {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 4px;
+  padding: 18px 18px 16px; border-radius: var(--radius-lg); text-decoration: none;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(130% 130% at 100% 0%, color-mix(in oklab, var(--mood-hue) 22%, transparent), transparent 62%),
+    var(--surface);
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.mood-card:hover { border-color: color-mix(in oklab, var(--mood-hue) 55%, var(--line)); transform: translateY(-2px); }
+.mood-card.on { border-color: var(--mood-hue); box-shadow: 0 0 0 1px var(--mood-hue); }
+.mood-card__emoji { font-size: 26px; line-height: 1; }
+.mood-card__label { font-family: var(--font-title); font-weight: 800; font-size: 16px; color: var(--ink); margin-top: 6px; }
+.mood-card__tag { font-size: 12.5px; color: var(--ink-faint); line-height: 1.4; }
+
+.mood-card--h1 { --mood-hue: oklch(0.72 0.12 65); }
+.mood-card--h2 { --mood-hue: oklch(0.62 0.15 20); }
+.mood-card--h3 { --mood-hue: oklch(0.72 0.13 150); }
+.mood-card--h4 { --mood-hue: oklch(0.70 0.15 42); }
+.mood-card--h5 { --mood-hue: oklch(0.66 0.14 285); }
+.mood-card--h6 { --mood-hue: oklch(0.68 0.15 350); }
+
+.mood-results { margin-top: 14px; }
+.mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.mood-grid .h-card { width: auto; }
+.mood-empty { color: var(--ink-faint); font-size: 14px; padding: 20px 2px; }
