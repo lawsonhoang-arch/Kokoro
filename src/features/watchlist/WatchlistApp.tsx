@@ -314,9 +314,11 @@ export default function WatchlistApp({
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
     try {
-      return (localStorage.getItem(LAYOUT_KEY) as LayoutMode) || "stack";
+      // default to the free-form board (boxes). Stack is a flat list that hides
+      // manual collections in browse, so a fresh visitor would see no boxes.
+      return (localStorage.getItem(LAYOUT_KEY) as LayoutMode) || "grid";
     } catch {
-      return "stack";
+      return "grid";
     }
   });
   const chooseLayout = (m: LayoutMode) => {
