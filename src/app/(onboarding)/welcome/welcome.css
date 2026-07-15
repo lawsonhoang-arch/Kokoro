@@ -1,0 +1,112 @@
+/* First-run onboarding — a focused, centered flow (no app shell). */
+.wl {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%),
+    var(--bg);
+}
+.wl__card {
+  width: 100%; max-width: 640px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift); padding: 28px 30px 24px;
+  animation: wl-in .3s cubic-bezier(.2, .7, .3, 1);
+}
+@keyframes wl-in { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
+
+.wl__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.wl__brand { font-family: var(--font-title); font-weight: 800; font-size: 17px; letter-spacing: -0.02em; color: var(--ink); }
+.wl__dots { display: flex; gap: 7px; list-style: none; margin: 0; padding: 0; }
+.wl__dot { width: 22px; height: 5px; border-radius: 999px; background: var(--surface-3); transition: background .2s; }
+.wl__dot.is-done { background: color-mix(in oklab, var(--accent) 55%, var(--line)); }
+.wl__dot.is-on { background: var(--accent); }
+
+.wl__step { animation: wl-step .22s ease; }
+@keyframes wl-step { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+.wl__h { font-family: var(--font-title); font-weight: 800; font-size: 25px; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 8px; }
+.wl__p { font-size: 14px; line-height: 1.55; color: var(--ink-soft); margin: 0 0 20px; max-width: 46ch; }
+.wl__count { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+
+.wl__label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 7px; }
+.wl__input {
+  width: 100%; padding: 12px 14px; font: inherit; font-size: 15px; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.wl__input::placeholder { color: var(--ink-faint); }
+.wl__input:focus { outline: none; border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+
+/* ---- genre chips ---- */
+.wl__chips { display: flex; flex-wrap: wrap; gap: 9px; }
+.wl__chip {
+  padding: 9px 15px; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--ink-soft); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+  transition: color .12s, border-color .12s, background .12s, transform .08s;
+}
+.wl__chip:hover { color: var(--ink); border-color: var(--line-strong); }
+.wl__chip:active { transform: scale(.96); }
+.wl__chip.is-on {
+  color: #fff; background: var(--accent); border-color: var(--accent);
+}
+
+/* ---- favorites poster grid ---- */
+.wl__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; max-height: 46vh; overflow-y: auto; padding: 2px; }
+.wl__poster { display: flex; flex-direction: column; gap: 6px; padding: 0; border: none; background: none; cursor: pointer; text-align: left; }
+.wl__poster-art {
+  position: relative; aspect-ratio: 2 / 3; border-radius: var(--radius); overflow: hidden;
+  border: 2px solid transparent; background: var(--surface-2); transition: border-color .12s, transform .1s;
+}
+.wl__poster:hover .wl__poster-art { transform: translateY(-2px); }
+.wl__poster-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wl__poster-gen { width: 100%; height: 100%; }
+.wl__poster.is-on .wl__poster-art { border-color: var(--accent); }
+.wl__poster.is-dim { opacity: .45; }
+.wl__poster-check {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff;
+  background: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+.wl__poster-title {
+  font-size: 11.5px; line-height: 1.3; color: var(--ink-soft);
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wl__poster.is-on .wl__poster-title { color: var(--ink); }
+
+/* ---- people list ---- */
+.wl__people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.wl__person { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius); }
+.wl__person:hover { background: var(--surface-2); }
+.wl__pava { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+.wl__pava--gen { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-family: var(--font-title); font-weight: 700; font-size: 17px; }
+.wl__pbody { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.wl__pname { font-family: var(--font-title); font-weight: 700; font-size: 14px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl__pmeta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl__followbtn {
+  flex: 0 0 auto; padding: 7px 16px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--accent); background: transparent; border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--line));
+  border-radius: 999px; transition: color .12s, background .12s, border-color .12s;
+}
+.wl__followbtn:hover { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); }
+.wl__followbtn.is-on { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+.wl__loading { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--ink-faint); }
+
+/* ---- footer actions ---- */
+.wl__actions { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.wl__back {
+  padding: 10px 4px; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--ink-faint); background: none; border: none; transition: color .12s;
+}
+.wl__back:hover { color: var(--ink-soft); }
+.wl__next {
+  padding: 11px 26px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700;
+  color: #fff; background: var(--accent); border: none; border-radius: 999px; transition: opacity .12s, transform .08s;
+}
+.wl__next:hover { opacity: .92; }
+.wl__next:active { transform: scale(.97); }
+.wl__next:disabled { opacity: .55; cursor: default; }
+
+@media (max-width: 560px) {
+  .wl__card { padding: 22px 18px; }
+  .wl__h { font-size: 22px; }
+  .wl__grid { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); }
+}

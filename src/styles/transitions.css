@@ -70,3 +70,35 @@ body.kk-leaving #root { animation: kk-page-fade-out 0.18s cubic-bezier(.4,0,.6,1
   body, body * { animation: none !important; }
 }
 
+/* ============================================================
+   SHARED-ELEMENT VIEW TRANSITIONS (React <ViewTransition>)
+   A poster card's cover morphs into the detail-page hero cover.
+   Both carry the same name (coverVT(id)) + share="morph".
+   ============================================================ */
+::view-transition-group(.morph) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(.2, .7, .3, 1);
+}
+/* a touch of blur mid-flight hides pixel interpolation while the box resizes */
+::view-transition-image-pair(.morph) { animation-name: kk-morph-blur; }
+@keyframes kk-morph-blur {
+  40% { filter: blur(2.5px); }
+}
+
+/* Keep the top nav rock-steady during the crossfade — it's the fixed anchor the
+   whole shell pivots around, so it should never fade or shift. */
+.site-nav { view-transition-name: kk-nav; }
+::view-transition-group(kk-nav) { animation: none; z-index: 120; }
+::view-transition-old(kk-nav) { display: none; }
+::view-transition-new(kk-nav) { animation: none; }
+
+/* Motion-sensitive users: skip the positional morph, keep an instant swap. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+

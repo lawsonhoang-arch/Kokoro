@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { watchlists, watchlistEntries } from "@/db/schema";
+import { watchlists, watchlistEntries, titles } from "@/db/schema";
+import { hiResCover } from "./cover";
 import type { Watchlist } from "./storage";
 import type { HueKey } from "./palette";
 
@@ -50,7 +51,8 @@ const selectWithCounts = {
   watching: sql<number>`count(*) filter (where ${watchlistEntries.status} = 'watching')`,
 };
 
-/** All of a user's watchlists, newest-edited first, with derived counts. */
+/** All of a user's watchlists, newest-edited first, with derived counts + up to
+ *  four cover images per list for the gallery card mosaic. */
 export async function getWatchlists(userId: string): Promise<Watchlist[]> {
   const rows = await db
     .select(selectWithCounts)
@@ -59,7 +61,24 @@ export async function getWatchlists(userId: string): Promise<Watchlist[]> {
     .where(eq(watchlists.userId, userId))
     .groupBy(watchlists.id)
     .orderBy(desc(watchlists.lastEditedAt));
-  return rows.map(toDTO);
+
+  // first few covers per list (by entry position) — one query, grouped in JS
+  const coverRows = await db
+    .select({ wid: watchlistEntries.watchlistId, cover: titles.cover })
+    .from(watchlistEntries)
+    .innerJoin(watchlists, eq(watchlistEntries.watchlistId, watchlists.id))
+    .innerJoin(titles, eq(watchlistEntries.titleId, titles.id))
+    .where(and(eq(watchlists.userId, userId), isNotNull(titles.cover)))
+    .orderBy(asc(watchlistEntries.watchlistId), asc(watchlistEntries.position));
+  const coversByList = new Map<string, string[]>();
+  for (const r of coverRows) {
+    const cover = r.cover;
+    if (!cover) continue;
+    const arr = coversByList.get(r.wid) ?? [];
+    if (arr.length < 4) { arr.push(hiResCover(cover) ?? cover); coversByList.set(r.wid, arr); }
+  }
+
+  return rows.map((r) => ({ ...toDTO(r), covers: coversByList.get(r.id) ?? [] }));
 }
 
 /** A single watchlist the user owns (or null). Used by the app's [id] page. */
@@ -86,6 +105,19 @@ export async function createWatchlist(
 }
 
 const touch = () => ({ lastEditedAt: new Date() });
+
+/** Rename a list and/or update its description. */
+export async function updateWatchlist(
+  userId: string,
+  id: string,
+  input: { title: string; desc: string },
+): Promise<void> {
+  const title = input.title.trim().slice(0, 60) || "Untitled";
+  await db
+    .update(watchlists)
+    .set({ title, description: input.desc.trim().slice(0, 240), ...touch() })
+    .where(and(eq(watchlists.id, id), eq(watchlists.userId, userId)));
+}
 
 export async function togglePin(userId: string, id: string): Promise<void> {
   await db

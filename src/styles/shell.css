@@ -15,15 +15,17 @@
   -webkit-backdrop-filter: saturate(140%) blur(14px);
   border-bottom: 1px solid var(--line);
 }
-/* equal-width left/right sections keep the centered [tabs + search-circle] group
-   in the middle; the min-width reserves room for the logo / controls so the
-   group never overlaps them when the search bar expands. */
-.site-nav__side { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 150px; }
+/* The tab group is centered within the space *between* the logo and the right
+   controls: the center fills the gap and centers its contents, while the sides
+   take only their natural width. (Truly centering across the whole bar would
+   force the narrow logo side to reserve as much room as the wide controls side,
+   squeezing the tabs into icons on anything but ultra-wide screens.) */
+.site-nav__side { display: flex; align-items: center; gap: 10px; flex: 0 1 auto; min-width: 0; }
 .site-nav__side--left { justify-content: flex-start; }
 .site-nav__side--right { justify-content: flex-end; }
 .site-nav__center {
-  display: flex; align-items: center; gap: 18px;
-  flex: 0 1 auto; min-width: 0; /* natural width, centered; grows as the search expands */
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  flex: 1 1 auto; min-width: 0; /* fills the middle; grows as the search expands */
 }
 
 .site-nav__brand { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -207,6 +209,63 @@
 .navsrch__cmd.is-active .navsrch__cmd-ico { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
 .navsrch__item.is-active { background: var(--surface-2); }
 
+/* ---- notification bell + panel ---- */
+.navbell { position: relative; display: inline-flex; }
+.navbell__btn { position: relative; }
+.navbell__btn[aria-expanded="true"] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.navbell__dot {
+  position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; line-height: 1; color: #fff;
+  background: var(--accent); border: 1.5px solid var(--surface); border-radius: 999px;
+}
+.navbell__panel {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 90; width: 340px; max-width: 84vw;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius);
+  box-shadow: var(--shadow-lift); overflow: hidden; animation: navsrch-drop .12s ease;
+}
+.navbell__head {
+  padding: 11px 14px; font-family: var(--font-title); font-weight: 700; font-size: 13px; color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.navbell__empty { padding: 26px 14px; text-align: center; font-size: 12.5px; color: var(--ink-faint); }
+.navbell__list { list-style: none; margin: 0; padding: 4px; max-height: 60vh; overflow-y: auto; }
+.navbell__item { border-radius: var(--radius-sm); }
+.navbell__item--unread { background: color-mix(in oklab, var(--accent) 8%, transparent); }
+.navbell__row {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; text-decoration: none;
+  border-radius: var(--radius-sm); transition: background .1s;
+}
+.navbell__row:hover { background: var(--surface-2); }
+.navbell__ava {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line);
+}
+.navbell__ava--gen {
+  display: inline-flex; align-items: center; justify-content: center; color: #fff;
+  font-family: var(--font-title); font-weight: 700; font-size: 14px;
+}
+.navbell__body { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.navbell__text { font-size: 12.5px; color: var(--ink-soft); line-height: 1.35; }
+.navbell__text b { color: var(--ink); font-weight: 700; }
+.navbell__title { color: var(--accent) !important; }
+.navbell__note {
+  font-size: 12px; color: var(--ink-faint); font-style: italic; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.navbell__time { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+.navbell__cover {
+  flex: 0 0 auto; width: 30px; height: 42px; border-radius: 5px; object-fit: cover;
+  border: 1px solid var(--line); background: var(--surface-2);
+}
+
+/* deterministic generated-avatar hues, shared by the bell + recommend picker */
+.rec-hue-1 { background: linear-gradient(135deg, oklch(0.62 0.15 20), oklch(0.5 0.15 8)); }
+.rec-hue-2 { background: linear-gradient(135deg, oklch(0.62 0.15 150), oklch(0.5 0.15 168)); }
+.rec-hue-3 { background: linear-gradient(135deg, oklch(0.62 0.15 250), oklch(0.5 0.15 268)); }
+.rec-hue-4 { background: linear-gradient(135deg, oklch(0.64 0.15 60), oklch(0.52 0.15 44)); }
+.rec-hue-5 { background: linear-gradient(135deg, oklch(0.62 0.15 320), oklch(0.5 0.15 300)); }
+.rec-hue-6 { background: linear-gradient(135deg, oklch(0.62 0.13 200), oklch(0.5 0.13 220)); }
+
 /* ---- responsive: tighten the nav for tablets, then phones ---- */
 @media (max-width: 900px) {
   .site-nav { gap: 12px; padding: 0 18px; }
@@ -215,8 +274,8 @@
   .navsrch__drop { min-width: 260px; }
 }
 @media (max-width: 520px) {
-  /* phones: the tab strip drops out (its home on phones is a menu/bottom bar —
-     TODO). The bar becomes logo + a centered search circle + avatar. */
+  /* phones: the top tab strip drops out; primary nav moves to a bottom tab bar
+     (.mnav below). The top bar becomes logo + search + bell + avatar. */
   .site-nav { gap: 10px; padding: 0 12px; }
   .site-nav__name { display: none; } /* keep the logo mark, drop the wordmark */
   .site-nav__tabs,
@@ -225,6 +284,33 @@
   .navsrch--open .navsrch__input { width: clamp(120px, 52vw, 300px); }
   /* anchor the dropdown to the viewport edges so it never overflows the screen */
   .navsrch__drop { position: fixed; left: 8px; right: 8px; top: calc(var(--nav-h) + 4px); width: auto; }
+}
+
+/* ---- mobile bottom tab bar (phones only) ---- */
+.mnav { display: none; }
+@media (max-width: 520px) {
+  .mnav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    align-items: stretch; justify-content: space-around;
+    background: color-mix(in oklab, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(140%) blur(16px); -webkit-backdrop-filter: saturate(140%) blur(16px);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mnav__tab {
+    flex: 1 1 0; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 8px 2px 7px; color: var(--ink-faint); text-decoration: none;
+    font-family: var(--font-ui); transition: color .15s;
+  }
+  .mnav__tab.on { color: var(--accent); }
+  .mnav__ico { display: inline-flex; }
+  .mnav__label { font-size: 9.5px; font-weight: 700; letter-spacing: .01em; line-height: 1; }
+  /* tighter gutters on phones, and clear the fixed bar at the bottom */
+  .page { padding: 22px 14px calc(78px + env(safe-area-inset-bottom, 0px)); }
+  .page__head { gap: 14px; margin-bottom: 22px; }
+  .page__head > div { min-width: 0; }
+  .page__head > .actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
 }
 
 /* ============================================================
@@ -541,10 +627,11 @@
 .usercard { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: color-mix(in oklab, var(--surface) 90%, transparent); transition: border-color .14s; }
 .usercard:hover { border-color: var(--line-strong); }
 .usercard__main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-decoration: none; }
+.usercard__main .avatar { flex: 0 0 auto; } /* never let the badge/follow button squish the avatar into an ellipse */
 .usercard__txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .usercard__name { font-family: var(--font-title); font-weight: 700; font-size: 14.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .usercard__main:hover .usercard__name { color: var(--accent); }
-.usercard__handle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.usercard__handle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .usercard__bio { font-size: 12px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 /* follow button for external entities (studios / people / characters) */
 .entfollow {

@@ -5,6 +5,7 @@ import { colorFor, tagsFor } from "./rules";
 import { EXTERNAL_SCORES, avgRatingStr } from "./helpers";
 import { RatingMark, hasMark, markColor } from "./RatingMark";
 import { AddToTabBtn, type Collection } from "./AddToTabBtn";
+import { Ico } from "./Ico";
 import type { Entry, GlyphSet, Mode } from "./types";
 
 export type EntryCommon = {
@@ -21,7 +22,7 @@ export type EntryCommon = {
   onNewTab: (entryId: string) => void;
   onRemoveTab: (entryId: string) => void;
   onRemoveFromList: (entryId: string) => void;
-  onBrowseGrab?: (e: RPointerEvent, id: string) => void;
+  onBrowseGrab?: (e: RPointerEvent, id: string, fromGrip?: boolean) => void;
   onBumpEp?: (id: string) => void;
 };
 
@@ -62,7 +63,9 @@ export function EntryRow({
       data-entry-id={entry.id}
       data-drop="entry"
       onPointerDown={
-        sculpt ? (e) => onGrab(e, entry.id) : (e) => onBrowseGrab && onBrowseGrab(e, entry.id)
+        sculpt
+          ? (e) => { if (e.pointerType !== "touch") onGrab(e, entry.id); }
+          : (e) => onBrowseGrab && onBrowseGrab(e, entry.id)
       }
       style={{
         // Scope the transition name to the view mode so switching FORMAT
@@ -73,6 +76,19 @@ export function EntryRow({
         ...(sculpt ? { cursor: "grab" } : null),
       }}
     >
+      <span
+        className="k-entry__grip"
+        title="Drag to move"
+        aria-label="Drag to move"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (sculpt) onGrab(e, entry.id);
+          else onBrowseGrab && onBrowseGrab(e, entry.id, true);
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Ico name="grip" s={15} />
+      </span>
       <span className="k-entry__stripe" style={color ? { background: color, color } : undefined} />
       <span
         className="k-entry__glyph"

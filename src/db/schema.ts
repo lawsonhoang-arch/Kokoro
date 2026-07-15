@@ -8,6 +8,7 @@ import {
   jsonb,
   primaryKey,
   index,
+  uniqueIndex,
   customType,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -44,6 +45,9 @@ export const users = pgTable("users", {
   // CSS background-position for the banner art ("x% y%"), so users can shift the
   // art to frame its key area. null = the default framing.
   bannerPos: text("banner_pos"),
+  // when the user finished the first-run onboarding flow. null = not yet onboarded
+  // (new sign-ups); existing accounts are backfilled to now() so they skip it.
+  onboardedAt: timestamp("onboarded_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -380,6 +384,29 @@ export const entityFollows = pgTable(
   (t) => [
     primaryKey({ columns: [t.userId, t.kind, t.entityId] }),
     index("entity_follows_user_idx").on(t.userId),
+  ],
+);
+
+// Bell notifications: someone liked/replied to your post, or recommended you a
+// title. `key` is the dedup handle (the post id for like/reply, the title id for
+// a recommendation) so re-triggering just bumps the existing one unread.
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // recipient
+    actorId: uuid("actor_id").notNull().references(() => users.id, { onDelete: "cascade" }), // who triggered it
+    type: text("type").notNull(), // like | reply | recommend
+    key: text("key").notNull(), // dedup key: postId (like/reply) or titleId (recommend)
+    postId: uuid("post_id").references(() => communityPosts.id, { onDelete: "cascade" }),
+    titleId: text("title_id").references(() => titles.id, { onDelete: "cascade" }),
+    note: text("note").notNull().default(""),
+    read: boolean("read").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("notifications_user_idx").on(t.userId, t.createdAt),
+    uniqueIndex("notifications_dedup_idx").on(t.userId, t.actorId, t.type, t.key),
   ],
 );
 

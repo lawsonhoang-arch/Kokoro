@@ -24,9 +24,10 @@ export default async function FollowingPage({ params }: { params: Promise<{ user
         eyebrow={<Link href={`/u/${encodeURIComponent(user.username)}`}>← @{user.username}</Link>}
         title="Following"
         lede={`People ${user.name || "@" + user.username} follows`}
+        actions={<Link className="pf-share" href="/people">Find people</Link>}
       />
       {list.length === 0 ? (
-        <p className="usercard-empty">Not following anyone yet.</p>
+        <p className="usercard-empty">Not following anyone yet — <Link href="/people">find people to follow →</Link></p>
       ) : (
         <div className="usercard-list">
           {list.map((u) => <UserCard key={u.id} user={u} viewerId={viewerId} match={matches.get(u.id)} />)}

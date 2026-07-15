@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ProfileStats } from "@/lib/profile";
 
 type Mode = "both" | "anime" | "manga";
@@ -46,6 +47,12 @@ export function ProfileStatsPanel({ stats: s }: { stats: ProfileStats }) {
     <section aria-label="Profile stats">
       <div className="pf-stats-head">
         <span className="pf-stats-head__lbl">Stats</span>
+        <Link
+          href="/stats"
+          style={{ marginRight: "auto", marginLeft: 12, fontSize: 12.5, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}
+        >
+          Full stats →
+        </Link>
         <div className="pf-stats-toggle" role="group" aria-label="Breakdown">
           {MODES.map((m) => (
             <button

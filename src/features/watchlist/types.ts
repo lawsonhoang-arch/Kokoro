@@ -46,6 +46,12 @@ export type Entry = {
   progress?: number;
   /** the specific episode numbers the user marked watched */
   watchedEps?: number[];
+  /** catalog (MAL) score, 0–10, from titles.score/100 — for the "MAL rating" sort */
+  malScore?: number | null;
+  /** catalog popularity (member count) — for the "Most popular" sort */
+  popularity?: number | null;
+  /** load order index (assigned client-side) — proxy for "recently added" */
+  _order?: number;
 };
 
 export type RuleCat = "group" | "sort" | "color" | "tag";
@@ -66,6 +72,10 @@ export type Mode = "browse" | "sculpt";
 
 export type Rect = { x: number; y: number; w: number; h: number; z: number };
 export type PanelCfg = Record<string, Rect>;
+
+/** An alignment guide line shown while dragging/resizing a canvas box:
+ *  "v" = a vertical line at x=pos, "h" = a horizontal line at y=pos. */
+export type Guide = { o: "v" | "h"; pos: number };
 
 export type PaintState = { cat: RuleCat; key: string } | null;
 

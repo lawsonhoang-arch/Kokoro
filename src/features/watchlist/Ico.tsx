@@ -25,6 +25,8 @@ const PATHS: Record<string, ReactNode> = {
   check: <><path d="M5 12.5l4.5 4.5L19 7" /></>,
   chev: <><path d="M6 9l6 6 6-6" /></>,
   trash: <><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></>,
+  bookmark: <><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.2L5 21V4a1 1 0 0 1 1-1z" /></>,
+  expand: <><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-8 8" /><path d="M3 21l8-8" /></>,
 };
 
 export function Ico({ name, s = 16 }: { name: string; s?: number }) {

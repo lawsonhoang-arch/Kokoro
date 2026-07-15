@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import type { HueKey } from "@/lib/palette";
 import type { Watchlist } from "@/lib/storage";
 import {
   createWatchlistAction,
+  updateWatchlistAction,
   togglePinAction,
   setHueAction,
   deleteWatchlistAction,
@@ -24,6 +25,14 @@ export function useWatchlists(initial: Watchlist[]) {
   const [lists, setLists] = useState<Watchlist[]>(initial);
   const [pending, startTransition] = useTransition();
 
+  // Re-sync when the server sends a fresh snapshot (e.g. router.refresh() after
+  // an import). `initial` is stable during a session — it only changes on a
+  // server re-render/navigation — so this doesn't fight optimistic updates.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLists(initial);
+  }, [initial]);
+
   const create = useCallback((input: NewWatchlistInput) => {
     // create needs the real DB id back before we can render the card, so we
     // append once the action resolves rather than guessing an id.
@@ -31,6 +40,11 @@ export function useWatchlists(initial: Watchlist[]) {
       const created = await createWatchlistAction(input);
       setLists((prev) => [...prev, created]);
     });
+  }, []);
+
+  const update = useCallback((id: string, input: { title: string; desc: string }) => {
+    setLists((prev) => prev.map((l) => (l.id === id ? { ...l, title: input.title.trim() || l.title, desc: input.desc.trim(), lastEdited: Date.now() } : l)));
+    startTransition(() => updateWatchlistAction(id, input));
   }, []);
 
   const togglePin = useCallback((id: string) => {
@@ -52,5 +66,5 @@ export function useWatchlists(initial: Watchlist[]) {
     startTransition(() => deleteWatchlistAction(id));
   }, []);
 
-  return { lists, create, togglePin, setHue, remove, pending };
+  return { lists, create, update, togglePin, setHue, remove, pending };
 }

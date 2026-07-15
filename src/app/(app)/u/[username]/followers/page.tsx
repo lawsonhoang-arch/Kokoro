@@ -24,6 +24,7 @@ export default async function FollowersPage({ params }: { params: Promise<{ user
         eyebrow={<Link href={`/u/${encodeURIComponent(user.username)}`}>← @{user.username}</Link>}
         title="Followers"
         lede={`People following ${user.name || "@" + user.username}`}
+        actions={<Link className="pf-share" href="/people">Find people</Link>}
       />
       {list.length === 0 ? (
         <p className="usercard-empty">No followers yet.</p>

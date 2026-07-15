@@ -1,7 +1,7 @@
 "use client";
 
-import type { PointerEvent as RPointerEvent, ReactNode } from "react";
-import { TOKENS, CAT_LABEL } from "./rules";
+import type { ReactNode } from "react";
+import { TOKENS, CAT_LABEL, sortBaseKey, sortIsAsc, isSortReversible } from "./rules";
 import { Ico } from "./Ico";
 import type { Group, RuleCat, Rules } from "./types";
 
@@ -12,16 +12,34 @@ export function RuleChip({
   cat,
   ruleKey,
   onRemove,
+  onToggleDir,
 }: {
   cat: RuleCat;
   ruleKey: string;
   onRemove?: () => void;
+  onToggleDir?: () => void;
 }) {
-  const tok = TOKENS[cat].find((t) => t.key === ruleKey);
+  const baseKey = sortBaseKey(ruleKey);
+  const tok = TOKENS[cat].find((t) => t.key === baseKey);
+  // custom rating axes come through as "axis-<name>" without a catalog token
+  const label = tok ? tok.label : baseKey.startsWith("axis-") ? baseKey.slice(5) : baseKey;
+  const showDir = cat === "sort" && isSortReversible(ruleKey);
+  const asc = sortIsAsc(ruleKey);
   return (
     <span className="k-rulechip">
       <span className={"k-rulechip__dot k-rulechip__dot--" + cat} />
-      {CAT_LABEL[cat]}: {tok ? tok.label : ruleKey}
+      {CAT_LABEL[cat]}: {label}
+      {showDir && onToggleDir && (
+        <button
+          type="button"
+          className="k-rulechip__dir"
+          onClick={onToggleDir}
+          title={asc ? "Ascending — click to reverse" : "Descending — click to reverse"}
+          aria-label="Reverse sort direction"
+        >
+          {asc ? "↑" : "↓"}
+        </button>
+      )}
       {onRemove && (
         <span className="k-rulechip__x" onClick={onRemove} title="Remove rule">
           <Ico name="x" s={11} />
@@ -37,12 +55,14 @@ type GroupCardProps = {
   children: ReactNode;
   scoped: Rules;
   armed?: boolean;
-  nestArmed?: boolean;
   browse: boolean;
   onRename: (gid: string, name: string) => void;
   onDissolve: (gid: string) => void;
   onRemoveRule: (gid: string, cat: RuleCat, key: string) => void;
-  onGrabHead?: (e: RPointerEvent, gid: string) => void;
+  onToggleRule?: (gid: string, cat: RuleCat, key: string) => void;
+  pinned?: boolean;
+  onTogglePin?: (gid: string) => void;
+  onOpen?: (gid: string) => void;
 };
 
 export function GroupCard({
@@ -50,12 +70,14 @@ export function GroupCard({
   children,
   scoped,
   armed,
-  nestArmed,
   browse,
   onRename,
   onDissolve,
   onRemoveRule,
-  onGrabHead,
+  onToggleRule,
+  pinned,
+  onTogglePin,
+  onOpen,
 }: GroupCardProps) {
   const hasScoped =
     scoped &&
@@ -74,31 +96,58 @@ export function GroupCard({
       className={
         "k-group" +
         (browse ? " k-group--browse" : "") +
-        (armed ? " drop-armed" : "") +
-        (nestArmed ? " nest-armed" : "")
+        (armed ? " drop-armed" : "")
       }
       data-drop="group"
       data-group-id={group.id}
       data-collid={group.id}
     >
-      <div className="k-group__head">
-        <span
-          className="k-group__grip"
-          onPointerDown={(e) => onGrabHead && onGrabHead(e, group.id)}
-          title="Drag to pin as a tab, nest inside another collection, or drop into the list"
-        >
-          <Ico name="grip" s={14} />
-        </span>
+      <div
+        className={"k-group__head" + (onOpen ? " k-group__head--open" : "")}
+        onClick={
+          onOpen
+            ? (e) => {
+                // clicking the header bar opens the box; the name field, buttons
+                // and rule chips keep their own clicks
+                if ((e.target as HTMLElement).closest("input, button, .k-group__rules")) return;
+                onOpen(group.id);
+              }
+            : undefined
+        }
+        title={onOpen ? "Open this collection" : undefined}
+      >
         <input
           className="k-group__name"
           defaultValue={group.name}
           key={group.name}
+          onClick={(e) => e.stopPropagation()}
           onBlur={(e) => onRename(group.id, e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
         />
         <span className="k-group__count">{group.entryIds.length}</span>
+        {onTogglePin && (
+          <button
+            className={"k-group__pin" + (pinned ? " on" : "")}
+            onClick={(e) => { e.stopPropagation(); onTogglePin(group.id); }}
+            title={pinned ? "Unpin from tabs" : "Pin as a tab"}
+            aria-label={pinned ? "Unpin from tabs" : "Pin as a tab"}
+            aria-pressed={pinned}
+          >
+            <Ico name="bookmark" s={14} />
+          </button>
+        )}
+        {onOpen && (
+          <button
+            className="k-group__open"
+            onClick={(e) => { e.stopPropagation(); onOpen(group.id); }}
+            title="Open this collection"
+            aria-label="Open this collection"
+          >
+            <Ico name="expand" s={14} />
+          </button>
+        )}
         {!browse && hasScoped ? (
           <span className="k-group__scopebadge" title={scopeTitle()}>
             scoped
@@ -113,6 +162,7 @@ export function GroupCard({
                   cat={cat}
                   ruleKey={k}
                   onRemove={() => onRemoveRule(group.id, cat, k)}
+                  onToggleDir={onToggleRule ? () => onToggleRule(group.id, cat, k) : undefined}
                 />
               )),
             )}

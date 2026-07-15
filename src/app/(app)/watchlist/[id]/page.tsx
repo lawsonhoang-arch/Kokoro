@@ -1,5 +1,6 @@
 import "@/styles/watchlist.css";
 import "@/features/watchlist/watchlist-page.css";
+import "@/features/watchlist/list-table.css";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getWatchlist } from "@/lib/watchlists";

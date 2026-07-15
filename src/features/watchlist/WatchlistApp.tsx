@@ -3,6 +3,7 @@
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as RPointerEvent,
@@ -14,7 +15,9 @@ import {
   CAT_LABEL,
   bucketOf,
   chainedComparator,
+  toggleSortRev,
 } from "./rules";
+import { DisplayMenu } from "./DisplayMenu";
 import {
   updateEntryAction,
   removeEntryAction,
@@ -29,8 +32,8 @@ import { EntryRow } from "./EntryRow";
 import { EntryCard } from "./EntryCard";
 import { GroupCard, RuleChip } from "./GroupCard";
 import { DetailPanel } from "./DetailPanel";
-import { SculptSidebar, Segmented } from "./SculptSidebar";
-import { LayoutPanel } from "./LayoutPanel";
+import { SculptSidebar } from "./SculptSidebar";
+import { GridCanvas, findScroller, edgeScroll, type GridItem } from "./GridCanvas";
 import { Ico } from "./Ico";
 
 import {
@@ -41,8 +44,6 @@ import {
   type LayoutMode,
   type Mode,
   type PaintState,
-  type PanelCfg,
-  type Rect,
   type RuleCat,
   type Rules,
   type Status,
@@ -60,7 +61,7 @@ const DENSITY = "regular";
 
 const VIEW_KEY = "kokoro_view";
 const LAYOUT_KEY = "kokoro_layout_mode";
-const PANELS_KEY = "kokoro_panels_v2";
+const GRID_KEY = "kokoro_grid_"; // + list id → per-list free-form grid layout
 const SIDEBAR_KEY = "kokoro_sidebar_collapsed";
 
 let _gid = 1;
@@ -87,7 +88,7 @@ const startViewTransition = (apply: () => void) => {
 
 type Section = { key: string; label: string | null; items: Entry[]; order?: number };
 type TabObj = { key: string; label: string; group?: Group; items: Entry[] };
-type ArmedTarget = { type: "globals" } | { type: "group" | "entry"; id: string } | null;
+type ArmedTarget = { type: "globals" } | { type: "loose" } | { type: "group" | "entry"; id: string } | null;
 type BrowseHit =
   | { kind: "coll"; id: string }
   | { kind: "status"; status: string }
@@ -123,7 +124,7 @@ export default function WatchlistApp({
 
   const [mode, setMode] = useState<Mode>("browse");
   const [entries, setEntries] = useState<Entry[]>(() =>
-    initialEntries.map((e) => ({ ...e, dims: { ...e.dims } })),
+    initialEntries.map((e, i) => ({ ...e, dims: { ...e.dims }, _order: e._order ?? i })),
   );
   const [customAxes, setCustomAxes] = useState<string[]>(initialCustomAxes);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -140,36 +141,139 @@ export default function WatchlistApp({
 
   const [showScore] = useState(false);
   const [query, setQuery] = useState("");
-  // saved collections start pinned as tabs (the rail), matching how they were
-  // created; child groups stay nested, not pinned.
-  const [tabbed, setTabbed] = useState<string[]>(() =>
-    initialGroups.filter((g) => !g.parentId).map((g) => "g:" + g.id),
-  );
+  // The rail is an ordered list of tab keys, "all" (the everything view) plus the
+  // pinned collections ("g:<id>"). Order + the "All" tab's custom name persist in
+  // localStorage so tabs can be freely reordered/renamed. All is a tab like any
+  // other — movable, renamable — and at least one tab is always kept.
+  const TABORDER_KEY = "kokoro_taborder_" + id;
+  const ALLNAME_KEY = "kokoro_allname_" + id;
+  const [tabbed, setTabbed] = useState<string[]>(() => {
+    const pinned = initialGroups.filter((g) => !g.parentId).map((g) => "g:" + g.id);
+    let saved: unknown = null;
+    try { saved = JSON.parse(localStorage.getItem(TABORDER_KEY) || "null"); } catch {}
+    if (Array.isArray(saved)) {
+      // the saved list is authoritative for which collections are pinned — do NOT
+      // re-add unlisted ones, or unpinning (bookmark off) would never survive a
+      // reload. Collections that aren't pinned still show as boxes on the board.
+      const valid = (saved as string[]).filter((k) => k === "all" || pinned.includes(k));
+      if (!valid.includes("all")) valid.unshift("all");
+      return valid.length ? valid : ["all"];
+    }
+    return ["all", ...pinned];
+  });
+  const [allName, setAllName] = useState<string>(() => {
+    // the "All" tab is the home overview — the board itself, not a peer tab
+    try { return localStorage.getItem(ALLNAME_KEY) || "Board"; } catch { return "Board"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(TABORDER_KEY, JSON.stringify(tabbed)); } catch {}
+  }, [tabbed, TABORDER_KEY]);
+
   const [activeTab, setActiveTab] = useState<string>("list");
+  // the soft highlight that glides under the active collection in the rail
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [tabHi, setTabHi] = useState<{ x: number; w: number } | null>(null);
+  // drag-to-reorder tabs
+  const dragTabKey = useRef<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
+  // touch-only pointer reorder for the tab strip (HTML5 DnD below doesn't fire on
+  // touch); desktop mouse keeps using the draggable handlers, untouched.
+  const tabTouch = useRef<{ key: string; sx: number; sy: number; started: boolean } | null>(null);
+  const tabMovedRef = useRef(false);
+  const reorderTab = (toKey: string) => {
+    const from = dragTabKey.current;
+    dragTabKey.current = null;
+    setDropKey(null);
+    if (!from || from === toKey) return;
+    setTabbed((tt) => {
+      const arr = tt.filter((k) => k !== from);
+      const ti = arr.indexOf(toKey);
+      arr.splice(ti < 0 ? arr.length : ti, 0, from);
+      return arr;
+    });
+  };
+  const tabUnderPoint = (x: number, y: number): string | null =>
+    ((document.elementFromPoint(x, y) as HTMLElement | null)?.closest("[data-tab-key]"))?.getAttribute("data-tab-key") ?? null;
+  const tabTouchMove = (e: PointerEvent) => {
+    const d = tabTouch.current;
+    if (!d) return;
+    if (!d.started) {
+      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 8) return;
+      d.started = true;
+      tabMovedRef.current = true;
+      dragTabKey.current = d.key;
+      document.body.style.cursor = "grabbing";
+    }
+    const k = tabUnderPoint(e.clientX, e.clientY);
+    setDropKey(k && k !== d.key ? k : null);
+  };
+  const tabTouchUp = (e: PointerEvent) => {
+    window.removeEventListener("pointermove", tabTouchMove);
+    window.removeEventListener("pointerup", tabTouchUp);
+    document.body.style.cursor = "";
+    const d = tabTouch.current;
+    tabTouch.current = null;
+    if (!d || !d.started) { dragTabKey.current = null; setDropKey(null); return; }
+    const k = tabUnderPoint(e.clientX, e.clientY);
+    if (k) reorderTab(k);
+    else { dragTabKey.current = null; setDropKey(null); }
+  };
+  const startTabTouchReorder = (e: React.PointerEvent, key: string) => {
+    tabTouch.current = { key, sx: e.clientX, sy: e.clientY, started: false };
+    tabMovedRef.current = false;
+    window.addEventListener("pointermove", tabTouchMove);
+    window.addEventListener("pointerup", tabTouchUp);
+  };
+  const renameAll = (name: string) => {
+    const clean = name.trim().slice(0, 40) || "Board";
+    setAllName(clean);
+    try { localStorage.setItem(ALLNAME_KEY, clean); } catch {}
+  };
+  // remove a tab from the rail — always keeping at least one
+  const deleteTabKey = (key: string) => {
+    // The All tab is permanent — it's the home view of the whole list.
+    if (key === "all") return;
+    if (tabbed.length <= 1) return;
+    const gid = key.slice(2);
+    const t = tabObjFor(key);
+    if (t && t.items.length === 0) {
+      dissolveGroup(gid);
+      setTabbed((tt) => tt.filter((k) => k !== key));
+      if (activeTab === key) setActiveTab("list");
+    } else {
+      setTabDelTarget({ gid, key, label: t?.label || "", count: t?.items.length || 0 });
+    }
+  };
 
   const chooseTab = (key: string) => {
     if (key === activeTab) return;
+    // The All (list) view can hold the entire library; a view-transition snapshot
+    // of that much DOM (and its per-card morphs) is janky, so switch to/from it
+    // plainly. Keep the morph only between the lighter collection tabs.
+    if (key === "list" || activeTab === "list") {
+      setActiveTab(key);
+      return;
+    }
     startViewTransition(() => flushSync(() => setActiveTab(key)));
   };
 
-  const [convKind, setConvKind] = useState<"heading" | "tab" | null>(null);
-  const [convArmed, setConvArmed] = useState(false);
-  const [convZone, setConvZone] = useState<"rail" | "list" | "coll" | null>(null);
-  const [convTarget, setConvTarget] = useState<string | null>(null);
 
   const [globals, setGlobals] = useState<Rules>(emptyRules);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
   const [armed, setArmed] = useState<ArmedTarget>(null);
+  // tap-to-apply: a rule "picked up" by tapping it, then dropped by tapping a
+  // target — the touch-friendly alternative to dragging.
+  const [pickRule, setPickRule] = useState<{ cat: RuleCat; key: string } | null>(null);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [tabDelTarget, setTabDelTarget] = useState<{ gid: string; key: string; label: string; count: number } | null>(null);
 
   const [listView, setListView] = useState<ViewMode>(() => {
     try {
-      return (localStorage.getItem(VIEW_KEY) as ViewMode) || "list";
+      return (localStorage.getItem(VIEW_KEY) as ViewMode) || "cards";
     } catch {
-      return "list";
+      return "cards";
     }
   });
   const chooseView = (v: ViewMode) => {
@@ -188,6 +292,17 @@ export default function WatchlistApp({
       return false;
     }
   });
+  // On narrow screens the sidebar overlays the stage, so start it collapsed
+  // (unless the user has set an explicit preference) — the list stays visible.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_KEY) == null && window.matchMedia("(max-width: 980px)").matches) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSidebarCollapsed(true);
+      }
+    } catch {}
+  }, []);
+
   const toggleSidebar = () =>
     setSidebarCollapsed((v) => {
       const n = !v;
@@ -206,50 +321,39 @@ export default function WatchlistApp({
   });
   const chooseLayout = (m: LayoutMode) => {
     startViewTransition(() => {
-      flushSync(() => setLayoutMode(m));
+      flushSync(() => {
+        setLayoutMode(m);
+        // the free-form canvas is the whole-list board, so jump to All where it
+        // renders (rather than leaving the user on a focused collection tab)
+        if (m === "grid") setActiveTab("list");
+      });
       try {
         localStorage.setItem(LAYOUT_KEY, m);
       } catch {}
     });
   };
 
-  const [panelCfg, setPanelCfg] = useState<PanelCfg>(() => {
+  // Free-form grid canvas: box positions/sizes persist inside GridCanvas under a
+  // per-list key. Reset bumps this token so GridCanvas re-packs into a tidy grid.
+  const [resetToken, setResetToken] = useState(0);
+  const resetLayout = () => setResetToken((t) => t + 1);
+  const seedRef = useRef(1);
+
+  // Per-card "bento" size inside a box — cards can be cycled bigger so the board
+  // reads as a curated grid. Persists per list, keyed by entry id.
+  const CARDSIZE_KEY = "kokoro_cardsize_" + id;
+  const [cardSizes, setCardSizes] = useState<Record<string, string>>(() => {
     try {
-      return JSON.parse(localStorage.getItem(PANELS_KEY) || "{}");
+      return JSON.parse(localStorage.getItem(CARDSIZE_KEY) || "{}");
     } catch {
       return {};
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem(PANELS_KEY, JSON.stringify(panelCfg));
+      localStorage.setItem(CARDSIZE_KEY, JSON.stringify(cardSizes));
     } catch {}
-  }, [panelCfg]);
-  const resetLayout = () => setPanelCfg({});
-
-  // measure the canvas so default packing stays responsive
-  const canvasRef = useRef<HTMLDivElement | null>(null);
-  const roRef = useRef<ResizeObserver | null>(null);
-  const [canvasW, setCanvasW] = useState(960);
-  const attachCanvas = (el: HTMLDivElement | null) => {
-    canvasRef.current = el;
-    if (roRef.current) {
-      roRef.current.disconnect();
-      roRef.current = null;
-    }
-    if (el) {
-      const ro = new ResizeObserver((ents) => {
-        const w = ents[0].contentRect.width;
-        setCanvasW((p) => (Math.abs(p - w) > 1 ? w : p));
-      });
-      ro.observe(el);
-      roRef.current = ro;
-      setCanvasW(el.getBoundingClientRect().width);
-    }
-  };
-  const zTop = useRef(20);
-  const defaultsRef = useRef<PanelCfg>({});
-  const seedRef = useRef(1);
+  }, [cardSizes, CARDSIZE_KEY]);
 
   /* ----------------------- rule mutations ----------------------- */
   const addGlobalRule = (cat: RuleCat, key: string) =>
@@ -272,6 +376,21 @@ export default function WatchlistApp({
     setGroups((gs) =>
       gs.map((g) => (g.id === gid ? { ...g, scoped: { ...g.scoped, [cat]: (g.scoped[cat] || []).filter((k) => k !== key) } } : g)),
     );
+  // Flip a sort rule's direction in place (adds/removes the ":rev" suffix).
+  const toggleGlobalSortDir = (cat: RuleCat, key: string) => {
+    if (cat !== "sort") return;
+    setGlobals((g) => ({ ...g, sort: g.sort.map((k) => (k === key ? toggleSortRev(k) : k)) }));
+  };
+  const toggleGroupSortDir = (gid: string, cat: RuleCat, key: string) => {
+    if (cat !== "sort") return;
+    setGroups((gs) =>
+      gs.map((g) =>
+        g.id === gid
+          ? { ...g, scoped: { ...g.scoped, sort: (g.scoped.sort || []).map((k) => (k === key ? toggleSortRev(k) : k)) } }
+          : g,
+      ),
+    );
+  };
   const renameGroup = (gid: string, name: string) =>
     setGroups((gs) => gs.map((g) => (g.id === gid ? { ...g, name: name || "Untitled group" } : g)));
   const dissolveGroup = (gid: string) => setGroups((gs) => gs.filter((g) => g.id !== gid));
@@ -307,6 +426,21 @@ export default function WatchlistApp({
 
   const removeFromCollection = (id: string) =>
     setGroups((gs) => gs.map((g) => ({ ...g, entryIds: g.entryIds.filter((x) => x !== id) })));
+
+  // Reorder a title WITHIN its collection. A box renders its members in
+  // g.entryIds order (collItemsSorted), so a same-box reorder has to rewrite
+  // entryIds — not the global entries array (which the box never reads).
+  const reorderWithinGroup = (gid: string, draggedId: string, targetId: string, after: boolean) =>
+    setGroups((gs) =>
+      gs.map((g) => {
+        if (g.id !== gid) return g;
+        const ids = g.entryIds.filter((x) => x !== draggedId);
+        const ti = ids.indexOf(targetId);
+        if (ti < 0) return g;
+        ids.splice(after ? ti + 1 : ti, 0, draggedId);
+        return { ...g, entryIds: ids };
+      }),
+    );
 
   // Remove a title from the watchlist entirely (deletes the entry + its rating/
   // notes from the DB, and cleans it out of local state + any collection).
@@ -410,9 +544,16 @@ export default function WatchlistApp({
     setActiveTab("g:" + gid);
     setRenamingTab("g:" + gid);
   };
+  // bookmark a box: pin/unpin it as a tab in the rail (the box stays on the board)
+  const togglePin = (key: string) => {
+    const isPinned = tabbed.includes(key);
+    setTabbed((t) => (isPinned ? t.filter((k) => k !== key) : [...t, key]));
+    if (isPinned && activeTab === key) setActiveTab("list");
+  };
   const isGroupKey = (k: unknown): k is string => typeof k === "string" && k.startsWith("g:");
   const renameTabByKey = (key: string, name: string) => {
-    if (isGroupKey(key)) renameGroup(key.slice(2), name);
+    if (key === "all") renameAll(name);
+    else if (isGroupKey(key)) renameGroup(key.slice(2), name);
   };
 
   // Persist collections + their membership whenever they change. Local state is
@@ -506,10 +647,13 @@ export default function WatchlistApp({
   };
   const drag = useRef<DragState | null>(null);
   const stroke = useRef<Set<string> | null>(null);
-  const conv = useRef<{ kind: "heading" | "tab"; key: string; label: string; sx: number; sy: number; started: boolean; ghost: HTMLElement | null } | null>(null);
 
   const findTarget = (x: number, y: number, kind: "token" | "entry", excludeId?: string): ArmedTarget => {
-    let el = document.elementFromPoint(x, y) as HTMLElement | null;
+    const start = document.elementFromPoint(x, y) as HTMLElement | null;
+    // a title dropped anywhere in the loose zone gets unsorted (removed from its
+    // collection) — the reverse of dragging it into a box
+    if (kind === "entry" && start?.closest('[data-drop="loose"]')) return { type: "loose" };
+    let el = start;
     while (el && el !== document.body) {
       const d = el.dataset || {};
       if (kind === "token") {
@@ -537,7 +681,9 @@ export default function WatchlistApp({
   };
 
   /* ---- browse-mode: drag an entry onto a tab or collection heading ---- */
-  const browseDrag = useRef<{ id: string; sx: number; sy: number; started: boolean; label: string; ghost?: HTMLElement; srcEl?: HTMLElement } | null>(null);
+  const browseDrag = useRef<{ id: string; sx: number; sy: number; started: boolean; label: string; ghost?: HTMLElement; srcEl?: HTMLElement; touch?: boolean; fromGrip?: boolean; lastX?: number; lastY?: number } | null>(null);
+  const browseRaf = useRef(0);
+  const browseScroller = useRef<HTMLElement | null>(null);
   const [browseArm, setBrowseArm] = useState<BrowseHit>(null);
   const [pendingReorder, setPendingReorder] = useState<PendingReorder>(null);
   const reorderEl = useRef<HTMLElement | null>(null);
@@ -610,7 +756,7 @@ export default function WatchlistApp({
     }
     return null;
   };
-  const onEntryBrowse = (e: RPointerEvent, id: string) => {
+  const onEntryBrowse = (e: RPointerEvent, id: string, fromGrip = false) => {
     if (sculpt) return;
     if (e.button != null && e.button !== 0) return;
     if ((e.target as HTMLElement).closest(".k-addwrap, .k-addmenu, button, input, textarea, a")) return;
@@ -620,32 +766,52 @@ export default function WatchlistApp({
     browseDrag.current = {
       id, sx: e.clientX, sy: e.clientY, started: false,
       label: entry ? entry.title : "", srcEl: e.currentTarget as HTMLElement,
+      touch: e.pointerType === "touch", fromGrip,
     };
     window.addEventListener("pointermove", onEntryBrowseMove);
     window.addEventListener("pointerup", onEntryBrowseUp);
     window.addEventListener("pointercancel", onEntryBrowseUp);
   };
-  const onEntryBrowseMove = (e: PointerEvent) => {
-    const d = browseDrag.current;
-    if (!d) return;
-    if (!d.started) {
-      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 8) return;
-      d.started = true;
-      document.body.classList.add("k-entry-dragging");
-      if (d.srcEl) d.srcEl.classList.add("k-dragsrc");
-      const g = document.createElement("div");
-      g.className = "k-entrydrag-ghost";
-      g.textContent = d.label || "Untitled";
-      document.body.appendChild(g);
-      // start position so the entrance animation reads from under the cursor
-      g.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 18}px)`;
-      d.ghost = g;
+  // nearest title (by vertical distance) inside a collection box — lets a drop
+  // released in the box's whitespace insert at the right slot instead of the end
+  const nearestEntryHit = (collId: string, y: number, excludeId: string): { id: string; after: boolean } | null => {
+    const box = document.querySelector(`[data-group-id="${collId}"]`);
+    if (!box) return null;
+    const els = [...box.querySelectorAll<HTMLElement>('[data-drop="entry"][data-entry-id]')].filter(
+      (el) => el.dataset.entryId && el.dataset.entryId !== excludeId,
+    );
+    let best: { id: string; after: boolean } | null = null;
+    let bestDist = Infinity;
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      const mid = r.top + r.height / 2;
+      const dist = Math.abs(y - mid);
+      if (dist < bestDist) { bestDist = dist; best = { id: el.dataset.entryId!, after: y > mid }; }
     }
-    if (d.ghost) d.ghost.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 18}px)`;
-    const hit = dropHitAt(e.clientX, e.clientY);
+    return best;
+  };
+  // Resolve the drop under (x,y). When over a box the dragged title ALREADY
+  // lives in, treat it as a reorder onto the nearest title (so releasing in the
+  // box whitespace inserts by position instead of appending to the bottom).
+  const resolveBrowseHit = (x: number, y: number, dragId: string): BrowseHit => {
+    let hit = dropHitAt(x, y);
+    if (hit && hit.kind === "coll") {
+      const dg = groups.find((g) => g.entryIds.includes(dragId));
+      if (dg && dg.id === hit.id && effSortKeys(dg).length === 0) {
+        const n = nearestEntryHit(hit.id, y, dragId);
+        if (n) hit = { kind: "entry", id: n.id, after: n.after };
+      }
+    }
+    return hit;
+  };
+  const updateBrowseHit = (x: number, y: number) => {
+    const d = browseDrag.current;
+    if (!d || !d.started) return;
+    if (d.ghost) d.ghost.style.transform = `translate(${x + 14}px, ${y - 18}px)`;
+    const hit = resolveBrowseHit(x, y, d.id);
     clearReorderHint();
     if (hit && hit.kind === "entry" && hit.id !== d.id) {
-      // reorder target: show an insertion line on the hovered entry
+      // reorder target: show an insertion line on the hovered/nearest entry
       const tgt = document.querySelector(`[data-drop="entry"][data-entry-id="${hit.id}"]`) as HTMLElement | null;
       if (tgt) { tgt.classList.add(hit.after ? "k-reorder-after" : "k-reorder-before"); reorderEl.current = tgt; }
       setBrowseArm(null);
@@ -656,10 +822,47 @@ export default function WatchlistApp({
       if (d.ghost) d.ghost.classList.toggle("on", !!tabHit);
     }
   };
+  const onEntryBrowseMove = (e: PointerEvent) => {
+    const d = browseDrag.current;
+    if (!d) return;
+    if (!d.started) {
+      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 8) return;
+      // On touch, only a grip-initiated drag becomes a real drag — a touch that
+      // starts on the row body is a scroll/tap, so bail and let the browser
+      // scroll (a scroll fires pointercancel, which suppresses the tap-open).
+      if (d.touch && !d.fromGrip) return;
+      d.started = true;
+      document.body.classList.add("k-entry-dragging");
+      if (d.srcEl) d.srcEl.classList.add("k-dragsrc");
+      const g = document.createElement("div");
+      g.className = "k-entrydrag-ghost";
+      g.textContent = d.label || "Untitled";
+      document.body.appendChild(g);
+      // start position so the entrance animation reads from under the cursor
+      g.style.transform = `translate(${e.clientX + 14}px, ${e.clientY - 18}px)`;
+      d.ghost = g;
+      // the drag handle blocks native scrolling, so drive it near the edges —
+      // otherwise a title can't be dropped past the fold (it lands at the end)
+      browseScroller.current = findScroller(d.srcEl || null);
+      cancelAnimationFrame(browseRaf.current);
+      const loop = () => {
+        const dd = browseDrag.current;
+        if (!dd || !dd.started) return;
+        edgeScroll(browseScroller.current, dd.lastY ?? 0);
+        updateBrowseHit(dd.lastX ?? 0, dd.lastY ?? 0);
+        browseRaf.current = requestAnimationFrame(loop);
+      };
+      browseRaf.current = requestAnimationFrame(loop);
+    }
+    d.lastX = e.clientX;
+    d.lastY = e.clientY;
+    updateBrowseHit(e.clientX, e.clientY);
+  };
   const onEntryBrowseUp = (e: PointerEvent) => {
     window.removeEventListener("pointermove", onEntryBrowseMove);
     window.removeEventListener("pointerup", onEntryBrowseUp);
     window.removeEventListener("pointercancel", onEntryBrowseUp);
+    cancelAnimationFrame(browseRaf.current);
     document.body.classList.remove("k-entry-dragging");
     clearReorderHint();
     const d = browseDrag.current;
@@ -673,13 +876,21 @@ export default function WatchlistApp({
       setSelectedId(d.id);
       return;
     }
-    const hit = dropHitAt(e.clientX, e.clientY);
+    const hit = resolveBrowseHit(e.clientX, e.clientY, d.id);
     if (!hit) return;
     if (hit.kind === "coll") addToGroup(d.id, hit.id);
     else if (hit.kind === "status") setEntryStatus(d.id, hit.status);
     else if (hit.kind === "entry" && hit.id !== d.id) {
-      // manual reorder — if an automatic sort/grouping is active, confirm first
-      if (globals.sort.length > 0 || globals.group.length > 0) {
+      // Reorder within a collection → rewrite that box's entryIds (the box
+      // orders by entryIds, not the global entries array). Only when both
+      // titles live in the SAME box and it has no scoped sort overriding order.
+      const dg = groups.find((g) => g.entryIds.includes(d.id));
+      const tg = groups.find((g) => g.entryIds.includes(hit.id));
+      if (dg && tg && dg.id === tg.id && effSortKeys(dg).length === 0) {
+        reorderWithinGroup(dg.id, d.id, hit.id, hit.after);
+      } else if (globals.sort.length > 0 || globals.group.length > 0) {
+        // manual reorder of the flat list — if an automatic sort/grouping is
+        // active, confirm first (it clears those rules)
         setPendingReorder({ draggedId: d.id, targetId: hit.id, after: hit.after });
       } else {
         const arr = moveInOrder(entries, d.id, hit.id, hit.after);
@@ -759,17 +970,42 @@ export default function WatchlistApp({
     setArmed(null);
     if (!d) return;
     if (d.ghost) d.ghost.el.remove();
-    if (!d.started) return;
+    if (!d.started) {
+      // a tap (no drag) on a rule token toggles tap-to-apply: pick it up, then
+      // tap Everything or a collection to add it there (tap the token to cancel)
+      if (d.kind === "token") setPickRule((p) => (p && p.cat === d.cat && p.key === d.key ? null : { cat: d.cat!, key: d.key! }));
+      return;
+    }
     const tgt = findTarget(e.clientX, e.clientY, d.kind === "token" ? "token" : "entry", d.id);
     if (!tgt) return;
     if (d.kind === "entry") {
       if (tgt.type === "entry") mergeOnto(d.id!, tgt.id);
       else if (tgt.type === "group") addToGroup(d.id!, tgt.id);
+      else if (tgt.type === "loose") removeFromCollection(d.id!);
     } else if (d.kind === "token") {
       if (tgt.type === "globals") addGlobalRule(d.cat!, d.key!);
       else if (tgt.type === "group") addGroupRule(tgt.id, d.cat!, d.key!);
     }
   };
+
+  // Tap-to-apply: while a rule is picked up, a tap on Everything or a collection
+  // adds it there. Taps inside the palette are ignored; a tap elsewhere cancels.
+  useEffect(() => {
+    if (!pickRule) return;
+    const onTap = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest(".k-sidebar")) return;
+      const tgt = findTarget(e.clientX, e.clientY, "token");
+      if (tgt) {
+        if (tgt.type === "globals") addGlobalRule(pickRule.cat, pickRule.key);
+        else if (tgt.type === "group") addGroupRule(tgt.id, pickRule.cat, pickRule.key);
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      setPickRule(null);
+    };
+    window.addEventListener("click", onTap, true);
+    return () => window.removeEventListener("click", onTap, true);
+  }, [pickRule]);
 
   const flashPaint = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-entry-id="${id}"]`);
@@ -810,19 +1046,23 @@ export default function WatchlistApp({
     const cmp = chainedComparator(globals.sort, "s" + seedRef.current);
     return cmp ? [...arr].sort(cmp) : arr;
   };
+  // Browse mode shows EVERY title in the "All" view (collections are slices you
+  // open via their tab); sculpt mode shows only ungrouped titles so you can
+  // organise them into collections.
+  const sectionBase = mode === "sculpt" ? singles : entries.filter(matches);
 
   let sections: Section[] = [];
   const primaryGroup = globals.group[0] || null;
   if (primaryGroup) {
     const map: Record<string, Section & { order: number }> = {};
-    singles.forEach((e) => {
+    sectionBase.forEach((e) => {
       const b: Bucket = bucketOf(e, primaryGroup);
       (map[b.key] = map[b.key] || { key: b.key, label: b.label, order: b.order, items: [] }).items.push(e);
     });
     sections = Object.values(map).sort((a, b) => a.order - b.order || (a.label || "").localeCompare(b.label || ""));
     sections.forEach((s) => (s.items = sortSingles(s.items)));
   } else {
-    sections = [{ key: "all", label: null, items: sortSingles(singles) }];
+    sections = [{ key: "all", label: null, items: sortSingles(sectionBase) }];
   }
 
   const selected = selectedId ? byId[selectedId] : null;
@@ -856,14 +1096,50 @@ export default function WatchlistApp({
   const tabGroups = tabbed.map(tabObjFor).filter(Boolean) as TabObj[];
   const activeTabObj = activeTab !== "list" ? tabObjFor(activeTab) : null;
   const effectiveActive = activeTabObj ? activeTab : "list";
+
+  // slide the highlight under whichever collection is active (re-measures on
+  // switch, when the rail's contents change, and on resize)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const bar = tabsRef.current;
+      const el = bar?.querySelector<HTMLElement>(".k-tab.on");
+      if (!bar || !el) {
+        setTabHi(null);
+        return;
+      }
+      // getBoundingClientRect is robust to the wrapped/positioned pinned tabs;
+      // + scrollLeft converts to the rail's scrollable content space.
+      const br = bar.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      setTabHi({ x: er.left - br.left + bar.scrollLeft, w: er.width });
+    };
+    measure();
+    const raf = requestAnimationFrame(measure); // catch post view-transition layout
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [effectiveActive, tabbed, tabGroups.length]);
   const topColls = groups.filter((g) => !g.parentId && !tabbed.includes("g:" + g.id));
   const listSections = sections.filter((s) => s.items.length > 0 && !tabbed.includes("s:" + s.key));
   const sectionByKey: Record<string, Section> = {};
   sections.forEach((s) => (sectionByKey[s.key] = s));
-  const panelKeys = [...topColls.map((g) => "g:" + g.id), ...listSections.map((s) => "s:" + s.key)];
+  // On the free-form canvas EVERY top-level collection is a reshapeable box
+  // (whether or not it's pinned as a tab). Only NAMED sections (e.g. status
+  // buckets when grouping) join them — the catch-all ungrouped "everything"
+  // bucket isn't a box; it clutters the board (it's still on the All tab).
+  const canvasColls = groups.filter((g) => !g.parentId);
+  const canvasSections = listSections.filter((s) => s.label);
+  const panelKeys = [...canvasColls.map((g) => "g:" + g.id), ...canvasSections.map((s) => "s:" + s.key)];
+  // Ungrouped titles that aren't a named box (the catch-all bucket) don't belong
+  // to any collection — on the free-form board they float LOOSE on the canvas so
+  // you can see them and drag them into a collection to file them.
+  const looseTitles = listSections.filter((s) => !s.label).flatMap((s) => s.items);
 
-  // ---- free-form layout geometry ----
-  const estH = (key: string) => {
+  // Estimate a box's natural height in GridCanvas rows (~32px/row) from how many
+  // titles it holds, so the auto-packed default isn't uniformly stubby.
+  const estRows = (key: string) => {
     let n = 0;
     if (key.startsWith("g:")) {
       const g = groupById[key.slice(2)];
@@ -872,146 +1148,72 @@ export default function WatchlistApp({
       const s = sectionByKey[key.slice(2)];
       n = s ? s.items.length : 0;
     }
-    return Math.max(200, Math.min(470, 150 + n * 46));
+    const px = Math.max(220, Math.min(520, 168 + n * 44));
+    return Math.round(px / 32);
   };
-  const computeDefaults = (keys: string[]): PanelCfg => {
-    const gap = 16;
-    const out: PanelCfg = {};
-    if (keys.length === 0) return out;
-    if (keys.length === 1) {
-      const k = keys[0];
-      out[k] = { x: 0, y: 0, w: Math.max(280, canvasW), h: estH(k), z: 1 };
-      return out;
-    }
-    const cols = [0, 0];
-    const colW = Math.max(248, Math.round((canvasW - gap) / 2));
-    keys.forEach((k) => {
-      const c = cols[0] <= cols[1] ? 0 : 1;
-      const h = estH(k);
-      out[k] = { x: c * (colW + gap), y: cols[c], w: colW, h, z: 1 };
-      cols[c] += h + gap;
-    });
-    return out;
+  // A box's tint is the rule-category colours MIXED like paint into one colour that
+  // washes the whole box. Every active rule contributes: rules on "Everything"
+  // (globals) tint every box; rules scoped to a collection tint just that box, and
+  // stack with the globals. Combining categories yields a genuinely new colour.
+  // A HARMONIOUS palette: all four hues sit within a ~145° arc (jewel tones,
+  // teal→blue→violet→rose) so no two are near-complementary — every blend lands on
+  // a clean intermediate (teal+rose = violet, etc.) instead of muddy brown/grey.
+  const CAT: Record<RuleCat, { l: number; c: number; h: number }> = {
+    sort: { l: 0.72, c: 0.14, h: 200 }, // teal
+    group: { l: 0.66, c: 0.15, h: 255 }, // blue
+    tag: { l: 0.64, c: 0.15, h: 300 }, // violet
+    color: { l: 0.68, c: 0.16, h: 345 }, // rose
   };
-  const layoutDefaults = computeDefaults(panelKeys);
-  defaultsRef.current = layoutDefaults;
-  const FALLBACK_RECT: Rect = { x: 0, y: 0, w: 300, h: 260, z: 1 };
-  const rectOf = (key: string): Rect => panelCfg[key] || layoutDefaults[key] || FALLBACK_RECT;
-  const setRect = (key: string, partial: Partial<Rect>) =>
-    setPanelCfg((prev) => {
-      const cur = prev[key] || defaultsRef.current[key] || FALLBACK_RECT;
-      return { ...prev, [key]: { ...cur, ...partial } };
+  // Each category is weighted by HOW MANY of its rules are applied — stacking more
+  // rules of one category pulls the blend further toward that colour (like adding
+  // more of one paint), and combining categories yields a new colour.
+  const mixTint = (weights: Partial<Record<RuleCat, number>>): string | null => {
+    let a = 0, b = 0, l = 0, total = 0;
+    (Object.keys(weights) as RuleCat[]).forEach((cat) => {
+      const w = weights[cat] || 0;
+      if (w <= 0) return;
+      const { l: L, c, h } = CAT[cat];
+      const r = (h * Math.PI) / 180;
+      a += w * c * Math.cos(r);
+      b += w * c * Math.sin(r);
+      l += w * L;
+      total += w;
     });
-  const bringFront = (key: string) =>
-    setPanelCfg((prev) => {
-      const cur = prev[key] || defaultsRef.current[key] || FALLBACK_RECT;
-      const nextZ = ++zTop.current;
-      return { ...prev, [key]: { ...cur, z: nextZ } };
+    if (total === 0) return null;
+    a /= total; b /= total; l /= total;
+    const H = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+    // keep chroma healthy so blends stay a live colour (the harmonious palette
+    // means the hue itself is always pleasant); floor prevents grey mud
+    const C = Math.min(0.16, Math.hypot(a, b) * 1.4 + 0.07);
+    return `oklch(${l.toFixed(3)} ${C.toFixed(3)} ${H.toFixed(1)})`;
+  };
+  const tintFor = (key: string): React.CSSProperties => {
+    const weights: Partial<Record<RuleCat, number>> = {};
+    const g = key.startsWith("g:") ? groupById[key.slice(2)] : undefined;
+    (Object.keys(CAT) as RuleCat[]).forEach((cat) => {
+      const w = (globals[cat]?.length || 0) + (g?.scoped?.[cat]?.length || 0);
+      if (w) weights[cat] = w;
     });
-  const canvasH = panelKeys.reduce((m, k) => {
-    const r = rectOf(k);
-    return Math.max(m, r.y + r.h);
-  }, 0) + 28;
+    const color = mixTint(weights);
+    return color ? ({ "--tint": color } as React.CSSProperties) : {};
+  };
   const gridLayout = layoutMode === "grid" && effectiveActive === "list";
 
-  // nesting helpers
-  const isDescendant = (childId: string, ancestorId: string) => {
-    let cur: Group | undefined = groupById[childId];
-    const seen = new Set<string>();
-    while (cur && cur.parentId && !seen.has(cur.id)) {
-      seen.add(cur.id);
-      if (cur.parentId === ancestorId) return true;
-      cur = groupById[cur.parentId];
-    }
-    return false;
-  };
-  const canNest = (key: string, targetId: string | null) => {
-    if (!isGroupKey(key) || !targetId) return false;
-    const gid = key.slice(2);
-    return gid !== targetId && !isDescendant(targetId, gid);
-  };
-  const setGroupParent = (gid: string, parentId: string | null) =>
-    setGroups((gs) => gs.map((g) => (g.id === gid ? { ...g, parentId } : g)));
-
-  /* ---- convert drag: pin / nest / unpin a collection ---- */
-  const convZoneAt = (x: number, y: number): { zone: "rail" | "coll" | "list" | null; collId: string | null } => {
-    let el = document.elementFromPoint(x, y) as HTMLElement | null;
-    let collId: string | null = null;
-    while (el && el !== document.body) {
-      const c = el.classList;
-      if (el.dataset && el.dataset.collid && collId == null) collId = el.dataset.collid;
-      if (c && c.contains("k-tabsbar")) return { zone: "rail", collId: null };
-      if (c && c.contains("k-scroll")) return { zone: collId ? "coll" : "list", collId };
-      el = el.parentElement;
-    }
-    return { zone: null, collId: null };
-  };
-  const startConvDrag = (e: RPointerEvent, kind: "heading" | "tab", key: string, label: string) => {
-    if (e.button != null && e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    conv.current = { kind, key, label, sx: e.clientX, sy: e.clientY, started: false, ghost: null };
-    window.addEventListener("pointermove", convMove);
-    window.addEventListener("pointerup", convUp);
-  };
-  const convMove = (e: PointerEvent) => {
-    const d = conv.current;
-    if (!d) return;
-    if (!d.started) {
-      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 6) return;
-      d.started = true;
-      setConvKind(d.kind);
-      document.body.style.cursor = "grabbing";
-      const g = document.createElement("div");
-      g.className = "k-convert-ghost";
-      g.textContent = d.label;
-      document.body.appendChild(g);
-      d.ghost = g;
-    }
-    if (d.ghost) d.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY - 14}px)`;
-    const z = convZoneAt(e.clientX, e.clientY);
-    let valid = false;
-    if (z.zone === "rail") valid = true;
-    else if (z.zone === "coll") valid = canNest(d.key, z.collId);
-    else if (z.zone === "list") valid = true;
-    setConvArmed(valid);
-    setConvZone(valid ? z.zone : null);
-    setConvTarget(valid && z.zone === "coll" ? z.collId : null);
-  };
-  const convUp = (e: PointerEvent) => {
-    window.removeEventListener("pointermove", convMove);
-    window.removeEventListener("pointerup", convUp);
-    document.body.style.cursor = "";
-    const d = conv.current;
-    conv.current = null;
-    setConvKind(null);
-    setConvArmed(false);
-    setConvZone(null);
-    setConvTarget(null);
-    if (!d) return;
-    if (d.ghost) d.ghost.remove();
-    if (!d.started) {
-      if (d.kind === "tab") chooseTab(d.key);
-      return;
-    }
-    const z = convZoneAt(e.clientX, e.clientY);
-    const gid = isGroupKey(d.key) ? d.key.slice(2) : null;
-    if (z.zone === "rail") {
-      if (gid) setGroupParent(gid, null);
-      setTabbed((t2) => (t2.includes(d.key) ? t2 : [...t2, d.key]));
-      setActiveTab(d.key);
-    } else if (z.zone === "coll" && canNest(d.key, z.collId)) {
-      if (gid) setGroupParent(gid, z.collId);
-      setTabbed((t2) => t2.filter((k) => k !== d.key));
-      setActiveTab("list");
-    } else if (z.zone === "list") {
-      if (gid) setGroupParent(gid, null);
-      setTabbed((t2) => t2.filter((k) => k !== d.key));
-      setActiveTab("list");
-    }
-  };
-
   /* ----------------------- renderers ----------------------- */
+  // Cards get 4 preset sizes; hybrid only widens (its height is content-driven).
+  const CARD_SIZES = ["reg", "wide", "tall", "big"];
+  const HYBRID_SIZES = ["reg", "wide"];
+  const cycleCardSize = (eid: string) => {
+    const ring = effView === "cards" ? CARD_SIZES : HYBRID_SIZES;
+    setCardSizes((prev) => {
+      const cur = prev[eid] || "reg";
+      const next = ring[(ring.indexOf(cur) + 1 + ring.length) % ring.length] || "reg";
+      const out = { ...prev };
+      if (next === "reg") delete out[eid];
+      else out[eid] = next;
+      return out;
+    });
+  };
   const renderEntry = (e: Entry, grp: Group | null) => {
     const common = {
       entry: e,
@@ -1031,7 +1233,17 @@ export default function WatchlistApp({
       onBumpEp: bumpEpisode,
     };
     if (effView === "list") return <EntryRow key={e.id} {...common} mode={mode} onGrab={onGrabEntry} />;
-    return <EntryCard key={e.id} {...common} view={effView} />;
+    return (
+      <EntryCard
+        key={e.id}
+        {...common}
+        view={effView}
+        mode={mode}
+        onGrab={onGrabEntry}
+        size={cardSizes[e.id] || "reg"}
+        onResize={sculpt && gridLayout ? () => cycleCardSize(e.id) : undefined}
+      />
+    );
   };
   const renderList = (items: Entry[], grp: Group | null) => (
     <div className={effView === "cards" ? "k-cards" : "k-rows"}>{items.map((e) => renderEntry(e, grp))}</div>
@@ -1049,11 +1261,13 @@ export default function WatchlistApp({
           (!!armed && armed.type === "group" && armed.id === g.id) ||
           (!!browseArm && browseArm.kind === "coll" && browseArm.id === g.id)
         }
-        nestArmed={convTarget === g.id}
         onRename={renameGroup}
         onDissolve={dissolveGroup}
         onRemoveRule={removeGroupRule}
-        onGrabHead={(e) => startConvDrag(e, "heading", "g:" + g.id, g.name)}
+        onToggleRule={toggleGroupSortDir}
+        pinned={!g.parentId ? tabbed.includes("g:" + g.id) : undefined}
+        onTogglePin={!g.parentId ? (gid) => togglePin("g:" + gid) : undefined}
+        onOpen={!g.parentId ? (gid) => chooseTab("g:" + gid) : undefined}
       >
         {items.length > 0 && renderList(items, g)}
         {items.length === 0 && kids.length === 0 && (
@@ -1074,13 +1288,6 @@ export default function WatchlistApp({
     >
       {s.label && (
         <div className="k-section__head">
-          <button
-            className="k-section__grip"
-            title="Drag up to pin as a tab"
-            onPointerDown={(e) => startConvDrag(e, "heading", "s:" + s.key, s.label!)}
-          >
-            <Ico name="grip" s={13} />
-          </button>
           <span className="k-section__name">{s.label}</span>
           <span className="k-section__count">{s.items.length}</span>
         </div>
@@ -1113,6 +1320,7 @@ export default function WatchlistApp({
       data-direction={DIRECTION}
       data-sculpt={sculpt ? "on" : "off"}
       data-density={DENSITY}
+      data-picking={pickRule ? "1" : undefined}
       style={accent ? ({ "--accent": accent } as React.CSSProperties) : undefined}
     >
       <div className="k-main">
@@ -1122,6 +1330,7 @@ export default function WatchlistApp({
           paintState={paint}
           globals={globals}
           groups={groups}
+          customAxes={customAxes}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebar}
         />
@@ -1147,102 +1356,126 @@ export default function WatchlistApp({
             </div>
           </div>
 
-          {/* tab rail */}
-          <div className={"k-tabsbar" + (convZone === "rail" ? " drop-armed" : "")}>
-            <button className={"k-tab k-tab--home" + (effectiveActive === "list" ? " on" : "")} onClick={() => chooseTab("list")}>
-              <Ico name="browse" s={14} /> All
-            </button>
-            {tabGroups.map((tab) =>
-              renamingTab === tab.key ? (
-                <input
-                  key={tab.key}
-                  className="k-tab k-tab--edit"
-                  autoFocus
-                  defaultValue={tab.label}
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={(e) => {
-                    renameTabByKey(tab.key, e.target.value.trim());
-                    setRenamingTab(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    if (e.key === "Escape") setRenamingTab(null);
-                  }}
-                />
-              ) : (
-                <span key={tab.key} className="k-tab-wrap">
-                  <button
-                    className={
-                      "k-tab k-tab--pinned" +
-                      (effectiveActive === tab.key ? " on" : "") +
-                      (browseArm && ((tab.key === "g:" + ((browseArm as { id?: string }).id || "")) || (tab.key === "s:" + ((browseArm as { status?: string }).status || ""))) ? " drop-armed" : "")
-                    }
-                    data-tab-key={tab.key}
-                    onClick={() => chooseTab(tab.key)}
-                    onPointerDown={(e) => startConvDrag(e, "tab", tab.key, tab.label)}
-                    onDoubleClick={() => {
-                      if (isGroupKey(tab.key)) setRenamingTab(tab.key);
+          {/* tab rail — every tab (incl. All) is reorderable + renamable */}
+          <div ref={tabsRef} className="k-tabsbar">
+            {tabHi && <span className="k-tabhi" style={{ transform: `translateX(${tabHi.x}px)`, width: tabHi.w }} aria-hidden="true" />}
+            {tabbed.map((key) => {
+              const isAll = key === "all";
+              const tab = isAll ? null : tabObjFor(key);
+              if (!isAll && !tab) return null; // a dissolved collection — skip
+              const label = isAll ? allName : tab!.label;
+              const count = isAll ? entries.length : tab!.items.length;
+              const active = isAll ? effectiveActive === "list" : effectiveActive === key;
+              if (renamingTab === key) {
+                return (
+                  <input
+                    key={key}
+                    className="k-tab k-tab--edit"
+                    autoFocus
+                    defaultValue={label}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => {
+                      renameTabByKey(key, e.target.value.trim());
+                      setRenamingTab(null);
                     }}
-                    title="Click to view · double-click to rename · drag onto a collection to nest, or into All for a section"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      if (e.key === "Escape") setRenamingTab(null);
+                    }}
+                  />
+                );
+              }
+              const armed = !isAll && browseArm && ((key === "g:" + ((browseArm as { id?: string }).id || "")) || (key === "s:" + ((browseArm as { status?: string }).status || "")));
+              return (
+                <span
+                  key={key}
+                  className={"k-tab-wrap" + (dropKey === key ? " k-tab-wrap--drop" : "")}
+                  draggable
+                  onDragStart={(e) => {
+                    dragTabKey.current = key;
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dropKey !== key) setDropKey(key);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropKey((d) => (d === key ? null : d));
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    reorderTab(key);
+                  }}
+                  onDragEnd={() => {
+                    dragTabKey.current = null;
+                    setDropKey(null);
+                  }}
+                >
+                  <button
+                    className={"k-tab " + (isAll ? "k-tab--home" : "k-tab--pinned") + (active ? " on" : "") + (armed ? " drop-armed" : "")}
+                    data-tab-key={key}
+                    onPointerDown={(e) => { if (e.pointerType === "touch") startTabTouchReorder(e, key); }}
+                    onClick={() => { if (tabMovedRef.current) { tabMovedRef.current = false; return; } chooseTab(isAll ? "list" : key); }}
+                    onDoubleClick={() => setRenamingTab(key)}
+                    title="Click to view · double-click to rename · drag to reorder"
                   >
-                    {tab.label}
-                    <span className="k-tab__count">{tab.items.length}</span>
+                    {isAll && <Ico name="browse" s={14} />}
+                    {label}
+                    <span className="k-tab__count">{count}</span>
                   </button>
-                  {isGroupKey(tab.key) && (
+                  {!isAll && tabbed.length > 1 && (
                     <button
                       className="k-tab__del"
-                      aria-label={"Delete " + tab.label}
-                      title={tab.items.length === 0 ? "Delete this empty tab" : "Delete this tab (titles stay in your library)"}
+                      aria-label={"Delete " + label}
+                      title="Delete this tab (titles stay in your library)"
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
-                        const gid = tab.key.slice(2);
-                        if (tab.items.length === 0) {
-                          dissolveGroup(gid);
-                          if (effectiveActive === tab.key) setActiveTab("list");
-                        } else {
-                          setTabDelTarget({ gid, key: tab.key, label: tab.label, count: tab.items.length });
-                        }
+                        deleteTabKey(key);
                       }}
                     >
                       <Ico name="x" s={11} />
                     </button>
                   )}
                 </span>
-              ),
-            )}
+              );
+            })}
             <button className="k-tab k-tab--add" onClick={() => createTab(null)} title="Create a new collection tab">
               <Ico name="plus" s={14} /> New
             </button>
-            {convKind && (
-              <span className="k-tab-hint">
-                {convZone === "rail" ? "Release to pin as a tab" : "Onto a collection to nest · into All for a section"}
-              </span>
-            )}
           </div>
 
           {/* sub-toolbar */}
           <div className="k-subtools">
-            <Segmented
-              value={listView}
-              onChange={chooseView}
-              ariaLabel="Display view"
-              options={[
-                { value: "list", label: " Rows", icon: <Ico name="viewList" s={14} />, title: "Compact rows view" },
-                { value: "cards", label: " Cards", icon: <Ico name="viewCards" s={14} />, title: "Poster card view" },
-                { value: "hybrid", label: " Hybrid", icon: <Ico name="viewHybrid" s={14} />, title: "Hybrid — row + excerpt" },
-              ]}
+            <DisplayMenu
+              display={listView}
+              layout={layoutMode}
+              showLayout={false}
+              onDisplay={chooseView}
+              onLayout={chooseLayout}
             />
-            {effectiveActive === "list" && (
-              <Segmented
-                value={layoutMode}
-                onChange={chooseLayout}
-                ariaLabel="Arrangement"
-                options={[
-                  { value: "stack", label: " Stack", icon: <Ico name="layoutStack" s={14} />, title: "Stacked list" },
-                  { value: "grid", label: " Layout", icon: <Ico name="layoutGrid" s={14} />, title: sculpt ? "Custom layout — drag & resize the boxes" : "Custom layout — shape it in Sculpt mode" },
-                ]}
-              />
+            {/* layout toggle — the way to get reshapeable boxes, obvious in Shape mode */}
+            {sculpt && (
+              <div className="k-layoutseg" role="group" aria-label="Layout">
+                <button
+                  type="button"
+                  className={"k-layoutseg__b" + (layoutMode === "stack" ? " on" : "")}
+                  onClick={() => chooseLayout("stack")}
+                  title="Stacked list"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="4" y="5" width="16" height="4" rx="1" /><rect x="4" y="11" width="16" height="4" rx="1" /><rect x="4" y="17" width="16" height="3" rx="1" /></svg>
+                  Stacked
+                </button>
+                <button
+                  type="button"
+                  className={"k-layoutseg__b" + (layoutMode === "grid" ? " on" : "")}
+                  onClick={() => chooseLayout("grid")}
+                  title="Free-form — drag & resize the boxes on a canvas"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><rect x="3" y="4" width="8" height="9" rx="1.5" /><rect x="13" y="4" width="8" height="5" rx="1.5" /><rect x="3" y="15" width="8" height="5" rx="1.5" /><rect x="13" y="11" width="8" height="9" rx="1.5" /></svg>
+                  Free-form
+                </button>
+              </div>
             )}
             <div className="k-subtools__spacer" />
             {gridLayout && sculpt && (
@@ -1261,14 +1494,14 @@ export default function WatchlistApp({
                   setSelectedId(null);
                 }
               }}
-              title={sculpt ? "Exit editing — back to browsing your list" : "Edit your list — reshape, rate, and rearrange"}
+              title={sculpt ? "Exit editing — back to browsing your list" : "Shape your list — group, sort, colour, and freely arrange it"}
             >
               {sculpt ? <Ico name="check" s={15} /> : <Ico name="edit" s={15} />}
-              <span>{sculpt ? "Done" : "Edit list"}</span>
+              <span>{sculpt ? "Done" : "Shape list"}</span>
             </button>
           </div>
 
-          <div className={"k-scroll" + (convZone === "list" ? " drop-armed" : "")}>
+          <div className="k-scroll">
             {entries.length === 0 ? (
               <div className="k-emptytab" style={{ marginTop: 8 }}>
                 <Ico name="search" s={26} />
@@ -1280,12 +1513,12 @@ export default function WatchlistApp({
               </div>
             ) : (
               <Fragment>
-            {effectiveActive === "list" && (
+            {effectiveActive === "list" && sculpt && (
               <div className={"k-globals" + (armed && armed.type === "globals" ? " drop-armed" : "")} data-drop="globals">
                 <span className="k-globals__label">Everything</span>
                 {(["group", "sort", "color", "tag"] as RuleCat[]).flatMap((cat) =>
                   globals[cat].map((k) => (
-                    <RuleChip key={cat + ":" + k} cat={cat} ruleKey={k} onRemove={() => removeGlobalRule(cat, k)} />
+                    <RuleChip key={cat + ":" + k} cat={cat} ruleKey={k} onRemove={() => removeGlobalRule(cat, k)} onToggleDir={() => toggleGlobalSortDir(cat, k)} />
                   )),
                 )}
                 {noGlobals && (
@@ -1294,32 +1527,35 @@ export default function WatchlistApp({
               </div>
             )}
 
-            {/* a pinned tab is open */}
+            {/* a pinned tab is open — its scoped/global rules glow here too */}
             {effectiveActive !== "list" && activeTabObj && (
-              activeTabObj.group ? (
-                sculpt ? (
-                  renderCollection(activeTabObj.group)
-                ) : activeTabObj.items.length > 0 || childrenOf(activeTabObj.group.id).length > 0 ? (
-                  <Fragment>
-                    {activeTabObj.items.length > 0 && renderList(activeTabObj.items, activeTabObj.group)}
-                    {childrenOf(activeTabObj.group.id).map(renderCollection)}
-                  </Fragment>
+              <div className="k-tabglow" style={tintFor(activeTab)}>
+                {activeTabObj.group ? (
+                  sculpt ? (
+                    renderCollection(activeTabObj.group)
+                  ) : activeTabObj.items.length > 0 || childrenOf(activeTabObj.group.id).length > 0 ? (
+                    <Fragment>
+                      {activeTabObj.items.length > 0 && renderList(activeTabObj.items, activeTabObj.group)}
+                      {childrenOf(activeTabObj.group.id).map(renderCollection)}
+                    </Fragment>
+                  ) : (
+                    emptyTab(activeTabObj.label)
+                  )
+                ) : activeTabObj.items.length > 0 ? (
+                  renderList(activeTabObj.items, null)
                 ) : (
                   emptyTab(activeTabObj.label)
-                )
-              ) : activeTabObj.items.length > 0 ? (
-                renderList(activeTabObj.items, null)
-              ) : (
-                emptyTab(activeTabObj.label)
-              )
+                )}
+              </div>
             )}
 
-            {/* the List tab (everything inline) */}
+            {/* the List tab (everything inline). Browse shows all titles as
+                sections; only sculpt mode surfaces the collections inline. */}
             {effectiveActive === "list" && !gridLayout && (
               <Fragment>
-                {topColls.map(renderCollection)}
+                {sculpt && topColls.map(renderCollection)}
                 {listSections.map(renderStatusSection)}
-                {topColls.length === 0 && listSections.length === 0 && (
+                {sculpt && topColls.length === 0 && listSections.length === 0 && (
                   <div style={{ padding: "30px 4px", color: "var(--ink-faint)", fontSize: 13 }}>
                     Everything is pinned as a tab — drag one back down here to see it inline.
                   </div>
@@ -1327,24 +1563,39 @@ export default function WatchlistApp({
               </Fragment>
             )}
 
-            {/* the List tab as a free-form canvas */}
+            {/* the List tab as a snapping grid canvas (boxes reflow, never overlap) */}
             {effectiveActive === "list" && gridLayout && (
-              <div className="k-canvas" ref={attachCanvas} style={{ height: canvasH }}>
-                {panelKeys.map((key) => {
-                  const node = key.startsWith("g:")
-                    ? renderCollection(groupById[key.slice(2)])
-                    : renderStatusSection(sectionByKey[key.slice(2)]);
-                  return (
-                    <LayoutPanel key={key} panelKey={key} rect={rectOf(key)} onMove={setRect} onResize={setRect} onFront={bringFront} readOnly={!sculpt}>
-                      {node}
-                    </LayoutPanel>
-                  );
-                })}
-                {panelKeys.length === 0 && (
-                  <div style={{ padding: "30px 4px", color: "var(--ink-faint)", fontSize: 13 }}>
-                    Everything is pinned as a tab — drag one back down here to arrange it.
-                  </div>
-                )}
+              panelKeys.length === 0 ? (
+                <div style={{ padding: "30px 4px", color: "var(--ink-faint)", fontSize: 13 }}>
+                  No collections yet — make one with <b>＋ New</b> and it becomes a box you can arrange here.
+                </div>
+              ) : (
+                <GridCanvas
+                  items={panelKeys.map<GridItem>((key) => ({
+                    key,
+                    rows: estRows(key),
+                    tint: tintFor(key),
+                    node: key.startsWith("g:")
+                      ? renderCollection(groupById[key.slice(2)])
+                      : renderStatusSection(sectionByKey[key.slice(2)]),
+                  }))}
+                  editable={sculpt}
+                  storageKey={GRID_KEY + id}
+                  resetToken={resetToken}
+                />
+              )
+            )}
+
+            {/* unsorted titles float loose on the free-form canvas (Shape mode);
+                always present so a title can be dropped here to unsort it */}
+            {effectiveActive === "list" && gridLayout && sculpt && (
+              <div className={"k-loose" + (looseTitles.length === 0 ? " k-loose--empty" : "") + ((armed && armed.type === "loose") ? " drop-armed" : "")} data-drop="loose">
+                <div className="k-loose__label">
+                  {looseTitles.length > 0
+                    ? `Unsorted · ${looseTitles.length} loose on the canvas — drag any into a collection to file it`
+                    : "Unsorted — drop a title here to remove it from its collection"}
+                </div>
+                {looseTitles.length > 0 && renderList(looseTitles, null)}
               </div>
             )}
               </Fragment>
@@ -1396,6 +1647,18 @@ export default function WatchlistApp({
         </div>
       )}
 
+      {/* tap-to-apply banner */}
+      {pickRule && (
+        <div className="k-paint-armed-banner k-pick-banner">
+          Add{" "}
+          <b style={{ margin: "0 2px" }}>
+            {(TOKENS[pickRule.cat].find((x) => x.key === pickRule.key) || { label: "rule" }).label}
+          </b>{" "}
+          — tap <b style={{ margin: "0 2px" }}>Everything</b> or a collection
+          <button onClick={() => setPickRule(null)}>cancel</button>
+        </div>
+      )}
+
       {/* tab-delete confirm dialog */}
       {tabDelTarget && (
         <Fragment>
@@ -1418,7 +1681,8 @@ export default function WatchlistApp({
                 onClick={() => {
                   const t = tabDelTarget;
                   dissolveGroup(t.gid);
-                  if (effectiveActive === t.key) setActiveTab("list");
+                  setTabbed((tt) => tt.filter((k) => k !== t.key));
+                  if (activeTab === t.key) setActiveTab("list");
                   setTabDelTarget(null);
                 }}
               >

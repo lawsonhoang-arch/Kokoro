@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOutAction } from "@/lib/auth-actions";
 import { getLastList } from "@/lib/lastList";
 import { NavSearch } from "./NavSearch";
+import { NavBell } from "./NavBell";
 
 type NavUser = {
   name?: string | null;
@@ -69,7 +69,7 @@ function activeFromPath(pathname: string): string {
   return seg;
 }
 
-export function SiteNav({ user }: { user: NavUser }) {
+export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }) {
   const pathname = usePathname();
   const active = activeFromPath(pathname);
   // The Lists tab returns to the list the user last had open (if any), so they
@@ -94,7 +94,7 @@ export function SiteNav({ user }: { user: NavUser }) {
   // cached intrinsic widths (stable across renders; refreshed when measurable)
   const labelsW = useRef(0); // tab row width with labels shown (gaps incl.)
   const brandW = useRef(0);
-  const endW = useRef(0); // right-hand controls (avatar / sign-out / review)
+  const endW = useRef(0); // right-hand controls (mod links / bell / avatar)
   const crampedRef = useRef(false);
   const searchOpenRef = useRef(false);
 
@@ -111,20 +111,19 @@ export function SiteNav({ user }: { user: NavUser }) {
     if (!crampedRef.current) {
       const tw = tabs.getBoundingClientRect().width;
       if (tw > 0) labelsW.current = tw;
-      // endRef holds the fixed right cluster (avatar / sign-out / review).
+      // endRef holds the right cluster (mod links + notification bell + avatar).
       endW.current = end.getBoundingClientRect().width || endW.current;
     }
     brandW.current = brand.getBoundingClientRect().width || brandW.current;
 
-    // Centered group [tabs + search]. The left/right sections are equal width,
-    // so each must clear the wider of {brand, controls, 150px floor}. When the
-    // search is collapsed it's just a circle; when open it expands, so only then
-    // might the labels need to fold to icons to make room.
-    // padding(56) + nav gaps(36) + groupGap(22) + tabs + search + 2·sideMax + safety
-    const sideMax = Math.max(150, brandW.current, endW.current); // 150 = CSS side min-width
+    // The tabs sit in the space between the logo and the controls, so labels fit
+    // as long as {logo + controls + tab-row + search} clears the bar width. When
+    // the search is collapsed it's just a circle; opening it expands the bar, so
+    // that's usually the only time labels must fold to icons to make room.
+    // h-padding(56) + 2 section gaps(36) + center gap(18) + brand + controls + tabs + search + safety
     const searchW = searchOpenRef.current ? 380 : 44; // expanded bar vs circle
     const needed =
-      56 + 36 + 22 + labelsW.current + searchW + 2 * sideMax + 24;
+      56 + 36 + 18 + brandW.current + endW.current + labelsW.current + searchW + 24;
     const next = needed > nav.clientWidth;
     if (next !== crampedRef.current) {
       crampedRef.current = next;
@@ -153,6 +152,7 @@ export function SiteNav({ user }: { user: NavUser }) {
   }, [recompute]);
 
   return (
+    <>
     <nav
       ref={navRef}
       className={"site-nav" + (cramped ? " site-nav--searching" : "") + (searchOpen ? " site-nav--search-open" : "")}
@@ -251,6 +251,8 @@ export function SiteNav({ user }: { user: NavUser }) {
 
         {user ? (
           <>
+            <NavBell initialUnread={unread} />
+            {/* Sign out lives in Profile → Settings; the nav stays lean. */}
             <Link
               className="site-nav__avatar"
               href="/profile"
@@ -262,14 +264,6 @@ export function SiteNav({ user }: { user: NavUser }) {
                 <img className="site-nav__avatar-img" src={user.image} alt="" referrerPolicy="no-referrer" />
               ) : null}
             </Link>
-            <form action={signOutAction}>
-              <button className="site-nav__icon" type="submit" title="Sign out" aria-label="Sign out">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <path d="m16 17 5-5-5-5M21 12H9" />
-                </svg>
-              </button>
-            </form>
           </>
         ) : (
           <Link className="site-nav__tab on" href="/login" style={{ marginLeft: 4 }}>
@@ -279,5 +273,30 @@ export function SiteNav({ user }: { user: NavUser }) {
         </div>
       </div>
     </nav>
+
+    {/* mobile bottom tab bar — the primary nav on phones (top strip hides ≤520px) */}
+    <nav className="mnav" aria-label="Primary">
+      {TABS.map((t) => {
+        const on = active === t.id;
+        const href =
+          t.id === "watchlist" && lastListId ? `/watchlist/${encodeURIComponent(lastListId)}` : t.href;
+        return (
+          <Link
+            key={t.id}
+            className={"mnav__tab" + (on ? " on" : "")}
+            href={href}
+            aria-current={on ? "page" : "false"}
+          >
+            <span className="mnav__ico" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                {TAB_ICONS[t.id]}
+              </svg>
+            </span>
+            <span className="mnav__label">{t.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+    </>
   );
 }

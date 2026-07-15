@@ -34,3 +34,8 @@ body.kk-watchlist-route .k-app::before,
 body.kk-watchlist-route .k-app::after {
   top: var(--nav-h) !important;
 }
+
+/* The builder is an immersive full-screen editor with its own topbar (and a
+   "Lists" back link), so the global mobile bottom bar would only clutter it and
+   cover its controls. Hide it here — exit via the topbar. */
+body.kk-watchlist-route .mnav { display: none; }

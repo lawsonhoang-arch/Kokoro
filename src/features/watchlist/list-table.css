@@ -1,0 +1,228 @@
+/* Builder chrome — display dropdown + free-form canvas alignment guides. */
+
+
+/* ── Display dropdown (replaces the display + layout pill rows) ─────────── */
+.dm { position: relative; display: inline-flex; }
+.dm__btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.dm__btn.on { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.dm__cur { font-weight: 650; }
+.dm__car { color: var(--ink-faint); font-size: 10px; }
+.dm__menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: 232px; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 13px; box-shadow: var(--shadow-lift, 0 18px 44px -18px rgba(0,0,0,.6)); }
+.dm__sec { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); padding: 7px 9px 5px; }
+.dm__sec--div { border-top: 1px solid var(--line); margin-top: 4px; }
+.dm__item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 9px; border-radius: 9px; border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.dm__item:hover { background: var(--surface-2); }
+.dm__item.on { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); }
+.dm__ico { flex: 0 0 auto; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: var(--surface-3); color: var(--ink-soft); }
+.dm__item.on .dm__ico { background: var(--accent); color: var(--accent-ink, #241206); }
+.dm__txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.dm__lbl { font-size: 13px; font-weight: 650; }
+.dm__hint { font-size: 11px; color: var(--ink-faint); }
+.dm__check { color: var(--accent); font-size: 13px; }
+
+
+/* ── Alignment guides (free-form canvas snap lines) ─────────────────────── */
+.k-guide { position: absolute; z-index: 40; pointer-events: none; background: var(--accent); opacity: .9; }
+.k-guide--v { top: -4px; bottom: -4px; width: 1.5px; box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 55%, transparent); }
+.k-guide--h { left: -4px; right: -4px; height: 1.5px; box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 55%, transparent); }
+
+/* ── Snapping grid canvas: boxes reflow (iOS-style) and never overlap ───── */
+.kg { position: relative; width: 100%; }
+.kg-item { position: absolute; box-sizing: border-box; }
+
+/* single-column (phone) free-form: full-width boxes at natural height, reordered
+   by dragging each box's handle */
+.kg--stack { display: flex; flex-direction: column; gap: 16px; height: auto; }
+.kg-item--stack { position: relative; width: 100%; height: auto; box-sizing: border-box; transition: transform .18s cubic-bezier(.2,.7,.3,1); }
+.kg-item--stack .kg-item__body.k-panel { height: auto; overflow: visible; }
+/* The whole handle row is the drag grip (touch-action:none via .kg-move). */
+.kg-move--stack {
+  position: static; top: auto; left: auto; display: flex; align-items: center;
+  gap: 8px; margin-bottom: 8px; padding: 0 2px; cursor: grab;
+}
+.kg-move--stack:active { cursor: grabbing; }
+.kg-move--stack .kg-move__pill { cursor: inherit; }
+/* the box being dragged lifts off the column */
+.kg-item--dragging { z-index: 40; transition: none; }
+.kg-item--dragging .kg-item__body.k-panel { box-shadow: 0 22px 48px -20px rgba(0,0,0,.7), 0 0 0 1px var(--accent); transform: scale(1.015); }
+.kg-item--dragging .kg-move__pill { background: var(--accent); filter: brightness(1.05); }
+
+/* Reorder mode: collapse every box to its header (name + count) so the whole
+   set fits on screen — you can then drag one past another with no scrolling,
+   even when each box is taller than the viewport. The dragged one shows in full. */
+.kg--reordering .kg-item--stack { transition: transform .16s cubic-bezier(.2,.7,.3,1); }
+.kg--reordering .kg-item__body.k-panel {
+  max-height: 58px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 62%, transparent);
+  mask-image: linear-gradient(#000 62%, transparent);
+}
+.kg--reordering .kg-item--dragging .kg-item__body.k-panel {
+  max-height: 58px;
+  -webkit-mask-image: none; mask-image: none;
+}
+
+/* Registering --tint as a real <color> lets it TRANSITION — so when a rule is
+   applied/removed the box's whole colour animates from one paint to the next. */
+@property --tint { syntax: "<color>"; inherits: false; initial-value: transparent; }
+
+/* The box IS the card now (reuses .k-panel's inner fill/scroll/container-query
+   behaviour). One mixed "paint" colour (--tint) sits as a soft GLOW from the top
+   edge over the neutral warm base — most of the box stays surface; no tint → the
+   plain surface gradient shows. */
+.kg-item__body.k-panel {
+  position: relative; height: 100%; width: 100%;
+  border-radius: 20px;
+  border: 0;
+  box-shadow: 0 14px 36px -28px rgba(0,0,0,.75);
+  overflow: hidden;
+  padding: 4px 15px 10px;
+  background:
+    radial-gradient(135% 82% at 50% -26%, color-mix(in oklab, var(--tint) 30%, transparent), transparent 66%),
+    linear-gradient(162deg, color-mix(in oklab, var(--surface) 82%, transparent), color-mix(in oklab, var(--surface-2) 78%, transparent));
+  transition: box-shadow .2s, --tint .55s ease;
+}
+/* tint the border + header rule too, so the glow feels integral, not pasted on */
+.kg-item__body.k-panel > .k-group--browse > .k-group__head { border-bottom-color: color-mix(in oklab, var(--tint) 22%, color-mix(in oklab, var(--ink) 12%, transparent)); }
+
+/* An individual (pinned) tab view gets the same rule-mixed glow, anchored to the
+   top of the tab's content, so a collection's colour shows here too — not only on
+   the free-form All board. --tint comes in inline from tintFor(activeTab). */
+.k-tabglow {
+  position: relative;
+  padding-top: 8px;
+  border-radius: 14px;
+  /* a wide, even band across the top (≥full width) so it reads the same whether
+     the tab is sparse or full */
+  background: radial-gradient(160% 360px at 50% -30px, color-mix(in oklab, var(--tint) 28%, transparent), transparent 74%) no-repeat;
+  transition: --tint .55s ease;
+}
+/* the collection/section inside the tab must be transparent, or its opaque box
+   covers the glow and leaves it floating as a band above the content */
+.k-tabglow > .k-group,
+.k-tabglow > .k-group--browse,
+.k-tabglow > .k-section {
+  background: transparent; border: 0; box-shadow: none; outline: 0;
+}
+.kg-item__body.k-panel:hover { box-shadow: 0 18px 42px -26px rgba(0,0,0,.75); }
+
+/* inner collection/section is now transparent so the box's tint shows through */
+.kg-item__body.k-panel > .k-group,
+.kg-item__body.k-panel > .k-section { background: transparent; border: 0; box-shadow: none; outline: 0; padding: 0; }
+.kg-item__body.k-panel > .k-section > .k-section__head { padding-top: 6px; }
+
+/* collection header reads as a real title bar (warm, prominent, with a rule) */
+.kg-item__body.k-panel > .k-group--browse > .k-group__head { padding: 6px 2px 10px; margin-bottom: 12px; border-bottom: 1px solid color-mix(in oklab, var(--ink) 12%, transparent); }
+.kg-item__body.k-panel > .k-group--browse > .k-group__head .k-group__name,
+.kg-item__body.k-panel .k-section__name {
+  font-family: var(--font-title); font-weight: 800; font-size: 15px; letter-spacing: -0.01em;
+  text-transform: none; color: var(--ink);
+}
+
+.kg-item--active { z-index: 50; }
+.kg-item--active .kg-item__body.k-panel { border-color: var(--accent); box-shadow: 0 26px 58px -22px rgba(0,0,0,.62), 0 0 0 1px var(--accent); }
+/* while editing, the box reads as reshapeable (soft dashed accent frame) */
+.kg-item--edit .kg-item__body.k-panel { outline: 1.5px dashed color-mix(in oklab, var(--accent) 42%, transparent); outline-offset: -1px; }
+/* ...and the inner surface keeps no frame of its own (the box carries it) */
+.k-app[data-sculpt="on"] .kg-item__body.k-panel > .k-section,
+.k-app[data-sculpt="on"] .kg-item__body.k-panel > .k-group { outline: 0; }
+
+/* move pill (top-left, always visible while editing) */
+.kg-move { position: absolute; top: -13px; left: 14px; z-index: 8; cursor: grab; touch-action: none; }
+.kg-move:active { cursor: grabbing; }
+.kg-move__pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink, #241206); font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 7px 18px -7px color-mix(in oklab, var(--accent) 65%, transparent); }
+.kg-move__pill svg { color: var(--accent-ink, #241206); }
+
+/* resize handles — right edge, bottom edge, and SE corner (grid-snapped) */
+.kg-rz { position: absolute; z-index: 8; touch-action: none; }
+.kg-rz--e { top: 16px; bottom: 22px; right: -7px; width: 15px; cursor: ew-resize; }
+.kg-rz--s { left: 16px; right: 22px; bottom: -7px; height: 15px; cursor: ns-resize; }
+.kg-rz--se { right: -9px; bottom: -9px; width: 30px; height: 30px; cursor: nwse-resize; }
+.kg-rz::after { content: ""; position: absolute; opacity: 0; transition: opacity .12s, transform .12s; background: var(--accent); border-radius: 3px; }
+.kg-rz--e::after { top: 50%; right: 6px; transform: translateY(-50%); width: 3px; height: 42px; }
+.kg-rz--s::after { left: 50%; bottom: 6px; transform: translateX(-50%); height: 3px; width: 42px; }
+.kg-rz--se::after { right: 8px; bottom: 8px; width: 12px; height: 12px; background: none; border-right: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); border-radius: 0 0 4px 0; }
+.kg-item--edit .kg-rz::after { opacity: .5; }
+.kg-item--edit .kg-rz:hover::after { opacity: 1; }
+.kg-item--edit .kg-rz--e:hover::after { transform: translateY(-50%) scaleX(1.5); }
+.kg-item--edit .kg-rz--s:hover::after { transform: translateX(-50%) scaleY(1.5); }
+.kg-item--edit .kg-rz--se:hover::after { transform: scale(1.15); }
+
+/* responsive card columns: a wider box shows MORE cards — it doesn't stretch
+   them across. Row/Hybrid looks flow into columns as the box widens. */
+/* grid-auto-rows: max-content keeps every row at its natural card height — without
+   it, a box with more cards than fit compresses the (overflow:hidden) cards to a
+   sliver instead of letting the box scroll. */
+.kg-item .k-rows { display: grid; grid-template-columns: 1fr; grid-auto-rows: max-content; row-gap: 0; column-gap: 22px; align-content: start; }
+@container panel (min-width: 560px) { .kg-item .k-rows { grid-template-columns: 1fr 1fr; } }
+@container panel (min-width: 880px) { .kg-item .k-rows { grid-template-columns: 1fr 1fr 1fr; } }
+
+/* ── Airy items: inside a box the cards drop their own box (border/fill/shadow)
+   and read as light rows split by a hairline — no more "box inside a box". ──── */
+.kg-item .k-hybrid,
+.kg-item .k-entry {
+  background: transparent; border: 0; border-radius: 0; box-shadow: none; margin: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--ink) 8%, transparent);
+}
+.kg-item .k-hybrid { padding: 13px 8px; }
+.kg-item .k-rows > .k-hybrid:last-child,
+.kg-item .k-rows > .k-entry:last-child { border-bottom: 0; }
+.kg-item .k-hybrid:hover,
+.kg-item .k-entry:hover {
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+  border-radius: 12px; transform: none; box-shadow: none;
+}
+
+/* ── Bento card resizing: inside a box, Cards become a uniform grid whose tiles
+   can be cycled bigger (span more cells) — fewer fit at once, which is intended.
+   Hybrid can only widen (its height is content-driven). ────────────────────── */
+.kg-item .k-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  grid-auto-rows: 168px;
+  grid-auto-flow: row dense;
+  gap: 12px;
+}
+.kg-item .k-cards .k-card { width: auto; height: 100%; min-width: 0; aspect-ratio: auto; margin: 0; }
+.kg-item .k-cards .k-card[data-size="wide"] { grid-column: span 2; }
+.kg-item .k-cards .k-card[data-size="tall"] { grid-row: span 2; }
+.kg-item .k-cards .k-card[data-size="big"]  { grid-column: span 2; grid-row: span 2; }
+/* hybrid widens only */
+.kg-item .k-rows > .k-hybrid[data-size="wide"],
+.kg-item .k-rows > .k-hybrid[data-size="big"] { grid-column: span 2; }
+
+/* resize control on a poster tile (bottom-right corner — top corners hold the
+   add + feel controls; z-index sits above the hover scrim/body) */
+.k-card__resize {
+  position: absolute; z-index: 6; bottom: 10px; right: 10px;
+  width: 27px; height: 27px; display: grid; place-items: center; padding: 0;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(14,10,7,0.6); backdrop-filter: blur(4px);
+  color: rgba(255,255,255,0.92); cursor: pointer;
+  transition: background .12s, transform .12s, color .12s;
+}
+.k-card__resize:hover { background: var(--accent); color: var(--accent-ink, #241206); border-color: var(--accent); transform: scale(1.07); }
+/* resize control inline in a hybrid row */
+.k-hybrid__top .k-card__resize {
+  position: static; flex: 0 0 auto; top: auto; left: auto; width: 24px; height: 24px;
+  background: color-mix(in oklab, var(--ink) 7%, var(--surface)); border-color: var(--line);
+  color: var(--ink-soft); backdrop-filter: none;
+}
+.k-hybrid__top .k-card__resize:hover { background: var(--accent); color: var(--accent-ink, #241206); border-color: var(--accent); }
+
+/* Row cards in a box are narrow (packed 2–3 across), so a long strip of tags used
+   to crowd the title off the row. Keep the name on its own line and drop the tags
+   to a line below (they wrap freely). Cards get a bit taller — that's fine. */
+.kg-item .k-entry { flex-wrap: wrap; row-gap: 8px; padding-right: 34px; }
+/* scope to the ROW card's own tags — NOT .k-hybrid .k-tags (its body is a flex
+   column, where flex-basis:100% would stretch the tag row to full card height
+   and clip it) */
+.kg-item .k-entry > .k-tags { flex-basis: 100%; flex-wrap: wrap; justify-content: flex-start; }
+.kg-item .k-entry__add { position: absolute; top: 11px; right: 11px; margin: 0; }
+
+body.k-dragging-panel, body.k-resizing { cursor: grabbing !important; user-select: none; }
+
+/* ── Layout toggle (Stacked / Free-form) — the way into reshapeable boxes ─ */
+.k-layoutseg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 11px; padding: 3px; gap: 2px; }
+.k-layoutseg__b { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 8px; border: 0; background: transparent; color: var(--ink-faint); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: color .12s, background .12s; }
+.k-layoutseg__b:hover { color: var(--ink-soft); }
+.k-layoutseg__b.on { background: var(--accent); color: var(--accent-ink, #241206); box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--accent) 55%, transparent); }

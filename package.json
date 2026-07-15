@@ -28,6 +28,8 @@
     "db:setup-follows": "tsx src/db/setup-follows.ts",
     "db:setup-news-placement": "tsx src/db/setup-news-placement.ts",
     "db:setup-rewatches": "tsx src/db/setup-rewatches.ts",
+    "db:setup-notifications": "tsx src/db/setup-notifications.ts",
+    "db:setup-onboarding": "tsx src/db/setup-onboarding.ts",
     "db:setup-entity-follows": "tsx src/db/setup-entity-follows.ts",
     "db:setup-title-mal-index": "tsx src/db/setup-title-mal-index.ts",
     "db:setup-calendar": "tsx src/db/setup-calendar.ts",

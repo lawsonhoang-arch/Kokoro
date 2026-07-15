@@ -37,7 +37,7 @@ export default async function WrappedPage({ searchParams }: { searchParams: Prom
           <span className="wr__eyebrow">Kokoro Wrapped</span>
           <h1 className="wr__emptytitle">Nothing to wrap yet</h1>
           <p className="wr__emptytext">
-            Track and rate a few titles — or <Link href="/import">import your list</Link> — and your recap will fill in
+            Track and rate a few titles — or <Link href="/watchlist?import=1">import your list</Link> — and your recap will fill in
             with your hours, genres, moods and the shows you couldn&apos;t stop thinking about.
           </p>
         </div>

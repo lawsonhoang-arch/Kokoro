@@ -13,6 +13,8 @@ import { auth } from "@/auth";
 import { FontLinks } from "@/components/FontLinks";
 import { SiteNav } from "@/shell/SiteNav";
 import { getUserAvatar } from "@/lib/profile";
+import { getUnreadCount } from "@/lib/notifications";
+import { needsOnboarding } from "@/lib/onboarding";
 
 export const metadata: Metadata = {
   title: {
@@ -31,8 +33,14 @@ export default async function AppLayout({
   // when signed out. Unauthenticated visitors to any (app) route go to /login.
   if (!session?.user) redirect("/login");
 
+  // New sign-ups (no onboarded_at) are routed into the first-run flow, which
+  // lives in its own route group so it renders without the app shell.
+  if (session.user.id && (await needsOnboarding(session.user.id))) redirect("/welcome");
+
   // the chosen character avatar isn't in the JWT, so fetch it for the nav
-  const avatar = session.user.id ? await getUserAvatar(session.user.id) : null;
+  const [avatar, unread] = session.user.id
+    ? await Promise.all([getUserAvatar(session.user.id), getUnreadCount(session.user.id)])
+    : [null, 0];
 
   return (
     <html lang="en">
@@ -40,7 +48,7 @@ export default async function AppLayout({
         <FontLinks />
         {/* Nav lives in the persistent layout (not the template) so it stays
             anchored and never re-animates across navigations. */}
-        <SiteNav user={{ ...session.user, image: avatar }} />
+        <SiteNav user={{ ...session.user, image: avatar }} unread={unread} />
         {children}
       </body>
     </html>

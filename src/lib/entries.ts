@@ -26,6 +26,8 @@ type JoinedRow = {
   seasons: number;
   kind: string;
   cover: string | null;
+  score: number | null;
+  popularity: number | null;
 };
 
 function toEntry(r: JoinedRow): Entry {
@@ -49,6 +51,8 @@ function toEntry(r: JoinedRow): Entry {
     air: { day: "—", time: "" },
     progress: r.progress ?? undefined,
     watchedEps: r.watchedEps ?? [],
+    malScore: r.score != null ? r.score / 100 : null,
+    popularity: r.popularity ?? null,
   };
 }
 
@@ -72,6 +76,8 @@ const ENTRY_COLS = {
   seasons: titles.seasons,
   kind: titles.kind,
   cover: titles.cover,
+  score: titles.score,
+  popularity: titles.popularity,
 };
 
 /** All entries in a watchlist the user owns, mapped to the app's Entry shape. */

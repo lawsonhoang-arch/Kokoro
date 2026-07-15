@@ -21,6 +21,7 @@ import {
 } from "@/lib/community";
 import { searchCatalog } from "@/lib/catalog";
 import { isModerator } from "@/lib/submissions";
+import { notifyPostInteraction } from "@/lib/notifications";
 import type { SearchResult } from "@/features/search/types";
 
 async function requireUserId(): Promise<string> {
@@ -105,7 +106,10 @@ export async function createPostAction(raw: RawPost): Promise<CreatePostResult> 
 
 export async function toggleLikeAction(postId: string): Promise<{ liked: boolean; likeCount: number }> {
   const userId = await requireUserId();
-  return toggleLike(userId, postId);
+  const result = await toggleLike(userId, postId);
+  // notify the author only when a like is added (not on unlike)
+  if (result.liked) await notifyPostInteraction(userId, postId, "like");
+  return result;
 }
 
 export async function deletePostAction(postId: string): Promise<void> {
@@ -136,6 +140,7 @@ export async function addReplyAction(postId: string, body: string): Promise<AddR
   const recent = await recentReplyCount(userId, WINDOW).catch(() => 0);
   if (recent >= REPLY_LIMIT) return { ok: false, reason: "rate_limit" };
   const reply = await addReply(userId, postId, clean);
+  await notifyPostInteraction(userId, postId, "reply");
   return { ok: true, reply };
 }
 

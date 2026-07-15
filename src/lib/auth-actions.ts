@@ -10,8 +10,10 @@ import { signIn, signOut } from "@/auth";
 
 export type AuthState = { error?: string } | undefined;
 
-// Land in the app at Home, routed through the welcome animation.
+// Returning users land at Home, routed through the welcome animation.
 const AFTER_LOGIN = "/home?welcome=1";
+// New sign-ups go through the first-run onboarding flow first.
+const AFTER_SIGNUP = "/welcome";
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -89,7 +91,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   }
 
   try {
-    await signIn("credentials", { email, password, redirectTo: AFTER_LOGIN });
+    await signIn("credentials", { email, password, redirectTo: AFTER_SIGNUP });
   } catch (e) {
     if (e instanceof AuthError) return { error: "Account created — please log in." };
     throw e;

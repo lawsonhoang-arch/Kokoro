@@ -4,10 +4,18 @@ import { colorFor, tagsFor } from "./rules";
 import { EXTERNAL_SCORES, avgRatingStr, abbrev, posterStyleFor } from "./helpers";
 import { RatingMark, hasMark, markColor } from "./RatingMark";
 import { AddToTabBtn } from "./AddToTabBtn";
+import { Ico } from "./Ico";
 import type { EntryCommon } from "./EntryRow";
-import type { ViewMode } from "./types";
+import type { ViewMode, Mode } from "./types";
+import type { PointerEvent as RPointerEvent } from "react";
 
-type Props = EntryCommon & { view: ViewMode };
+type Props = EntryCommon & {
+  view: ViewMode;
+  size?: string;
+  onResize?: () => void;
+  mode?: Mode;
+  onGrab?: (e: RPointerEvent, id: string) => void;
+};
 
 export function EntryCard({
   entry,
@@ -17,6 +25,10 @@ export function EntryCard({
   showScore,
   selected,
   view,
+  size,
+  onResize,
+  mode,
+  onGrab,
   collections,
   inGroupId,
   onAddTab,
@@ -26,6 +38,45 @@ export function EntryCard({
   onBrowseGrab,
   onBumpEp,
 }: Props) {
+  // In Shape mode a card is grabbed for the sculpt drag (move it between boxes /
+  // reorder); in browse it's the browse-grab (open / reorder). On touch, drag is
+  // reserved to the grip so the card body can scroll/tap — the row body only
+  // starts a drag for mouse/pen (desktop) or, in browse, defers to the move guard.
+  const onPointerDownCard = (e: RPointerEvent) => {
+    if (mode === "sculpt") { if (e.pointerType !== "touch") onGrab?.(e, entry.id); }
+    else onBrowseGrab?.(e, entry.id);
+  };
+  const grip = (
+    <span
+      className="k-card__grip"
+      title="Drag to move"
+      aria-label="Drag to move"
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        if (mode === "sculpt") onGrab?.(e, entry.id);
+        else onBrowseGrab?.(e, entry.id, true);
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Ico name="grip" s={14} />
+    </span>
+  );
+  const resizeBtn = onResize ? (
+    <button
+      className="k-card__resize"
+      title="Resize this card"
+      aria-label="Resize this card"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onResize();
+      }}
+    >
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+      </svg>
+    </button>
+  ) : null;
   const color = colorFor(entry, colorKey);
   const tags = tagsFor(entry, tagKeys);
   const ext = EXTERNAL_SCORES[entry.id];
@@ -104,10 +155,12 @@ export function EntryCard({
         style={{ viewTransitionName: "entry-" + view + "-" + entry.id }}
         data-entry-id={entry.id}
         data-drop="entry"
-        onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}
+        data-size={size && size !== "reg" ? size : undefined}
+        onPointerDown={onPointerDownCard}
         onDragStart={(e) => e.preventDefault()}
       >
         {color && <span className="k-hybrid__stripe" style={{ background: color }} />}
+        {grip}
         <div className="k-hybrid__art" style={poster}>
           {entry.cover && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -129,6 +182,7 @@ export function EntryCard({
         <div className="k-hybrid__body">
           <div className="k-hybrid__top">
             <div className="k-hybrid__title">{entry.title}</div>
+            {resizeBtn}
             <span className="k-hybrid__add">{addBtn}</span>
           </div>
           <div className="k-entry__sub">
@@ -159,10 +213,13 @@ export function EntryCard({
       style={{ viewTransitionName: "entry-" + view + "-" + entry.id }}
       data-entry-id={entry.id}
       data-drop="entry"
-      onPointerDown={(e) => onBrowseGrab && onBrowseGrab(e, entry.id)}
+      data-size={size && size !== "reg" ? size : undefined}
+      onPointerDown={onPointerDownCard}
       onDragStart={(e) => e.preventDefault()}
     >
+      {grip}
       <div className="k-card__art" style={poster}>
+        {resizeBtn}
         {entry.cover && (
           // eslint-disable-next-line @next/next/no-img-element
           <img

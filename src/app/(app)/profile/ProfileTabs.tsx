@@ -10,6 +10,8 @@ import { toggleFavoriteAction } from "@/app/(app)/anime/actions";
 import { AddFavorites } from "./AddFavorites";
 import { computeBadges, type Badge } from "./badges";
 import { BadgeCelebration } from "./BadgeCelebration";
+import { StatsExplorer, StatsEmpty } from "../stats/StatsExplorer";
+import type { StatsData } from "@/lib/stats";
 import type {
   ProfileUser,
   ProfileSummary,
@@ -272,66 +274,6 @@ function Overview({
   );
 }
 
-function Bar({ label, n, total, hue }: { label: string; n: number; total: number; hue?: string }) {
-  const pct = total ? Math.round((n / total) * 100) : 0;
-  return (
-    <div className="pf-bar">
-      <div className="pf-bar__row">
-        <span className="pf-bar__label">{label}</span>
-        <span className="pf-bar__n">{n}</span>
-      </div>
-      <div className="pf-bar__track">
-        <span className="pf-bar__fill" style={{ width: `${pct}%`, background: hue }} />
-      </div>
-    </div>
-  );
-}
-
-function Stats({ summary }: { summary: ProfileSummary }) {
-  const s = summary.stats;
-  const statusTotal = s.completed + s.watching + s.planned;
-  const genreMax = summary.genres[0]?.n ?? 1;
-  return (
-    <section className="pf-grid" aria-label="Stats">
-      <section className="section" style={{ marginTop: 0 }}>
-        <header className="section__head"><div><h3 className="section__title">Status breakdown</h3><div className="section__sub">{statusTotal} titles tracked</div></div></header>
-        {statusTotal === 0 ? (
-          <div className="pf-empty">Add titles to your lists to see your breakdown.</div>
-        ) : (
-          <>
-            <div className="pf-statusbar">
-              {s.completed > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.completed / statusTotal) * 100}%`, background: "var(--feel-loved)" }} title={`Completed ${s.completed}`} />}
-              {s.watching > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.watching / statusTotal) * 100}%`, background: "var(--feel-liked)" }} title={`Watching ${s.watching}`} />}
-              {s.planned > 0 && <span className="pf-statusbar__seg" style={{ width: `${(s.planned / statusTotal) * 100}%`, background: "var(--line-strong)" }} title={`Planned ${s.planned}`} />}
-            </div>
-            <div className="pf-legend">
-              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--feel-loved)" }} /> Completed <b>{s.completed}</b></span>
-              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--feel-liked)" }} /> Watching <b>{s.watching}</b></span>
-              <span className="pf-leg"><span className="pf-dot" style={{ background: "var(--line-strong)" }} /> Planned <b>{s.planned}</b></span>
-            </div>
-          </>
-        )}
-        <div className="pf-mini">
-          <div className="pf-mini__cell"><div className="pf-mini__v">{s.hours.toLocaleString()}</div><div className="pf-mini__l">hours watched</div></div>
-          <div className="pf-mini__cell"><div className="pf-mini__v">{s.reviews}</div><div className="pf-mini__l">reviews</div></div>
-          <div className="pf-mini__cell"><div className="pf-mini__v">{s.lists}</div><div className="pf-mini__l">lists</div></div>
-        </div>
-      </section>
-
-      <section className="section" style={{ marginTop: 0 }}>
-        <header className="section__head"><div><h3 className="section__title">Top genres</h3><div className="section__sub">across your tracked titles</div></div></header>
-        {summary.genres.length === 0 ? (
-          <div className="pf-empty">No genre data yet.</div>
-        ) : (
-          <div className="pf-bars">
-            {summary.genres.map((g) => <Bar key={g.genre} label={g.genre} n={g.n} total={genreMax} hue="var(--accent)" />)}
-          </div>
-        )}
-      </section>
-    </section>
-  );
-}
-
 function Reviews({ reviews }: { reviews: ProfileReview[] }) {
   return (
     <section className="section" style={{ marginTop: 0 }} aria-label="Reviews">
@@ -463,11 +405,13 @@ export function ProfileTabs({
   summary,
   reviews,
   favorites: initialFavorites,
+  stats,
 }: {
   user: ProfileUser;
   summary: ProfileSummary;
   reviews: ProfileReview[];
   favorites: ProfileTitle[];
+  stats: StatsData;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [favorites, setFavorites] = useState<ProfileTitle[]>(initialFavorites);
@@ -541,7 +485,7 @@ export function ProfileTabs({
           onOpenPicker={() => setPickerOpen(true)}
         />
       )}
-      {tab === "stats" && <Stats summary={summary} />}
+      {tab === "stats" && (stats.empty ? <StatsEmpty /> : <StatsExplorer data={stats} />)}
       {tab === "reviews" && <Reviews reviews={reviews} />}
       {tab === "settings" && <Settings user={user} />}
 

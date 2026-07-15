@@ -723,7 +723,7 @@
 .pf-wrapped__cta { flex: none; font-family: var(--font-ui); font-weight: 700; font-size: 13px; color: var(--accent); white-space: nowrap; }
 
 /* share button — its own slot at the header's bottom-right */
-.pf-head__actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 8px; }
+.pf-head__actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-bottom: 8px; }
 .pf-share {
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
   padding: 8px 15px; border-radius: 100px; font-family: var(--font-ui); font-weight: 700; font-size: 13px;

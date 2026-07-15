@@ -132,6 +132,7 @@ type SidebarProps = {
   paintState: PaintState;
   globals: Rules;
   groups: Group[];
+  customAxes?: string[];
   collapsed: boolean;
   onToggleCollapsed: () => void;
 };
@@ -142,9 +143,16 @@ export function SculptSidebar({
   paintState,
   globals,
   groups = [],
+  customAxes = [],
   collapsed,
   onToggleCollapsed,
 }: SidebarProps) {
+  // Custom rating axes are extra dimensions, so they sort just like a rating —
+  // append them to the Sort tokens (the comparator already handles axis-<name>).
+  const tokensFor = (cat: RuleCat): Token[] =>
+    cat === "sort"
+      ? [...TOKENS.sort, ...customAxes.map((a) => ({ key: "axis-" + a, label: a }))]
+      : TOKENS[cat] || [];
   const [open, setOpen] = useState<Record<RuleCat, boolean>>({
     group: true, sort: true, color: true, tag: true,
   });
@@ -153,7 +161,7 @@ export function SculptSidebar({
   if (collapsed) {
     const totals = SECTIONS.map((sec) => ({
       cat: sec.cat,
-      count: (TOKENS[sec.cat] || []).reduce((sum, t) => sum + countApplied(globals, groups, sec.cat, t.key), 0),
+      count: tokensFor(sec.cat).reduce((sum, t) => sum + countApplied(globals, groups, sec.cat, t.key), 0),
     }));
     return (
       <aside className="k-sidebar k-sidebar--collapsed" aria-label="Sculpt sidebar (collapsed)">
@@ -193,7 +201,7 @@ export function SculptSidebar({
 
       <div className="k-sidebar__body">
         {SECTIONS.map((sec) => {
-          const tokens = TOKENS[sec.cat] || [];
+          const tokens = tokensFor(sec.cat);
           const sectionActive = tokens.reduce((sum, t) => sum + countApplied(globals, groups, sec.cat, t.key), 0);
           return (
             <section key={sec.cat} className={"k-rsec" + (open[sec.cat] ? " open" : " closed")}>

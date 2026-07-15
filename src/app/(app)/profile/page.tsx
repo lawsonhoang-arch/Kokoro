@@ -1,4 +1,5 @@
 import "./profile.css";
+import "../stats/stats.css";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -15,7 +16,7 @@ import { getFavorites } from "@/lib/favorites";
 import { getFollowCounts } from "@/lib/follows";
 import { getFollowedEntities } from "@/lib/entities";
 import { ProfileTabs } from "./ProfileTabs";
-import { ProfileStatsPanel } from "./ProfileStatsPanel";
+import { getStats } from "@/lib/stats";
 import { ProfileBanner } from "./ProfileBanner";
 import { AvatarPicker } from "./AvatarPicker";
 import { FollowHeader } from "@/features/social/FollowHeader";
@@ -34,7 +35,7 @@ export default async function ProfilePage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [user, summary, reviews, favorites, bannerCandidates, avatarTitles, followCounts, entities] = await Promise.all([
+  const [user, summary, reviews, favorites, bannerCandidates, avatarTitles, followCounts, entities, statsData] = await Promise.all([
     getProfileUser(userId),
     getProfileSummary(userId),
     getProfileReviews(userId),
@@ -43,6 +44,7 @@ export default async function ProfilePage() {
     getAvatarTitles(userId),
     getFollowCounts(userId),
     getFollowedEntities(userId),
+    getStats(userId),
   ]);
   if (!user) redirect("/login");
 
@@ -84,20 +86,24 @@ export default async function ProfilePage() {
           />
         </div>
         <div className="pf-head__actions">
+          <Link className="pf-share" href="/people">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c0-3 2.6-4.6 5.5-4.6s5.5 1.6 5.5 4.6" /><path d="M17 8.5h4M19 6.5v4" />
+            </svg>
+            Find people
+          </Link>
           <ShareProfileButton username={user.username} />
         </div>
       </header>
 
       {s.tracked === 0 && (
-        <Link className="pf-import" href="/import">
+        <Link className="pf-import" href="/watchlist?import=1">
           <span className="pf-import__txt">
             <b>New here?</b> Import your list from AniList or MyAnimeList — your statuses &amp; scores come along, and your stats light up instantly.
           </span>
           <span className="pf-import__cta">Import →</span>
         </Link>
       )}
-
-      <ProfileStatsPanel stats={s} />
 
       {s.tracked > 0 && (
         <Link className="pf-wrapped" href="/wrapped">
@@ -109,7 +115,7 @@ export default async function ProfilePage() {
 
       <FollowedEntities items={entities} />
 
-      <ProfileTabs user={user} summary={summary} reviews={reviews} favorites={favorites} />
+      <ProfileTabs user={user} summary={summary} reviews={reviews} favorites={favorites} stats={statsData} />
     </Page>
   );
 }

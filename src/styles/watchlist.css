@@ -185,26 +185,24 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 }
 
 /* Edit / Done — single toggle pill replacing the Browse/Sculpt segmented control */
+/* Prominent entry into the builder — accent-filled so it invites you in */
 .k-editbtn {
   display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto;
-  padding: 9px 18px; border-radius: 100px;
-  background: var(--surface); border: 1px solid var(--line);
-  color: var(--ink-soft); font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
-  box-shadow: var(--shadow-1);
-  transition: color .18s, background .18s, border-color .18s, box-shadow .18s, transform .12s;
+  padding: 10px 20px; border-radius: 100px; border: 0;
+  background: linear-gradient(150deg, color-mix(in oklab, var(--accent) 96%, white), var(--accent));
+  color: var(--accent-ink); font-family: var(--font-ui); font-weight: 700; font-size: 13.5px;
+  box-shadow: 0 8px 22px -9px color-mix(in oklab, var(--accent) 70%, transparent);
+  transition: color .18s, background .18s, box-shadow .18s, transform .12s;
 }
-.k-editbtn:hover { color: var(--ink); border-color: var(--line-strong); transform: translateY(-0.5px); }
-.k-editbtn svg { color: var(--ink-faint); transition: color .18s; }
-.k-editbtn:hover svg { color: var(--ink-soft); }
+.k-editbtn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px -9px color-mix(in oklab, var(--accent) 75%, transparent); }
+.k-editbtn svg { color: var(--accent-ink); transition: color .18s; }
+/* editing → a calm "Done" so the loud state is the invitation, not the exit */
 .k-editbtn.on {
-  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
-  color: var(--accent);
-  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--accent) 22%, transparent),
-              inset 0 1px 0 color-mix(in oklab, var(--surface) 22%, transparent);
+  background: var(--surface-2); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .k-editbtn.on svg { color: var(--accent); }
-.k-editbtn.on:hover { background: color-mix(in oklab, var(--accent) 20%, var(--surface)); }
+.k-editbtn.on:hover { background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
 @media (max-width: 720px) {
   .k-editbtn span { display: none; }
   .k-editbtn { padding: 9px 11px; }
@@ -352,36 +350,38 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
    TAB RAIL — clean, generous, smooth
    ============================================================ */
 .k-tabsbar {
-  display: flex; align-items: center; gap: 2px; flex: 0 0 auto;
-  padding: 6px max(22px, 3vw) 0;
-  border-bottom: 1px solid color-mix(in oklab, var(--line) 65%, transparent);
+  position: relative;
+  display: flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  padding: 10px max(22px, 3vw) 12px;
   background: transparent;
   overflow-x: auto; scrollbar-width: none;
 }
 .k-tabsbar::-webkit-scrollbar { display: none; }
+/* the soft glow that glides under the active collection */
+.k-tabhi {
+  position: absolute; top: 8px; bottom: 10px; left: 0; z-index: 0; pointer-events: none;
+  border-radius: 13px;
+  background: linear-gradient(150deg, color-mix(in oklab, var(--accent) 24%, var(--surface-2)), color-mix(in oklab, var(--accent) 12%, var(--surface-2)));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 34%, transparent),
+              0 8px 22px -10px color-mix(in oklab, var(--accent) 65%, transparent);
+  transition: transform .28s cubic-bezier(.34, 1.04, .5, 1), width .28s cubic-bezier(.34, 1.04, .5, 1);
+}
 .k-tab {
-  position: relative; padding: 12px 16px 13px;
-  font-family: var(--font-ui); font-size: 14px; font-weight: 600; color: var(--ink-faint);
-  display: inline-flex; align-items: center; gap: 9px; white-space: nowrap;
-  border-radius: 10px 10px 0 0; margin-bottom: -1px;
-  transition: color .18s, background .18s;
+  position: relative; z-index: 1; padding: 9px 15px; border: 0; background: none; cursor: pointer;
+  font-family: var(--font-title); font-size: 14.5px; font-weight: 650; letter-spacing: -0.01em; color: var(--ink-faint);
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; border-radius: 13px;
+  transition: color .2s;
 }
-.k-tab::after {
-  content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
-  height: 2px; border-radius: 2px 2px 0 0; background: var(--accent);
-  transform: scaleX(0); transform-origin: center; transition: transform .22s cubic-bezier(.2,.7,.3,1);
-}
-.k-tab:hover { color: var(--ink-soft); background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
+.k-tab:hover { color: var(--ink-soft); }
 .k-tab.on { color: var(--ink); }
-.k-tab.on::after { transform: scaleX(1); box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 50%, transparent); }
-.k-tab__count { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); background: var(--surface-2); border: 1px solid var(--line); border-radius: 100px; padding: 1px 8px; font-weight: 500; }
-.k-tab.on .k-tab__count { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+.k-tab__count { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--ink-faint); }
+.k-tab.on .k-tab__count { color: color-mix(in oklab, var(--accent) 80%, var(--ink)); }
 .k-tab--home { cursor: pointer; }
 .k-tab--pinned { cursor: grab; touch-action: none; }
 .k-tab--pinned:active { cursor: grabbing; }
-.k-tab--add { color: var(--accent); }
-.k-tab--add:hover { color: var(--accent-hi); background: color-mix(in oklab, var(--accent) 7%, var(--surface)); }
-.k-tabsbar.drop-armed { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); box-shadow: inset 0 -2px 0 var(--accent); }
+.k-tab--add { color: var(--accent); font-weight: 700; }
+.k-tab--add:hover { color: var(--accent-hi); }
+.k-tabsbar.drop-armed { box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--accent) 55%, transparent); }
 .k-tab-hint { align-self: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); padding-left: 14px; white-space: nowrap; }
 .k-tab-hint--idle { color: var(--ink-faint); opacity: 0.7; }
 
@@ -437,6 +437,30 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .k-globals__placeholder { font-size: 12px; color: var(--ink-faint); }
 .k-globals.drop-armed { border-color: var(--accent); border-style: solid; background: color-mix(in oklab, var(--accent) 11%, var(--surface)); }
 .k-globals__label { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: var(--uppercase-spacing); color: var(--ink-faint); margin-right: 4px; }
+
+/* unsorted titles floating loose on the free-form canvas */
+.k-loose {
+  margin-top: 24px; padding: 14px 16px 16px; border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--line-strong); background: color-mix(in oklab, var(--surface) 38%, transparent);
+  transition: border-color .16s, background .16s;
+}
+.k-loose.drop-armed { border-color: var(--accent); border-style: solid; background: color-mix(in oklab, var(--accent) 9%, var(--surface)); opacity: 1; }
+.k-loose__label { font-family: var(--font-mono); font-size: 10px; letter-spacing: var(--uppercase-spacing); text-transform: uppercase; color: var(--ink-faint); margin-bottom: 12px; }
+.k-loose--empty { background: transparent; opacity: .6; padding: 12px 16px; }
+.k-loose--empty .k-loose__label { margin-bottom: 0; }
+
+/* combine-collections choice popover (Nest / Merge) */
+.k-scrim--bare { position: fixed; inset: 0; z-index: 1099; background: transparent; }
+.k-combine {
+  position: fixed; z-index: 1100; min-width: 224px; padding: 7px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: var(--shadow-lift);
+  animation: k-addmenu-in .14s ease-out;
+}
+.k-combine__h { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: var(--uppercase-spacing); text-transform: uppercase; color: var(--ink-faint); padding: 4px 9px 6px; }
+.k-combine button { display: block; width: 100%; text-align: left; background: transparent; border: 0; color: var(--ink-soft); cursor: pointer; font: inherit; padding: 9px 10px; border-radius: 9px; transition: background .12s, color .12s; }
+.k-combine button:hover { background: color-mix(in oklab, var(--accent) 13%, var(--surface-2)); color: var(--ink); }
+.k-combine button b { display: block; font-size: 13.5px; font-weight: 700; }
+.k-combine button small { display: block; color: var(--ink-faint); font-size: 11px; margin-top: 1px; }
 
 
 /* tweak duration + easing for the snapshot crossfade */
@@ -518,6 +542,37 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   border-radius: var(--radius); box-shadow: var(--shadow-1);
   position: relative; user-select: none;
   transition: box-shadow .18s cubic-bezier(.2,.7,.3,1), border-color .18s, transform .14s cubic-bezier(.2,.7,.3,1);
+}
+/* A title is dragged by its grip handle (.k-entry__grip / .k-card__grip), which
+   claims the touch gesture; the rest of the row/card stays scrollable + tappable
+   on touch. Desktop keeps whole-row/card mouse drag (see the components). */
+.k-entry__grip,
+.k-card__grip {
+  touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-faint); border-radius: 8px;
+  opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.k-entry__grip:active,
+.k-card__grip:active { cursor: grabbing; }
+/* Row grip: a slim column bled into the row's left padding (no layout shift). */
+.k-entry__grip { flex: 0 0 auto; width: 20px; align-self: stretch; margin: -13px 8px -13px -9px; }
+.k-entry:hover .k-entry__grip { opacity: .5; }
+.k-entry__grip:hover { opacity: 1; color: var(--ink-soft); background: color-mix(in oklab, var(--ink) 8%, transparent); }
+/* Card grip: floats in the top-left corner, above the poster art. */
+.k-card__grip {
+  position: absolute; top: 8px; left: 8px; z-index: 6; width: 26px; height: 26px;
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px -3px rgba(0,0,0,.5);
+}
+.k-hybrid:hover .k-card__grip,
+.k-card:hover .k-card__grip { opacity: .85; }
+.k-card__grip:hover { opacity: 1; color: var(--ink); }
+/* Touch devices can't hover, so the grips are always visible + a bit larger. */
+@media (pointer: coarse) {
+  .k-entry__grip { opacity: .6; width: 30px; }
+  .k-card__grip { opacity: .95; width: 30px; height: 30px; }
 }
 .k-entry:hover { border-color: var(--line-strong); transform: translateY(-1px); }
 .k-entry.clickable { cursor: pointer; }
@@ -617,7 +672,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 }
 .k-group__name:focus { outline: none; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .k-group__count { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); margin-left: 4px; padding: 2px 9px; border-radius: 100px; background: var(--surface-2); border: 1px solid var(--line); }
-.k-group__rules { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.k-group__rules { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 .k-group__rows { display: flex; flex-direction: column; gap: 8px; padding: 0 16px; }
 .k-group__scopebadge {
   font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
@@ -626,6 +681,20 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 }
 .k-group__dissolve { color: var(--ink-faint); width: 26px; height: 26px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; }
 .k-group__dissolve:hover { background: var(--surface-2); color: var(--ink); }
+
+/* bookmark (pin as tab) + open (focus the collection) — header actions */
+.k-group__head--open { cursor: pointer; }
+.k-group__pin, .k-group__open {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-faint); background: none; border: 0; cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.k-group__pin { margin-left: auto; }
+.k-group__pin:hover, .k-group__open:hover { background: var(--surface-2); color: var(--ink); }
+.k-group__pin.on { color: var(--accent); }
+.k-group__pin.on svg { fill: currentColor; }
+.k-group__head--open:hover .k-group__open { color: var(--accent); }
 
 /* ============================================================
    SCULPT SIDEBAR — sits inside the flex layout, pushes content
@@ -732,10 +801,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   background: var(--ink-faint);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 20%, transparent);
 }
-.k-rsec__dot--group { background: oklch(0.66 0.10 265); }
-.k-rsec__dot--sort  { background: oklch(0.64 0.10 150); }
-.k-rsec__dot--color { background: oklch(0.66 0.13 45); }
-.k-rsec__dot--tag   { background: oklch(0.62 0.09 320); }
+.k-rsec__dot--group { background: oklch(0.66 0.15 255); }
+.k-rsec__dot--sort  { background: oklch(0.72 0.14 200); }
+.k-rsec__dot--color { background: oklch(0.68 0.16 345); }
+.k-rsec__dot--tag   { background: oklch(0.64 0.15 300); }
 .k-rsec__title {
   flex: 1; text-align: left;
   font-family: var(--font-title); font-weight: 700; font-size: 13.5px;
@@ -765,6 +834,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   cursor: grab; user-select: none; position: relative;
   border: 1px solid transparent; background: transparent;
   transition: background .14s, border-color .14s, color .14s;
+  /* the row is the drag source — claim the touch gesture so dragging a rule
+     onto the list doesn't get hijacked by the palette's scroll */
+  touch-action: none;
 }
 .k-rrow:hover {
   background: var(--surface);
@@ -793,10 +865,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   display: inline-flex; align-items: center; justify-content: center;
   flex: 0 0 auto;
 }
-.k-rrow__icon--group { background: color-mix(in oklab, oklch(0.66 0.10 265) 16%, var(--surface)); color: oklch(0.46 0.10 265); }
-.k-rrow__icon--sort  { background: color-mix(in oklab, oklch(0.64 0.10 150) 16%, var(--surface)); color: oklch(0.44 0.10 150); }
-.k-rrow__icon--color { background: color-mix(in oklab, oklch(0.66 0.13 45) 18%, var(--surface));  color: oklch(0.48 0.13 45); }
-.k-rrow__icon--tag   { background: color-mix(in oklab, oklch(0.62 0.09 320) 16%, var(--surface)); color: oklch(0.44 0.09 320); }
+.k-rrow__icon--group { background: color-mix(in oklab, oklch(0.66 0.15 255) 16%, var(--surface)); color: oklch(0.60 0.15 255); }
+.k-rrow__icon--sort  { background: color-mix(in oklab, oklch(0.72 0.14 200) 16%, var(--surface)); color: oklch(0.64 0.14 200); }
+.k-rrow__icon--color { background: color-mix(in oklab, oklch(0.68 0.16 345) 18%, var(--surface)); color: oklch(0.62 0.16 345); }
+.k-rrow__icon--tag   { background: color-mix(in oklab, oklch(0.64 0.15 300) 16%, var(--surface)); color: oklch(0.58 0.15 300); }
 .k-rrow.applied .k-rrow__icon { color: var(--accent); background: color-mix(in oklab, var(--accent) 16%, var(--surface)); }
 
 .k-rrow__label {
@@ -842,11 +914,18 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 }
 .k-rulechip__x { cursor: pointer; opacity: .55; display: inline-flex; }
 .k-rulechip__x:hover { opacity: 1; }
+/* sort direction toggle (↑/↓) on a sort chip */
+.k-rulechip__dir {
+  cursor: pointer; border: 0; padding: 0 3px; margin: 0; background: none;
+  font: inherit; font-size: 12px; line-height: 1; color: var(--accent);
+  display: inline-flex; align-items: center; border-radius: 5px;
+}
+.k-rulechip__dir:hover { background: color-mix(in oklab, var(--accent) 20%, transparent); }
 .k-rulechip__dot { width: 7px; height: 7px; border-radius: 2.5px; flex: 0 0 auto; }
-.k-rulechip__dot--group { background: oklch(0.66 0.10 265); }
-.k-rulechip__dot--sort  { background: oklch(0.64 0.10 150); }
-.k-rulechip__dot--color { background: oklch(0.66 0.13 45); }
-.k-rulechip__dot--tag   { background: oklch(0.62 0.09 320); }
+.k-rulechip__dot--group { background: oklch(0.66 0.15 255); }
+.k-rulechip__dot--sort  { background: oklch(0.72 0.14 200); }
+.k-rulechip__dot--color { background: oklch(0.68 0.16 345); }
+.k-rulechip__dot--tag   { background: oklch(0.64 0.15 300); }
 
 /* ============================================================
    FLOATING DRAG GHOST + PAINT CURSOR
@@ -871,6 +950,13 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 
 /* merge hint pill while dragging an entry */
 .k-mergehint { position: fixed; z-index: 1001; pointer-events: none; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; background: var(--accent); color: var(--accent-ink); padding: 4px 9px; border-radius: 100px; box-shadow: var(--shadow-2); }
+
+/* tap-to-apply: highlight the tappable targets + a distinct accent banner */
+.k-app[data-picking] .k-globals { outline: 2px dashed color-mix(in oklab, var(--accent) 60%, transparent); outline-offset: 3px; }
+.k-app[data-picking] .k-group { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 45%, transparent); }
+.k-pick-banner { background: var(--accent); color: var(--accent-ink); }
+.k-pick-banner b { color: var(--accent-ink); }
+.k-pick-banner button { color: var(--accent-ink); border-color: color-mix(in oklab, var(--accent-ink) 40%, transparent) !important; }
 
 /* ============================================================
    DETAIL — FULL-SCREEN MODAL
@@ -1024,8 +1110,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
    ============================================================ */
 .k-scrim { display: none; }
 @media (max-width: 980px) {
+  /* sidebar overlays the stage as a drawer; when collapsed it's a slim rail, so
+     offset the stage's content by the rail width to keep it clear of it */
   .k-sidebar { position: absolute; left: 0; top: 0; bottom: 0; z-index: 40; box-shadow: var(--shadow-lift); }
-  .k-scrim { display: block; position: absolute; inset: 0; z-index: 35; background: rgba(20,12,6,0.28); }
+  .k-main:has(.k-sidebar--collapsed) .k-stage { padding-left: 46px; }
 }
 @media (max-width: 720px) {
   .k-topbar { padding: 0 14px; gap: 10px; height: 56px; }
@@ -1035,6 +1123,50 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   .k-tags { display: none; }
   .k-search { min-width: 0; width: 40px; }
   .k-search.expand { width: 100%; }
+}
+
+/* ---- phones: single-column list + sculpt palette as a bottom sheet ---- */
+@media (max-width: 520px) {
+  /* free-form works on phones as a single reorderable column; keep the
+     Stacked/Free-form toggle, but hide Reset-layout (2D-packing only) */
+  .k-resetlayout { display: none; }
+
+  /* compact control strip; the collection tabs already scroll horizontally */
+  .k-strip { padding: 10px 12px; gap: 10px 14px; }
+  .k-globals { padding: 12px 14px; }
+
+  /* group header wraps so scoped-rule pills stay inside the box */
+  .k-group__head { flex-wrap: wrap; row-gap: 8px; padding: 12px 14px; }
+  .k-group__rules { margin-left: 0; width: 100%; justify-content: flex-start; }
+
+  /* Sculpt palette → bottom sheet: the list stays visible above it, so you can
+     drag a rule token up onto Everything / a collection. */
+  .k-app[data-sculpt="on"] .k-sidebar {
+    position: fixed; inset: auto 0 0 0; top: auto; width: auto;
+    flex: none; height: min(50vh, 430px);
+    border-right: none; border-top: 1px solid var(--line-strong);
+    border-top-left-radius: 16px; border-top-right-radius: 16px;
+    z-index: 70; box-shadow: var(--shadow-lift);
+  }
+  /* collapsed = a slim bottom bar (section dots + an expand handle) */
+  .k-app[data-sculpt="on"] .k-sidebar--collapsed {
+    height: auto; flex-direction: row; align-items: center;
+    padding: 9px 14px calc(9px + env(safe-area-inset-bottom, 0px));
+    border-top-left-radius: 0; border-top-right-radius: 0;
+    background: color-mix(in oklab, var(--surface) 94%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .k-sidebar--collapsed .k-sidebar__rail {
+    order: 1; flex-direction: row; align-items: center; gap: 16px; padding: 0; width: 100%;
+  }
+  .k-sidebar--collapsed .k-sidebar__expand { order: 2; position: static; margin-left: auto; }
+  /* the palette opens upward from the bottom, so point the handle up */
+  .k-sidebar--collapsed .k-sidebar__expand svg { transform: rotate(180deg); }
+
+  /* keep the last list rows clear of the collapsed bottom bar; drop the ≤980
+     left-rail offset since the palette no longer sits on the left */
+  .k-app[data-sculpt="on"] .k-scroll { padding-bottom: 190px; }
+  .k-main:has(.k-sidebar--collapsed) .k-stage { padding-left: 0; }
 }
 
 /* density */
@@ -1140,6 +1272,14 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 .k-hybrid.k-reorder-before::before, .k-entry.k-reorder-before::before { top: 2px; bottom: auto; left: 12%; right: 12%; height: 3px; }
 .k-hybrid.k-reorder-after::before,  .k-entry.k-reorder-after::before  { bottom: 2px; top: auto; left: 12%; right: 12%; height: 3px; }
 @keyframes k-reorder-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+/* Touch: the finger + drag ghost cover the thin line, so make the drop
+   indicator bigger and glowing so it reads at a glance. */
+@media (pointer: coarse) {
+  .k-reorder-before::before, .k-reorder-after::before { box-shadow: 0 0 10px 1px var(--accent); border-radius: 3px; }
+  .k-hybrid.k-reorder-before::before, .k-entry.k-reorder-before::before,
+  .k-hybrid.k-reorder-after::before, .k-entry.k-reorder-after::before { height: 5px; left: 6%; right: 6%; }
+  .k-card.k-reorder-before::before, .k-card.k-reorder-after::before { width: 6px; }
+}
 
 /* tab in the rail being dragged onto */
 .k-tab--pinned.drop-armed {
@@ -1623,6 +1763,11 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
   border: 1px solid var(--line); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1); padding: 4px 12px 12px;
 }
+/* while editing, boxes read as reshapeable (dashed accent frame) */
+.k-app[data-sculpt="on"] .k-panel > .k-section,
+.k-app[data-sculpt="on"] .k-panel > .k-group {
+  outline: 1px dashed color-mix(in oklab, var(--accent) 40%, var(--line)); outline-offset: 2px;
+}
 .k-panel > .k-section > .k-section__head { padding-top: 8px; }
 .k-panel > .k-section > .k-rows,
 .k-panel > .k-section > .k-cards { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: auto; padding-right: 2px; gap: 14px; }
@@ -1634,51 +1779,58 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 
 /* ---- move affordance: a compact pill floating just above the box ---- */
 .k-panel__move {
-  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
-  width: 50px; height: 17px; z-index: 13;
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  height: 26px; z-index: 13;
   cursor: grab; display: flex; align-items: center; justify-content: center;
 }
 .k-panel--active .k-panel__move { cursor: grabbing; }
 .k-panel__movepill {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 46px; height: 17px;
-  background: var(--ink); color: var(--surface); border-radius: 99px;
-  box-shadow: var(--shadow-2); opacity: 0; transition: opacity 0.12s;
+  display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; height: 26px;
+  background: linear-gradient(150deg, color-mix(in oklab, var(--accent) 96%, white), var(--accent));
+  color: var(--accent-ink); border-radius: 99px;
+  box-shadow: 0 6px 16px -6px color-mix(in oklab, var(--accent) 70%, transparent);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  opacity: 0; transition: opacity 0.14s, transform 0.1s;
 }
-.k-panel:hover .k-panel__movepill,
-.k-panel--active .k-panel__movepill { opacity: 1; }
+.k-panel__movepill svg { color: var(--accent-ink); }
+/* always visible while editing so it's an obvious grab target */
+.k-app[data-sculpt="on"] .k-panel__movepill { opacity: 0.9; }
+.k-panel:hover .k-panel__movepill { opacity: 1; }
+.k-panel--active .k-panel__movepill { opacity: 1; transform: scale(1.04); }
 
-/* ---- 8 resize handles (4 edges + 4 corners) ---- */
+/* ---- 8 resize handles (4 edges + 4 corners) — generous hit areas ---- */
 .k-rz { position: absolute; z-index: 11; }
-.k-rz--n { top: -4px; left: 12px; right: 12px; height: 10px; cursor: ns-resize; }
-.k-rz--s { bottom: -4px; left: 12px; right: 12px; height: 10px; cursor: ns-resize; }
-.k-rz--e { right: -4px; top: 12px; bottom: 12px; width: 10px; cursor: ew-resize; }
-.k-rz--w { left: -4px; top: 12px; bottom: 12px; width: 10px; cursor: ew-resize; }
-.k-rz--ne { top: -6px; right: -6px; width: 18px; height: 18px; cursor: nesw-resize; }
-.k-rz--nw { top: -6px; left: -6px; width: 18px; height: 18px; cursor: nwse-resize; }
-.k-rz--se { bottom: -6px; right: -6px; width: 18px; height: 18px; cursor: nwse-resize; }
-.k-rz--sw { bottom: -6px; left: -6px; width: 18px; height: 18px; cursor: nesw-resize; }
+.k-rz--n { top: -7px; left: 20px; right: 20px; height: 16px; cursor: ns-resize; }
+.k-rz--s { bottom: -7px; left: 20px; right: 20px; height: 16px; cursor: ns-resize; }
+.k-rz--e { right: -7px; top: 20px; bottom: 20px; width: 16px; cursor: ew-resize; }
+.k-rz--w { left: -7px; top: 20px; bottom: 20px; width: 16px; cursor: ew-resize; }
+.k-rz--ne { top: -10px; right: -10px; width: 28px; height: 28px; cursor: nesw-resize; }
+.k-rz--nw { top: -10px; left: -10px; width: 28px; height: 28px; cursor: nwse-resize; }
+.k-rz--se { bottom: -10px; right: -10px; width: 28px; height: 28px; cursor: nwse-resize; }
+.k-rz--sw { bottom: -10px; left: -10px; width: 28px; height: 28px; cursor: nesw-resize; }
 
-/* corner pips — visible on hover, accent on active */
+/* corner pips — always shown while editing so grab points are obvious */
 .k-rz--ne::after, .k-rz--nw::after, .k-rz--se::after, .k-rz--sw::after {
-  content: ""; position: absolute; width: 9px; height: 9px;
-  border: 2px solid var(--ink-faint); border-radius: 2px;
-  opacity: 0; transition: opacity 0.12s, border-color 0.12s; background: var(--surface);
+  content: ""; position: absolute; width: 12px; height: 12px;
+  border: 2px solid var(--accent); border-radius: 3px;
+  opacity: 0; transition: opacity 0.12s, transform 0.1s; background: var(--surface);
+  box-shadow: 0 2px 6px -2px color-mix(in oklab, var(--accent) 55%, transparent);
 }
-.k-rz--ne::after { top: 6px; right: 6px; }
-.k-rz--nw::after { top: 6px; left: 6px; }
-.k-rz--se::after { bottom: 6px; right: 6px; }
-.k-rz--sw::after { bottom: 6px; left: 6px; }
-.k-panel:hover .k-rz--ne::after, .k-panel:hover .k-rz--nw::after,
-.k-panel:hover .k-rz--se::after, .k-panel:hover .k-rz--sw::after { opacity: 0.7; }
-.k-rz:hover::after, .k-rz[data-on]::after { opacity: 1 !important; border-color: var(--accent) !important; }
+.k-rz--ne::after { top: 8px; right: 8px; }
+.k-rz--nw::after { top: 8px; left: 8px; }
+.k-rz--se::after { bottom: 8px; right: 8px; }
+.k-rz--sw::after { bottom: 8px; left: 8px; }
+.k-app[data-sculpt="on"] .k-rz--ne::after, .k-app[data-sculpt="on"] .k-rz--nw::after,
+.k-app[data-sculpt="on"] .k-rz--se::after, .k-app[data-sculpt="on"] .k-rz--sw::after { opacity: 0.8; }
+.k-rz:hover::after, .k-rz[data-on]::after { opacity: 1 !important; transform: scale(1.15); background: var(--accent) !important; }
 
-/* edge bars — subtle accent line on hover/active */
-.k-rz--n::after, .k-rz--s::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); width: 34px; height: 3px; border-radius: 3px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
-.k-rz--e::after, .k-rz--w::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 34px; border-radius: 3px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
-.k-rz--n::after { top: 4px; } .k-rz--s::after { bottom: 4px; }
-.k-rz--e::after { right: 4px; } .k-rz--w::after { left: 4px; }
-.k-rz:hover::after, .k-rz[data-on]::after { opacity: 0.85; }
+/* edge bars — subtle accent line, shown while editing */
+.k-rz--n::after, .k-rz--s::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); width: 40px; height: 3px; border-radius: 3px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
+.k-rz--e::after, .k-rz--w::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 3px; height: 40px; border-radius: 3px; background: var(--accent); opacity: 0; transition: opacity 0.12s; }
+.k-rz--n::after { top: 6px; } .k-rz--s::after { bottom: 6px; }
+.k-rz--e::after { right: 6px; } .k-rz--w::after { left: 6px; }
+.k-app[data-sculpt="on"] .k-rz::after { opacity: 0.35; }
+.k-rz:hover::after, .k-rz[data-on]::after { opacity: 0.9 !important; }
 
 /* while actively resizing/dragging, kill selection + hover noise everywhere */
 body.k-resizing, body.k-dragging-panel { user-select: none; cursor: grabbing; }
@@ -1696,8 +1848,14 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   display: inline-flex; align-items: stretch;
   position: relative;
 }
+.k-tab-wrap[draggable="true"] { cursor: grab; }
 .k-tab-wrap:hover .k-tab__del,
 .k-tab-wrap:focus-within .k-tab__del { opacity: 1; pointer-events: auto; }
+/* insertion marker while reordering tabs */
+.k-tab-wrap--drop::before {
+  content: ""; position: absolute; left: -5px; top: 6px; bottom: 8px; width: 2.5px; border-radius: 3px;
+  background: var(--accent); box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 60%, transparent); z-index: 3;
+}
 .k-tab__del {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 99px;

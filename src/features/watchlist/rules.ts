@@ -16,11 +16,26 @@ export const TOKENS: Record<RuleCat, Token[]> = {
     { key: "seasons", label: "Season count" },
   ],
   sort: [
-    { key: "feeling", label: "Feeling tier" },
-    { key: "az", label: "A–Z" },
-    { key: "watched", label: "Date watched" },
-    { key: "rating", label: "Rating" },
-    { key: "random", label: "Random" },
+    { key: "az", label: "Title A–Z" },
+    { key: "rating", label: "Your rating" },
+    { key: "mal", label: "MAL rating" },
+    { key: "popularity", label: "Most popular" },
+    { key: "feeling", label: "Feeling" },
+    { key: "axis-story", label: "Story" },
+    { key: "axis-art", label: "Art" },
+    { key: "axis-music", label: "Music" },
+    { key: "axis-pacing", label: "Pacing" },
+    { key: "unrated", label: "Unrated first" },
+    { key: "year", label: "Release year" },
+    { key: "watched", label: "Date finished" },
+    { key: "added", label: "Recently added" },
+    { key: "episodes", label: "Episodes" },
+    { key: "seasons", label: "Seasons" },
+    { key: "progress", label: "Progress" },
+    { key: "genre", label: "Genre" },
+    { key: "status", label: "Status" },
+    { key: "kind", label: "Type" },
+    { key: "random", label: "Shuffle" },
   ],
   color: [
     { key: "feeling", label: "Feeling" },
@@ -129,16 +144,65 @@ export function bucketOf(e: Entry, key: string): Bucket {
 // ---- SORT: comparator factory ----
 type Cmp = (a: Entry, b: Entry) => number;
 
-function comparator(key: string, seed: string): Cmp | null {
-  if (key === "az") return (a, b) => a.title.localeCompare(b.title);
-  if (key === "feeling")
-    return (a, b) =>
-      (a.feeling ? FEELINGS[a.feeling].tier : 8) - (b.feeling ? FEELINGS[b.feeling].tier : 8) ||
-      a.title.localeCompare(b.title);
-  if (key === "watched") return (a, b) => (b.watched || "").localeCompare(a.watched || "");
-  if (key === "rating") return (a, b) => (avgRating(b) ?? -1) - (avgRating(a) ?? -1);
-  if (key === "random") return (a, b) => hash(a.id + seed) - hash(b.id + seed);
+const STATUS_ORDER: Record<string, number> = { watching: 0, completed: 1, planned: 2 };
+const az = (a: Entry, b: Entry) => a.title.localeCompare(b.title);
+const n = (x: number | null | undefined, dflt: number) => (x == null ? dflt : x);
+const progPct = (e: Entry) => (e.episodes > 0 ? (e.progress ?? 0) / e.episodes : 0);
+const isRated = (e: Entry) => avgRating(e) != null || !!e.feeling;
+
+// Sort keys may carry a ":rev" suffix to reverse their natural direction. Each
+// field below is written in its NATURAL order (best/newest/most first, or A→Z);
+// ":rev" flips it. A trailing az() keeps ties stable.
+function baseCmp(key: string, seed: string): Cmp | null {
+  switch (key) {
+    case "az": return az;
+    case "rating": return (a, b) => n(avgRating(b), -1) - n(avgRating(a), -1) || az(a, b);
+    case "mal": return (a, b) => n(b.malScore, -1) - n(a.malScore, -1) || az(a, b);
+    case "popularity": return (a, b) => n(b.popularity, -1) - n(a.popularity, -1) || az(a, b);
+    case "feeling": return (a, b) => (a.feeling ? FEELINGS[a.feeling].tier : 8) - (b.feeling ? FEELINGS[b.feeling].tier : 8) || az(a, b);
+    case "unrated": return (a, b) => (isRated(a) ? 1 : 0) - (isRated(b) ? 1 : 0) || az(a, b);
+    case "year": return (a, b) => n(b.year, 0) - n(a.year, 0) || az(a, b);
+    case "watched": return (a, b) => (b.watched || "").localeCompare(a.watched || "") || az(a, b);
+    case "added": return (a, b) => n(b._order, 0) - n(a._order, 0);
+    case "episodes": return (a, b) => n(b.episodes, 0) - n(a.episodes, 0) || az(a, b);
+    case "seasons": return (a, b) => n(b.seasons, 0) - n(a.seasons, 0) || az(a, b);
+    case "progress": return (a, b) => progPct(b) - progPct(a) || az(a, b);
+    case "genre": return (a, b) => (a.genres[0] || "~").localeCompare(b.genres[0] || "~") || az(a, b);
+    case "status": return (a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) || az(a, b);
+    case "kind": return (a, b) => (a.kind || "").localeCompare(b.kind || "") || az(a, b);
+    case "random": return (a, b) => hash(a.id + seed) - hash(b.id + seed);
+  }
+  if (key.startsWith("axis-")) {
+    const dim = key.slice(5);
+    return (a, b) => n(b.dims?.[dim], -1) - n(a.dims?.[dim], -1) || az(a, b);
+  }
   return null;
+}
+
+function comparator(key: string, seed: string): Cmp | null {
+  const rev = key.endsWith(":rev");
+  const base = rev ? key.slice(0, -4) : key;
+  const c = baseCmp(base, seed);
+  if (!c) return null;
+  return rev ? (a, b) => -c(a, b) : c;
+}
+
+// ---- SORT direction helpers (for the applied-rule chip's ↑/↓ toggle) ----
+const ASC_NATURAL = new Set(["az", "genre"]); // A→Z by default; the rest are "big/newest first"
+export function sortBaseKey(key: string): string {
+  return key.endsWith(":rev") ? key.slice(0, -4) : key;
+}
+export function isSortReversible(key: string): boolean {
+  return sortBaseKey(key) !== "random";
+}
+/** True when the applied sort reads ascending (A→Z / low / oldest first). */
+export function sortIsAsc(key: string): boolean {
+  const rev = key.endsWith(":rev");
+  return ASC_NATURAL.has(sortBaseKey(key)) ? !rev : rev;
+}
+/** Flip a sort key's direction ("rating" ⇄ "rating:rev"). */
+export function toggleSortRev(key: string): string {
+  return key.endsWith(":rev") ? key.slice(0, -4) : key + ":rev";
 }
 
 export function chainedComparator(keys: string[], seed: string): Cmp | null {

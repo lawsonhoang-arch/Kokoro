@@ -1,8 +1,9 @@
 import "../anime.css";
-import { Suspense, type CSSProperties } from "react";
+import { Suspense, ViewTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { coverVT } from "@/lib/vt";
 import { Page } from "@/shell/Page";
 import { getTitle } from "@/lib/catalog";
 import { isCompleted } from "@/lib/completions";
@@ -13,6 +14,7 @@ import { AddToWatchlist } from "@/features/search/AddToWatchlist";
 import { MarkWatched } from "@/features/search/MarkWatched";
 import { RewatchButton } from "@/features/search/RewatchButton";
 import { FavoriteButton } from "@/features/search/FavoriteButton";
+import { RecommendButton } from "@/features/search/RecommendButton";
 import { TrackButton } from "@/features/search/TrackButton";
 import { getTrackMeta, isTracking } from "@/lib/calendar";
 import { StatusTag } from "@/components/StatusTag";
@@ -56,14 +58,18 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
   return (
     <Page>
       <div className="anime-hero">
-        <div className="anime-cover">
-          {t.cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={t.cover} alt={`${t.title} cover art`} referrerPolicy="no-referrer" />
-          ) : (
-            <div className="anime-cover__gen" style={genPoster(t.id)} aria-hidden="true" />
-          )}
-        </div>
+        {/* the cover morphs in from whichever poster card was clicked (shared
+            view-transition name), landing continuity across the navigation */}
+        <ViewTransition name={coverVT(t.id)} share="morph">
+          <div className="anime-cover">
+            {t.cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={t.cover} alt={`${t.title} cover art`} referrerPolicy="no-referrer" />
+            ) : (
+              <div className="anime-cover__gen" style={genPoster(t.id)} aria-hidden="true" />
+            )}
+          </div>
+        </ViewTransition>
 
         <div className="anime-info">
           <div className="anime-eyebrow">
@@ -92,6 +98,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
             <MarkWatched titleId={t.id} initialDone={done} />
             {uid && <RewatchButton titleId={t.id} initialCount={rewatchCount} kind={t.kind} />}
             <FavoriteButton titleId={t.id} initialFavorite={fav} />
+            {uid && <RecommendButton titleId={t.id} />}
             {trackable && <TrackButton titleId={t.id} initialTracking={tracking} status={meta!.status} />}
             <Link className="anime-linkbtn" href={`/community/${encodeURIComponent(t.id)}`}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

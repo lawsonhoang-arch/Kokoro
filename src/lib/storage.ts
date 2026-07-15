@@ -11,6 +11,8 @@ export type Watchlist = {
   pinned: boolean;
   titleCount: number;
   watching: number;
+  /** up to 4 cover images from the list's first titles (for the card mosaic) */
+  covers?: string[];
   /** extra rating axes shared by every title in the list */
   customAxes: string[];
   createdAt: number;
