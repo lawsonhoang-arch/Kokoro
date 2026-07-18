@@ -1938,11 +1938,35 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   /* rows: the title needs the width more than the padding does */
   .k-entry { gap: 11px; padding: 11px 12px 11px 11px; }
 
+  /* ── ONE GUTTER FOR EVERYTHING ──────────────────────────────────────────
+     The header, tab rail, tools and content were landing on 12 / 22 / 22 / 16px,
+     so nothing lined up down the left edge. Anchor them all to the same value
+     (the content gutter), which is what the eye reads as the page margin. */
+  .k-app { --gutter: 16px; }
+  .k-strip { padding: 15px var(--gutter) 8px; }
+  .k-tabsbar { padding: 8px var(--gutter) 10px; }
+  .k-subtools { padding: 10px var(--gutter) 10px; }
+  .k-scroll { padding: 12px var(--gutter) 120px; }
+
+  /* The list name was `white-space: nowrap`, so a long one ran off-screen and
+     got sliced. Let it wrap and scale down instead. */
+  .k-strip__title {
+    white-space: normal; overflow-wrap: anywhere;
+    font-size: clamp(21px, 6.4vw, 28px); line-height: 1.14;
+  }
+  /* stack name + count so they breathe instead of fighting for one line */
+  .k-strip__lead { gap: 4px 12px; }
+  .k-strip__eyebrow { gap: 8px; font-size: 10px; letter-spacing: .16em; }
+
   /* The tab rail scrolls horizontally; fade its trailing edge so a half-visible
      tab reads as "keep scrolling" instead of a broken cut-off. */
   .k-tabsbar {
-    padding-right: 10px;
     -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
     mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
   }
+  /* A classic 10px scrollbar track was eating the right gutter, so content sat
+     closer to the right edge than the left. Touch scrolls by dragging, so drop
+     the track and let both margins match. */
+  .k-scroll { scrollbar-width: none; }
+  .k-scroll::-webkit-scrollbar { width: 0; height: 0; }
 }
