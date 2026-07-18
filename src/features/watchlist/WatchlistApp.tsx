@@ -1378,14 +1378,15 @@ export default function WatchlistApp({
           <div className="k-strip">
             <div className="k-strip__eyebrow">
               <span className="k-strip__rule" />
-              <a href="/watchlist" className="k-strip__back" title="Back to your lists">
+              <a href="/watchlist" className="k-strip__back" title="Back to your lists" aria-label="Back to your lists">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m15 18-6-6 6-6" />
                 </svg>
-                Lists
+                {/* wrapped so phones can collapse this to a bare arrow */}
+                <span className="k-strip__backtxt">Lists</span>
               </a>
               <span className="k-strip__crumb-sep">/</span>
-              {sculpt ? "Shape your list" : "Your list"}
+              <span className="k-strip__crumb">{sculpt ? "Shape your list" : "Your list"}</span>
             </div>
             <div className="k-strip__lead">
               <h1 className="k-strip__title">{sculpt ? "Reshape" : wlTitle}</h1>
