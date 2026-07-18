@@ -2043,3 +2043,70 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   .k-sidebar__body { gap: 4px 14px; padding: 2px var(--gutter) 12px; }
   .k-rsec { flex: 1 1 100%; min-width: 0; max-width: none; }
 }
+
+/* ============================================================
+   PALETTE v2 — a drop-down over the chrome, with chip tokens
+   Two problems with the first pass: it pushed the board down (so the canvas
+   kept moving), and a long section like "Sort titles by" turned into a tall
+   scroll. Now it OVERLAYS the nav/title/tab chrome (out of flow, so the board
+   never moves at all) and stops above the toolbar, keeping Done + the board
+   visible for dragging rules onto boxes. Tokens are compact wrapping chips, so
+   a ten-token section is two dense rows instead of a long column.
+   ============================================================ */
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
+  position: fixed; top: 0; left: 0; right: 0; width: auto;
+  z-index: 120; /* above .site-nav (50) */
+  /* stop above the toolbar so Done + the board stay reachable while dragging
+     (the chrome it covers — nav + title + tab rail — is ~195px tall) */
+  max-height: min(26vh, 194px);
+  background: color-mix(in oklab, var(--surface) 97%, var(--page));
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lift, 0 22px 50px -24px rgba(0,0,0,.7));
+  border-radius: 0 0 16px 16px;
+}
+/* collapsed: a slim strip pinned to the very top, so reopening is always here */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  position: fixed; top: 0; left: 0; right: 0; width: auto;
+  z-index: 120; max-height: none;
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+/* the stage keeps the chrome clear of the collapsed strip */
+.k-app[data-sculpt="on"] .k-stage { padding-top: 46px; }
+
+/* ---- compact chip tokens ---- */
+.k-sidebar__head { padding: 10px var(--gutter) 8px; }
+.k-sidebar__body {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 2px 26px; padding: 0 var(--gutter) 12px; overflow-y: auto;
+}
+/* Closed categories are compact pills in a row; the OPEN one drops to its own
+   full-width row (order:9) so its chips spread across the whole bar. Sort has 20
+   tokens — in a narrow column that was 7 stacked rows behind a scroll; full width
+   it's about two. */
+.k-rsec { flex: 0 0 auto; min-width: 0; max-width: none; }
+.k-rsec.open { flex: 1 1 100%; order: 9; }
+.k-rsec__head { padding: 5px 8px; border-radius: 999px; }
+.k-rsec.closed .k-rsec__head { background: var(--surface); border-color: var(--line); }
+.k-rsec__body { padding: 2px 0 6px; }
+.k-rsec__hint { display: none; }          /* a line back per section */
+.k-rrows { flex-direction: row; flex-wrap: wrap; gap: 5px; }
+.k-rrow {
+  padding: 4px 9px 4px 7px; gap: 5px; border-radius: 999px;
+  background: var(--surface); border-color: var(--line);
+  font-size: 12px; line-height: 1.2;
+}
+.k-rrow__grip { display: none; }          /* the whole chip is the handle */
+.k-rrow__label { white-space: nowrap; }
+
+@media (max-width: 520px) {
+  /* phone chrome (nav + title + tab rail) is ~185px — stop above the toolbar */
+  .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) { max-height: min(32vh, 185px); }
+  .k-sidebar__body { gap: 6px 8px; }
+  /* keep the closed categories as a compact pill row here too — forcing them
+     full width stacked four headers before the open one even started */
+  .k-rsec { flex: 0 0 auto; min-width: 0; }
+  .k-rsec.open { flex: 1 1 100%; }
+}

@@ -153,10 +153,17 @@ export function SculptSidebar({
     cat === "sort"
       ? [...TOKENS.sort, ...customAxes.map((a) => ({ key: "axis-" + a, label: a }))]
       : TOKENS[cat] || [];
+  // One category open at a time. As a top bar the palette is short and wide, and
+  // showing all four at once (Sort alone has a dozen tokens) meant most of it sat
+  // behind a scroll. Picking a category keeps every token of it in view at once.
   const [open, setOpen] = useState<Record<RuleCat, boolean>>({
-    group: true, sort: true, color: true, tag: true,
+    group: true, sort: false, color: false, tag: false,
   });
-  const toggleOpen = (cat: RuleCat) => setOpen((o) => ({ ...o, [cat]: !o[cat] }));
+  const toggleOpen = (cat: RuleCat) =>
+    setOpen((o) => ({
+      group: false, sort: false, color: false, tag: false,
+      [cat]: !o[cat],
+    }));
 
   if (collapsed) {
     const totals = SECTIONS.map((sec) => ({
