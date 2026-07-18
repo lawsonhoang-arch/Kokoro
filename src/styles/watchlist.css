@@ -2290,3 +2290,99 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   text-align: center;
   box-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.5);
 }
+
+/* ===== aliveness =========================================================
+   Feedback for things the list already does, kept to transform/opacity so it
+   stays on the compositor. Every rule here is inside a motion guard at the
+   bottom of this block. */
+
+/* --- titles: hover lift, press give ------------------------------------- */
+@media (pointer: fine) {
+  .k-card, .k-entry {
+    transition: transform .16s cubic-bezier(.2, .7, .3, 1),
+                box-shadow .16s ease, border-color .16s ease;
+  }
+  .k-card:hover, .k-entry:hover { transform: translateY(-2px); }
+  .k-card:hover { box-shadow: 0 8px 20px -12px rgb(0 0 0 / 0.55); }
+  /* the grip is a hint, not furniture — it fades up when the title is hovered */
+  .k-card .k-card__grip, .k-entry .k-entry__grip { transition: opacity .16s ease; opacity: .45; }
+  .k-card:hover .k-card__grip, .k-entry:hover .k-entry__grip { opacity: 1; }
+}
+/* press works on touch too, and is the main "it heard me" cue there */
+.k-card:active, .k-entry:active { transform: scale(.985); transition-duration: .06s; }
+
+/* --- selection: a small pop when a title is marked ---------------------- */
+.k-card.selected, .k-entry.selected { animation: k-mark-pop .26s cubic-bezier(.2, .8, .3, 1.2); }
+@keyframes k-mark-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+/* --- drop targets: breathe while armed ---------------------------------- */
+.drop-armed { animation: k-armed 1.15s ease-in-out infinite; }
+@keyframes k-armed {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 42%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 6%, transparent); }
+}
+
+/* --- boxes: a receive pulse once something lands ------------------------ */
+.k-group.k-landed { animation: k-landed .62s cubic-bezier(.2, .7, .3, 1); }
+@keyframes k-landed {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 60%, transparent); transform: scale(1); }
+  22%  { transform: scale(1.012); }
+  100% { box-shadow: 0 0 0 14px transparent; transform: scale(1); }
+}
+
+/* --- the drag ghost leans into the drag --------------------------------- */
+.k-ghost { transition: box-shadow .18s ease; box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.7); }
+.k-ghost__count { animation: k-mark-pop .3s cubic-bezier(.2, .8, .3, 1.2); }
+
+/* --- the multi-select bar arrives from the edge it lives on -------------- */
+.k-msel { animation: k-msel-in .24s cubic-bezier(.2, .7, .3, 1); }
+@keyframes k-msel-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* --- controls: buttons, tabs and chips answer a press ------------------- */
+.k-tab, .k-addbtn, .k-editbtn, .k-icon-btn, .k-modal__btn, .k-eps__markbtn,
+.k-rulechip, .k-rrow, .k-msel__btn, .k-prog__bump {
+  transition: transform .13s cubic-bezier(.2, .7, .3, 1), background-color .13s ease,
+              border-color .13s ease, opacity .13s ease;
+}
+.k-tab:active, .k-addbtn:active, .k-editbtn:active, .k-icon-btn:active,
+.k-modal__btn:active, .k-eps__markbtn:active, .k-rulechip:active, .k-msel__btn:active {
+  transform: scale(.95);
+}
+@media (pointer: fine) {
+  .k-rrow:hover { transform: translateY(-1px); }
+}
+
+/* --- rule tokens land with a little weight ------------------------------ */
+.k-rulechip { animation: k-chip-in .22s cubic-bezier(.2, .8, .3, 1.15); }
+@keyframes k-chip-in {
+  from { opacity: 0; transform: scale(.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* --- respect the OS setting --------------------------------------------
+   Motion-sensitive users still get every state change — colour, shadow and
+   outline all remain — just none of the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .k-card, .k-entry, .k-tab, .k-addbtn, .k-editbtn, .k-icon-btn, .k-modal__btn,
+  .k-eps__markbtn, .k-rulechip, .k-rrow, .k-msel__btn, .k-prog__bump, .k-ghost {
+    transition-duration: .01ms !important;
+  }
+  .k-card.selected, .k-entry.selected, .k-group.k-landed, .k-msel,
+  .k-rulechip, .k-ghost__count, .drop-armed {
+    animation: none !important;
+  }
+  .k-card:hover, .k-entry:hover, .k-card:active, .k-entry:active,
+  .k-tab:active, .k-addbtn:active, .k-editbtn:active, .k-icon-btn:active,
+  .k-modal__btn:active, .k-eps__markbtn:active, .k-rulechip:active, .k-msel__btn:active,
+  .k-prog__bump:active, .k-rrow:hover {
+    transform: none !important;
+  }
+  .drop-armed { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 45%, transparent); }
+}

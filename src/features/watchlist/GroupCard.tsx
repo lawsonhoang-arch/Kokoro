@@ -55,6 +55,8 @@ type GroupCardProps = {
   children: ReactNode;
   scoped: Rules;
   armed?: boolean;
+  /** briefly true right after something is dropped in — plays a receive pulse */
+  landed?: boolean;
   browse: boolean;
   onRename: (gid: string, name: string) => void;
   onDissolve: (gid: string) => void;
@@ -70,6 +72,7 @@ export function GroupCard({
   children,
   scoped,
   armed,
+  landed,
   browse,
   onRename,
   onDissolve,
@@ -96,7 +99,8 @@ export function GroupCard({
       className={
         "k-group" +
         (browse ? " k-group--browse" : "") +
-        (armed ? " drop-armed" : "")
+        (armed ? " drop-armed" : "") +
+        (landed ? " k-landed" : "")
       }
       data-drop="group"
       data-group-id={group.id}

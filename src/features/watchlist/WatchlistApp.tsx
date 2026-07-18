@@ -286,6 +286,16 @@ export default function WatchlistApp({
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
   const [armed, setArmed] = useState<ArmedTarget>(null);
+  // A box pulses for a moment after something lands in it, so a drop reads as
+  // having been *received* rather than just ending.
+  const [landed, setLanded] = useState<string | null>(null);
+  const landTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashLanded = (gid: string) => {
+    if (landTimer.current) clearTimeout(landTimer.current);
+    setLanded(gid);
+    landTimer.current = setTimeout(() => setLanded(null), 620);
+  };
+  useEffect(() => () => { if (landTimer.current) clearTimeout(landTimer.current); }, []);
   // tap-to-apply: a rule "picked up" by tapping it, then dropped by tapping a
   // target — the touch-friendly alternative to dragging.
   const [pickRule, setPickRule] = useState<{ cat: RuleCat; key: string } | null>(null);
@@ -1058,12 +1068,12 @@ export default function WatchlistApp({
       // A drag carries every selected title when the grabbed one is selected.
       const batch = dragBatch(d.id!);
       if (tgt.type === "entry") batch.forEach((id) => mergeOnto(id, tgt.id));
-      else if (tgt.type === "group") batch.forEach((id) => addToGroup(id, tgt.id));
+      else if (tgt.type === "group") { batch.forEach((id) => addToGroup(id, tgt.id)); flashLanded(tgt.id); }
       else if (tgt.type === "loose") batch.forEach((id) => removeFromCollection(id));
       if (batch.length > 1) setMultiSel(new Set());
     } else if (d.kind === "token") {
       if (tgt.type === "globals") addGlobalRule(d.cat!, d.key!);
-      else if (tgt.type === "group") addGroupRule(tgt.id, d.cat!, d.key!);
+      else if (tgt.type === "group") { addGroupRule(tgt.id, d.cat!, d.key!); flashLanded(tgt.id); }
     }
   };
 
@@ -1076,7 +1086,7 @@ export default function WatchlistApp({
       const tgt = findTarget(e.clientX, e.clientY, "token");
       if (tgt) {
         if (tgt.type === "globals") addGlobalRule(pickRule.cat, pickRule.key);
-        else if (tgt.type === "group") addGroupRule(tgt.id, pickRule.cat, pickRule.key);
+        else if (tgt.type === "group") { addGroupRule(tgt.id, pickRule.cat, pickRule.key); flashLanded(tgt.id); }
         e.preventDefault();
         e.stopPropagation();
       }
@@ -1352,6 +1362,7 @@ export default function WatchlistApp({
           (!!armed && armed.type === "group" && armed.id === g.id) ||
           (!!browseArm && browseArm.kind === "coll" && browseArm.id === g.id)
         }
+        landed={landed === g.id}
         onRename={renameGroup}
         onDissolve={dissolveGroup}
         onRemoveRule={removeGroupRule}
