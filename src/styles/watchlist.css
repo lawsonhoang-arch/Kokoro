@@ -1109,6 +1109,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
    RESPONSIVE — sidebar collapse only; detail is always modal
    ============================================================ */
 .k-scrim { display: none; }
+/* ...but the modal variants must still show. This blanket rule sits BELOW
+   `.k-scrim--detail { display:block }` at equal specificity, so it was winning
+   and the detail backdrop never rendered at all (0x0, display:none) — no dimming
+   and no click-outside-to-close. Re-assert the variants after it. */
+.k-scrim--detail, .k-scrim--modal { display: block; }
 /* (The palette used to overlay the stage as a left drawer below 980px, with the
    stage padded to clear the collapsed rail. It's now a full-width bar at the top
    of the stage at every size, so it stays in normal flow and needs neither.) */

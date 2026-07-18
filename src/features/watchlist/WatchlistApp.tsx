@@ -1679,34 +1679,41 @@ export default function WatchlistApp({
           </div>
         </div>
 
-        {/* detail (browse) — full-screen modal overlay */}
-        {!sculpt && selected && (
-          <Fragment>
-            <div className="k-scrim k-scrim--detail" onClick={() => setSelectedId(null)} />
-            <DetailPanel
-              key={selected.id}
-              entry={selected}
-              glyphSet={GLYPH_SET}
-              showScore={showScore}
-              customAxes={customAxes}
-              onClose={() => setSelectedId(null)}
-              onSetFeeling={setFeeling}
-              onSetRateMode={setRateMode}
-              onSetSymbol={setSymbol}
-              onSetDim={setDim}
-              onAddAxis={addAxis}
-              onRemoveAxis={removeAxis}
-              onSetTake={setTake}
-              onRemove={removeEntryFromList}
-              watched={watchedSetOf(selected)}
-              onToggleWatched={toggleWatched}
-              onMarkAllWatched={markAllWatched}
-              onClearWatched={clearWatched}
-              onSetWatched={setWatched}
-            />
-          </Fragment>
-        )}
       </div>
+
+      {/* Detail (browse) — full-screen modal overlay.
+          Deliberately a child of .k-app, NOT .k-main: .k-main is
+          `position:relative; z-index:1`, which opens a stacking context, so this
+          overlay's z-index:110 was being resolved INSIDE it. The whole stage
+          therefore sat at z-index 1 — under the site nav's 50 — and on shorter
+          viewports the centred panel's top slid behind the nav bar. Out here it
+          shares the root stacking context and correctly covers the nav. */}
+      {!sculpt && selected && (
+        <Fragment>
+          <div className="k-scrim k-scrim--detail" onClick={() => setSelectedId(null)} />
+          <DetailPanel
+            key={selected.id}
+            entry={selected}
+            glyphSet={GLYPH_SET}
+            showScore={showScore}
+            customAxes={customAxes}
+            onClose={() => setSelectedId(null)}
+            onSetFeeling={setFeeling}
+            onSetRateMode={setRateMode}
+            onSetSymbol={setSymbol}
+            onSetDim={setDim}
+            onAddAxis={addAxis}
+            onRemoveAxis={removeAxis}
+            onSetTake={setTake}
+            onRemove={removeEntryFromList}
+            watched={watchedSetOf(selected)}
+            onToggleWatched={toggleWatched}
+            onMarkAllWatched={markAllWatched}
+            onClearWatched={clearWatched}
+            onSetWatched={setWatched}
+          />
+        </Fragment>
+      )}
 
       {/* paint banner */}
       {paint && (
