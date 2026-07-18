@@ -2045,85 +2045,90 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
 }
 
 /* ============================================================
-   PALETTE v2 — a drop-down over the chrome, with chip tokens
-   Two problems with the first pass: it pushed the board down (so the canvas
-   kept moving), and a long section like "Sort titles by" turned into a tall
-   scroll. Now it OVERLAYS the nav/title/tab chrome (out of flow, so the board
-   never moves at all) and stops above the toolbar, keeping Done + the board
-   visible for dragging rules onto boxes. Tokens are compact wrapping chips, so
-   a ten-token section is two dense rows instead of a long column.
+   PALETTE v3 — one integrated strip, not a panel
+   Earlier passes stacked a hint line, a pill row, an orphaned open-category row
+   and a wrapped chip grid — four bands of chrome that read as a slab bolted to
+   the top, and the wrapped grid kept slicing its last row.
+   Now it's two lines: the categories as a tab row, and the active category's
+   tokens on ONE horizontally-scrolling line. Chips can never be cut in half
+   vertically, and the whole thing sits flat against the page.
    ============================================================ */
 .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
   position: fixed; top: 0; left: 0; right: 0; width: auto;
   z-index: 120; /* above .site-nav (50) */
-  /* stop above the toolbar so Done + the board stay reachable while dragging
-     (the chrome it covers — nav + title + tab rail — is ~195px tall) */
-  max-height: min(26vh, 194px);
+  max-height: none; height: auto;
   background: color-mix(in oklab, var(--surface) 97%, var(--page));
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--line-strong);
-  box-shadow: var(--shadow-lift, 0 22px 50px -24px rgba(0,0,0,.7));
-  border-radius: 0 0 16px 16px;
+  /* flat: a hairline, no radius or lift, so it reads as page chrome */
+  border-right: none; border-bottom: 1px solid var(--line);
+  border-radius: 0; box-shadow: none;
 }
-/* collapsed: a slim strip pinned to the very top, so reopening is always here */
 .k-app[data-sculpt="on"] .k-sidebar--collapsed {
   position: fixed; top: 0; left: 0; right: 0; width: auto;
   z-index: 120; max-height: none;
   background: color-mix(in oklab, var(--surface) 94%, transparent);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); box-shadow: none; border-radius: 0;
 }
-/* the stage keeps the chrome clear of the collapsed strip */
 .k-app[data-sculpt="on"] .k-stage { padding-top: 46px; }
 
-/* ---- chip tokens ---- */
-/* The palette can only be as tall as the chrome it covers (~199px) before it
-   starts hiding the toolbar, so the header earns its keep: the "SCULPT /
-   Organize your list" pair was the nav-looking clutter AND the height that was
-   slicing the last chip row. Keep just the one-line hint. */
-.k-sidebar__head {
-  padding: 8px calc(var(--gutter) + 44px) 4px var(--gutter);
-}
-.k-sidebar__eyebrow, .k-sidebar__title { display: none; }
-.k-sidebar__hint {
-  flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: 12px; margin: 0;
-}
+/* the header band is gone entirely — the EVERYTHING drop zone already explains
+   the gesture, so repeating it here was pure clutter */
+.k-sidebar__head { display: none; }
+.k-sidebar__foot { display: none; }
+
+/* Sections stop being boxes: their heads become one tab row, and only the open
+   section's body follows on the next line. */
 .k-sidebar__body {
-  display: flex; flex-wrap: wrap; align-items: flex-start;
-  gap: 8px 12px; padding: 0 var(--gutter) 12px; overflow-y: auto;
-  /* a soft tail instead of a hard slice if a row does overflow */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 18px), transparent);
-  mask-image: linear-gradient(#000 calc(100% - 18px), transparent);
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px 6px; padding: 8px var(--gutter) 10px; overflow: visible;
+  -webkit-mask-image: none; mask-image: none;
 }
-/* Closed categories are compact pills in a row; the OPEN one drops to its own
-   full-width row (order:9) so its chips spread across the whole bar. Sort has 20
-   tokens — in a narrow column that was 7 stacked rows behind a scroll; full width
-   it's about two. */
-.k-rsec { flex: 0 0 auto; min-width: 0; max-width: none; }
-.k-rsec.open { flex: 1 1 100%; order: 9; }
-.k-rsec__head { padding: 7px 12px; border-radius: 999px; gap: 8px; }
-.k-rsec.closed .k-rsec__head { background: var(--surface); border-color: var(--line); }
-.k-rsec__title { font-size: 13.5px; }
-.k-rsec__body { padding: 6px 0 4px; }
-.k-rsec__hint { display: none; }          /* a line back per section */
-.k-rrows { flex-direction: row; flex-wrap: wrap; gap: 8px; }
-/* roomy enough to read and to grab confidently, incl. on touch */
+.k-rsec { display: contents; }
+.k-rsec__head {
+  order: 1; flex: 0 0 auto; width: auto;
+  padding: 6px 12px; border-radius: 999px; gap: 7px;
+  background: transparent; border: 1px solid transparent;
+}
+.k-rsec.closed .k-rsec__head:hover { background: var(--surface-2); border-color: var(--line); }
+.k-rsec.open .k-rsec__head {
+  background: color-mix(in oklab, var(--accent) 13%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 34%, var(--line));
+}
+.k-rsec__title { font-size: 13px; }
+.k-rsec__chev { display: none; }          /* the active tab reads as selected */
+.k-rsec__hint { display: none; }
+/* The open category's tokens: their own full-width line.
+   min-width:0 is load-bearing — a flex item defaults to min-width:auto, so this
+   row refused to shrink below its content (2205px inside a 390px bar) and the
+   overflow scroll never engaged, leaving the far chips clipped and unreachable. */
+.k-rsec__body { order: 2; flex: 1 1 100%; min-width: 0; padding: 2px 0 0; }
+.k-rrows {
+  display: flex; flex-direction: row; flex-wrap: nowrap; min-width: 0;
+  gap: 7px; overflow-x: auto; overflow-y: hidden;
+  padding: 2px 0 4px; scrollbar-width: none;
+  /* fade the trailing edge so a half-visible chip means "scroll", not "clipped" */
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
+}
+.k-rrows::-webkit-scrollbar { height: 0; }
 .k-rrow {
+  flex: 0 0 auto;
   padding: 6px 12px 6px 9px; gap: 7px; border-radius: 999px;
   background: var(--surface); border-color: var(--line);
   font-size: 13px; line-height: 1.25;
 }
-.k-rrow__icon { width: 21px; height: 21px; }
-.k-rrow__grip { display: none; }          /* the whole chip is the handle */
+.k-rrow__grip { display: none; }
 .k-rrow__label { white-space: nowrap; }
+.k-rrow__icon { width: 21px; height: 21px; }
+
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail {
+  flex-direction: row; justify-content: flex-start; flex-wrap: wrap;
+  gap: 10px; padding: 8px var(--gutter);
+}
 
 @media (max-width: 520px) {
-  /* phone chrome (nav + title + tab rail) is ~185px — stop above the toolbar */
-  .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) { max-height: min(32vh, 185px); }
-  .k-sidebar__body { gap: 6px 8px; }
-  /* keep the closed categories as a compact pill row here too — forcing them
-     full width stacked four headers before the open one even started */
-  .k-rsec { flex: 0 0 auto; min-width: 0; }
-  .k-rsec.open { flex: 1 1 100%; }
+  .k-sidebar__body { gap: 6px; padding: 7px var(--gutter) 9px; }
+  .k-rsec__head { padding: 5px 10px; }
+  .k-rsec__title { font-size: 12.5px; }
 }
