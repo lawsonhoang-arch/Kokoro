@@ -282,12 +282,16 @@ export default function WatchlistApp({
     }
   });
   const chooseView = (v: ViewMode) => {
-    startViewTransition(() => {
-      flushSync(() => setListView(v));
-      try {
-        localStorage.setItem(VIEW_KEY, v);
-      } catch {}
-    });
+    // No view transition here on purpose. Every entry carries its own
+    // `view-transition-name`, so a format change asked the browser to snapshot
+    // and cross-fade EVERY card — on a 100-title list that's 100+ rasterised
+    // snapshots and the switch visibly lags. Tab/layout changes still animate
+    // (they morph same-named elements, which is cheap); the format swap is
+    // instant instead, which is what it should have been.
+    setListView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
   };
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
