@@ -15,6 +15,8 @@ export type EntryCommon = {
   glyphSet: GlyphSet;
   showScore: boolean;
   selected: boolean;
+  /** Shaping only: a tap (not a drag) marks the title for a multi-move. */
+  onTapSelect?: (id: string) => void;
   onOpen: (id: string) => void;
   collections: Collection[];
   inGroupId: string | null;
@@ -40,6 +42,7 @@ export function EntryRow({
   mode,
   selected,
   onGrab,
+  onTapSelect,
   onBrowseGrab,
   collections,
   inGroupId,
@@ -64,7 +67,23 @@ export function EntryRow({
       data-drop="entry"
       onPointerDown={
         sculpt
-          ? (e) => { if (e.pointerType !== "touch") onGrab(e, entry.id); }
+          ? (e) => {
+              if (e.pointerType !== "touch") { onGrab(e, entry.id); return; }
+              // Touch keeps the row body scrollable, so the tap-to-select has to
+              // be caught here: a pointerup that hasn't travelled is a tap.
+              if (!onTapSelect) return;
+              const sx = e.clientX, sy = e.clientY;
+              const done = () => {
+                window.removeEventListener("pointerup", up);
+                window.removeEventListener("pointercancel", done);
+              };
+              const up = (ev: PointerEvent) => {
+                done();
+                if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 8) onTapSelect(entry.id);
+              };
+              window.addEventListener("pointerup", up);
+              window.addEventListener("pointercancel", done);
+            }
           : (e) => onBrowseGrab && onBrowseGrab(e, entry.id)
       }
       style={{

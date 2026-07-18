@@ -2232,3 +2232,61 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   font-size: 11px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .k-about__person > span { display: block; min-width: 0; }
+
+/* ---- multi-select (shaping) ------------------------------------------------
+   Tap titles to mark them, then drag any one to move the whole set. The bar
+   floats over the board rather than sitting in the flow, so marking titles
+   never reflows the layout being shaped. */
+.k-msel {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 9px 10px 9px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  background: var(--surface-1);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.45);
+  font-size: 13px;
+}
+.k-msel__n { font-weight: 600; white-space: nowrap; }
+.k-msel__hint { color: var(--text-dim); white-space: nowrap; }
+.k-msel__btn {
+  padding: 5px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.k-msel__btn:hover { background: var(--surface-2); }
+
+/* the mobile bottom nav sits at the same edge — clear it */
+@media (max-width: 640px) {
+  .k-msel { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  .k-msel__hint { display: none; }
+}
+
+/* count badge on the drag ghost when it carries a selection */
+.k-ghost__count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 100px;
+  background: var(--accent, #6c8cff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 2px 8px -2px rgb(0 0 0 / 0.5);
+}

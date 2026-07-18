@@ -29,6 +29,7 @@ export function EntryCard({
   onResize,
   mode,
   onGrab,
+  onTapSelect,
   collections,
   inGroupId,
   onAddTab,
@@ -43,8 +44,24 @@ export function EntryCard({
   // reserved to the grip so the card body can scroll/tap — the row body only
   // starts a drag for mouse/pen (desktop) or, in browse, defers to the move guard.
   const onPointerDownCard = (e: RPointerEvent) => {
-    if (mode === "sculpt") { if (e.pointerType !== "touch") onGrab?.(e, entry.id); }
-    else onBrowseGrab?.(e, entry.id);
+    if (mode === "sculpt") {
+      if (e.pointerType !== "touch") { onGrab?.(e, entry.id); return; }
+      // Touch leaves the card body free to scroll (drag lives on the grip), so
+      // onGrab never runs here and the tap-to-select has to be caught by hand:
+      // a pointerup that hasn't travelled is a tap, anything further is a scroll.
+      if (!onTapSelect) return;
+      const sx = e.clientX, sy = e.clientY;
+      const done = () => {
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", done);
+      };
+      const up = (ev: PointerEvent) => {
+        done();
+        if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 8) onTapSelect(entry.id);
+      };
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", done);
+    } else onBrowseGrab?.(e, entry.id);
   };
   const grip = (
     <span

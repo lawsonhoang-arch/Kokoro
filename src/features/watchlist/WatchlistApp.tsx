@@ -133,6 +133,24 @@ export default function WatchlistApp({
   );
   const [customAxes, setCustomAxes] = useState<string[]>(initialCustomAxes);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Multi-select (shaping only): tap titles to mark them, then drag any one of
+  // them to move the whole set at once. Held as ids so it survives re-sorts.
+  const [multiSel, setMultiSel] = useState<Set<string>>(() => new Set());
+  // the drag handlers are plain listeners, so they read the selection off a ref
+  const multiSelRef = useRef(multiSel);
+  useEffect(() => { multiSelRef.current = multiSel; }, [multiSel]);
+  const toggleMulti = (id: string) =>
+    setMultiSel((s) => {
+      const next = new Set(s);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  /** The ids a drag of `id` should carry: the whole selection if `id` is part
+   *  of it, otherwise just the one title being dragged. */
+  const dragBatch = (id: string) => {
+    const sel = multiSelRef.current;
+    return sel.has(id) ? [...sel] : [id];
+  };
 
   // Esc closes the detail modal
   useEffect(() => {
@@ -713,6 +731,16 @@ export default function WatchlistApp({
     g.style.left = "0px";
     g.style.top = "0px";
     g.dataset.ghost = "1";
+    // dragging one of several selected titles carries them all — say how many
+    // the grip is the drag source on touch, so walk up to the card/row for the id
+    const id = (srcEl.closest("[data-entry-id]") as HTMLElement | null)?.dataset.entryId;
+    const n = id && multiSelRef.current.has(id) ? multiSelRef.current.size : 0;
+    if (n > 1) {
+      const badge = document.createElement("span");
+      badge.className = "k-ghost__count";
+      badge.textContent = String(n);
+      g.appendChild(badge);
+    }
     document.body.appendChild(g);
     return { el: g, w: r.width, h: r.height, ox: r.width / 2, oy: r.height / 2 };
   };
@@ -1020,14 +1048,19 @@ export default function WatchlistApp({
       // a tap (no drag) on a rule token toggles tap-to-apply: pick it up, then
       // tap Everything or a collection to add it there (tap the token to cancel)
       if (d.kind === "token") setPickRule((p) => (p && p.cat === d.cat && p.key === d.key ? null : { cat: d.cat!, key: d.key! }));
+      // a tap on a title while shaping marks it, so several can be moved at once
+      else if (d.kind === "entry" && d.id) toggleMulti(d.id);
       return;
     }
     const tgt = findTarget(e.clientX, e.clientY, d.kind === "token" ? "token" : "entry", d.id);
     if (!tgt) return;
     if (d.kind === "entry") {
-      if (tgt.type === "entry") mergeOnto(d.id!, tgt.id);
-      else if (tgt.type === "group") addToGroup(d.id!, tgt.id);
-      else if (tgt.type === "loose") removeFromCollection(d.id!);
+      // A drag carries every selected title when the grabbed one is selected.
+      const batch = dragBatch(d.id!);
+      if (tgt.type === "entry") batch.forEach((id) => mergeOnto(id, tgt.id));
+      else if (tgt.type === "group") batch.forEach((id) => addToGroup(id, tgt.id));
+      else if (tgt.type === "loose") batch.forEach((id) => removeFromCollection(id));
+      if (batch.length > 1) setMultiSel(new Set());
     } else if (d.kind === "token") {
       if (tgt.type === "globals") addGlobalRule(d.cat!, d.key!);
       else if (tgt.type === "group") addGroupRule(tgt.id, d.cat!, d.key!);
@@ -1278,7 +1311,8 @@ export default function WatchlistApp({
       tagKeys: effTags(e, grp),
       glyphSet: GLYPH_SET,
       showScore,
-      selected: selectedId === e.id,
+      selected: selectedId === e.id || multiSel.has(e.id),
+      onTapSelect: sculpt ? toggleMulti : undefined,
       onOpen: (eid: string) => setSelectedId(eid),
       collections,
       inGroupId: grp ? grp.id : null,
@@ -1685,6 +1719,18 @@ export default function WatchlistApp({
         </div>
 
       </div>
+
+      {/* Multi-select bar — only while shaping, and only once something is
+          marked. Floats over the board so marking titles never reflows it. */}
+      {sculpt && multiSel.size > 0 && (
+        <div className="k-msel" role="status">
+          <span className="k-msel__n">{multiSel.size} selected</span>
+          <span className="k-msel__hint">Drag any one to move them together</span>
+          <button type="button" className="k-msel__btn" onClick={() => setMultiSel(new Set())}>
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Detail (browse) — full-screen modal overlay.
           Deliberately a child of .k-app, NOT .k-main: .k-main is
