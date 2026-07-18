@@ -1920,79 +1920,79 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
 }
 
 /* ============================================================
-   PHONE TEXT BREATHING ROOM
-   Placed last on purpose: the .k-hybrid / .k-entry base rules live further up
-   this file, so an earlier @media block would lose to them on equal specificity.
-   A 104px cover ate a third of a ~330px row, squeezing titles onto three lines
-   and clipping the meta line mid-word.
+   LIST HEADER + TAB RAIL
+   One streamlined app bar at every size: a back arrow in the corner and the
+   list name centred. The old editorial eyebrow / crumb / "N titles - N groups"
+   furniture is retired. Placed last so it wins over the base .k-strip rules
+   further up this file (they'd otherwise beat an earlier block on specificity).
+   ============================================================ */
+.k-app { --gutter: max(22px, 3vw); }
+
+.k-strip {
+  position: relative; display: block; text-align: center;
+  padding: 20px calc(var(--gutter) + 46px);
+  min-height: 44px;
+}
+/* back arrow, pinned to the corner and vertically centred on the name */
+.k-strip__eyebrow {
+  position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%);
+  gap: 0; margin: 0;
+}
+.k-strip__back {
+  width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%;
+}
+.k-strip__back svg { width: 16px; height: 16px; }
+.k-strip__rule,
+.k-strip__crumb-sep,
+.k-strip__crumb,
+.k-strip__backtxt,
+.k-strip__count { display: none; }
+.k-strip__lead { display: block; margin: 0; }
+.k-strip__title {
+  text-align: center; white-space: normal; overflow-wrap: anywhere;
+  font-size: clamp(23px, 2.4vw, 32px); line-height: 1.15; letter-spacing: -0.025em;
+}
+
+/* The rail is a horizontal scroller, and `overflow-x: auto` makes the OTHER
+   axis clip too — which sliced the active pill's glow off with a hard edge.
+   Pad the rail enough for the blur to fall off inside the clip, and tie the
+   highlight's insets to that padding so it still hugs the tab (a 2px bleed)
+   instead of stretching with the rail. */
+.k-tabsbar { --rail-pad: 16px; padding: var(--rail-pad) var(--gutter); }
+.k-tabhi { top: calc(var(--rail-pad) - 2px); bottom: calc(var(--rail-pad) - 2px); }
+.k-subtools { padding: 8px var(--gutter) 12px; }
+.k-scroll { padding: 14px var(--gutter) 140px; }
+
+/* ============================================================
+   PHONE ADJUSTMENTS — tighter gutter/scale, plus text breathing room.
    ============================================================ */
 @media (max-width: 520px) {
+  .k-app { --gutter: 16px; }
+  .k-strip { padding: 16px calc(var(--gutter) + 40px); }
+  .k-strip__back { width: 34px; height: 34px; }
+  .k-strip__back svg { width: 15px; height: 15px; }
+  .k-strip__title { font-size: clamp(23px, 7vw, 30px); }
+  .k-tabsbar { margin-top: 6px; }
+  .k-scroll { padding: 12px var(--gutter) 120px; }
+
+  /* A 104px cover ate a third of a ~330px row, squeezing titles onto three
+     lines and clipping the meta line mid-word. Give the words the space. */
   .k-hybrid { gap: 11px; padding: 12px 12px 12px 11px; }
   .k-hybrid__art { flex: 0 0 78px; min-height: 96px; }
   .k-hybrid__top { gap: 6px; }
   .k-hybrid__title { font-size: 15px; line-height: 1.3; }
   .k-hybrid__take { font-size: 12px; }
-  /* meta line ellipsises instead of cutting a word in half */
   .k-entry__sub { gap: 6px; }
   .k-entry__sub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  /* rows: the title needs the width more than the padding does */
   .k-entry { gap: 11px; padding: 11px 12px 11px 11px; }
 
-  /* ── ONE GUTTER FOR EVERYTHING ──────────────────────────────────────────
-     The header, tab rail, tools and content were landing on 12 / 22 / 22 / 16px,
-     so nothing lined up down the left edge. Anchor them all to the same value
-     (the content gutter), which is what the eye reads as the page margin. */
-  .k-app { --gutter: 16px; }
-  /* Run-up under the title goes on the MARGIN, not the padding: .k-tabhi (the
-     active-tab glow) is pinned to this rail's top/bottom, so padding here would
-     stretch that rounded highlight instead of just moving the rail down. */
-  .k-tabsbar { padding: 8px var(--gutter) 10px; margin-top: 16px; }
-  .k-subtools { padding: 10px var(--gutter) 10px; }
-  .k-scroll { padding: 12px var(--gutter) 120px; }
-
-  /* ── Phone header = simple app bar ───────────────────────────────────────
-     Just a back arrow in the corner and the list name centered. The editorial
-     eyebrow/crumbs and the titles·groups count are desktop-only chrome. */
-  /* padding stays symmetric so the absolutely-centred back arrow keeps lining
-     up with the name — the breathing room below lives on .k-tabsbar */
-  .k-strip {
-    position: relative; display: block; text-align: center;
-    padding: 18px calc(var(--gutter) + 38px);
-    min-height: 40px;
-  }
-  /* back arrow, pinned to the corner and vertically centred on the name */
-  .k-strip__eyebrow {
-    position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%);
-    gap: 0; margin: 0;
-  }
-  .k-strip__back {
-    width: 34px; height: 34px; padding: 0; justify-content: center;
-    border-radius: 50%;
-  }
-  .k-strip__back svg { width: 15px; height: 15px; }
-  /* drop the desktop crumb furniture + the count */
-  .k-strip__rule,
-  .k-strip__crumb-sep,
-  .k-strip__crumb,
-  .k-strip__backtxt,
-  .k-strip__count { display: none; }
-  /* the name: centred, wraps instead of running off-screen */
-  .k-strip__lead { display: block; margin: 0; }
-  .k-strip__title {
-    white-space: normal; overflow-wrap: anywhere; text-align: center;
-    /* a real page title: big enough to outweigh the tab pills below it */
-    font-size: clamp(23px, 7vw, 30px); line-height: 1.15; letter-spacing: -0.025em;
-  }
-
-  /* The tab rail scrolls horizontally; fade its trailing edge so a half-visible
-     tab reads as "keep scrolling" instead of a broken cut-off. */
+  /* fade the rail's trailing edge so a half-visible tab reads as "keep
+     scrolling" rather than a broken cut-off */
   .k-tabsbar {
     -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
     mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
   }
-  /* A classic 10px scrollbar track was eating the right gutter, so content sat
-     closer to the right edge than the left. Touch scrolls by dragging, so drop
-     the track and let both margins match. */
+  /* a 10px scrollbar track was eating the right gutter; touch scrolls by drag */
   .k-scroll { scrollbar-width: none; }
   .k-scroll::-webkit-scrollbar { width: 0; height: 0; }
 }
