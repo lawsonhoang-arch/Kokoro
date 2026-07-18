@@ -1918,3 +1918,31 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   from { transform: translate(-50%, calc(-50% + 8px)) scale(0.97); opacity: 0; }
   to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
+
+/* ============================================================
+   PHONE TEXT BREATHING ROOM
+   Placed last on purpose: the .k-hybrid / .k-entry base rules live further up
+   this file, so an earlier @media block would lose to them on equal specificity.
+   A 104px cover ate a third of a ~330px row, squeezing titles onto three lines
+   and clipping the meta line mid-word.
+   ============================================================ */
+@media (max-width: 520px) {
+  .k-hybrid { gap: 11px; padding: 12px 12px 12px 11px; }
+  .k-hybrid__art { flex: 0 0 78px; min-height: 96px; }
+  .k-hybrid__top { gap: 6px; }
+  .k-hybrid__title { font-size: 15px; line-height: 1.3; }
+  .k-hybrid__take { font-size: 12px; }
+  /* meta line ellipsises instead of cutting a word in half */
+  .k-entry__sub { gap: 6px; }
+  .k-entry__sub > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  /* rows: the title needs the width more than the padding does */
+  .k-entry { gap: 11px; padding: 11px 12px 11px 11px; }
+
+  /* The tab rail scrolls horizontally; fade its trailing edge so a half-visible
+     tab reads as "keep scrolling" instead of a broken cut-off. */
+  .k-tabsbar {
+    padding-right: 10px;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+  }
+}

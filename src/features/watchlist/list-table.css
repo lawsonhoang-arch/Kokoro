@@ -235,6 +235,12 @@
   gap: 12px;
 }
 .kg-item .k-cards .k-card { width: auto; height: 100%; min-width: 0; aspect-ratio: auto; margin: 0; }
+/* On the phone column the tracks stretch well past --card-min, so a fixed row
+   height left posters nearly square. Let each card take its own poster ratio at
+   whatever width its column gives it. (Per-card sizing is off on mobile, so the
+   span-based tall/wide variants aren't in play here.) */
+.kg--stack .kg-item .k-cards { grid-auto-rows: auto; }
+.kg--stack .kg-item .k-cards .k-card { aspect-ratio: 3 / 4; height: auto; }
 .kg-item .k-cards .k-card[data-size="wide"] { grid-column: span 2; }
 .kg-item .k-cards .k-card[data-size="tall"] { grid-row: span 2; }
 .kg-item .k-cards .k-card[data-size="big"]  { grid-column: span 2; grid-row: span 2; }
