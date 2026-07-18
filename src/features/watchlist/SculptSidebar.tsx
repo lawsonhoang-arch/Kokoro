@@ -200,9 +200,10 @@ export function SculptSidebar({
         </button>
         <div className="k-sidebar__eyebrow">Sculpt</div>
         <div className="k-sidebar__title">Organize your list</div>
+        {/* Short on purpose: as a wide top bar the old three-sentence version ran
+            to the edge and got clipped, which read as nav clutter. */}
         <div className="k-sidebar__hint">
-          Drag any rule onto <b>Everything</b> to apply it globally, or onto a <b>collection</b> to
-          scope it there. Stack as many as you like — they coexist.
+          Drag a rule onto <b>Everything</b> or a <b>collection</b>.
         </div>
       </div>
 

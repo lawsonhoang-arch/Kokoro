@@ -2076,11 +2076,25 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
 /* the stage keeps the chrome clear of the collapsed strip */
 .k-app[data-sculpt="on"] .k-stage { padding-top: 46px; }
 
-/* ---- compact chip tokens ---- */
-.k-sidebar__head { padding: 10px var(--gutter) 8px; }
+/* ---- chip tokens ---- */
+/* The palette can only be as tall as the chrome it covers (~199px) before it
+   starts hiding the toolbar, so the header earns its keep: the "SCULPT /
+   Organize your list" pair was the nav-looking clutter AND the height that was
+   slicing the last chip row. Keep just the one-line hint. */
+.k-sidebar__head {
+  padding: 8px calc(var(--gutter) + 44px) 4px var(--gutter);
+}
+.k-sidebar__eyebrow, .k-sidebar__title { display: none; }
+.k-sidebar__hint {
+  flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; margin: 0;
+}
 .k-sidebar__body {
   display: flex; flex-wrap: wrap; align-items: flex-start;
-  gap: 2px 26px; padding: 0 var(--gutter) 12px; overflow-y: auto;
+  gap: 8px 12px; padding: 0 var(--gutter) 12px; overflow-y: auto;
+  /* a soft tail instead of a hard slice if a row does overflow */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 18px), transparent);
 }
 /* Closed categories are compact pills in a row; the OPEN one drops to its own
    full-width row (order:9) so its chips spread across the whole bar. Sort has 20
@@ -2088,16 +2102,19 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
    it's about two. */
 .k-rsec { flex: 0 0 auto; min-width: 0; max-width: none; }
 .k-rsec.open { flex: 1 1 100%; order: 9; }
-.k-rsec__head { padding: 5px 8px; border-radius: 999px; }
+.k-rsec__head { padding: 7px 12px; border-radius: 999px; gap: 8px; }
 .k-rsec.closed .k-rsec__head { background: var(--surface); border-color: var(--line); }
-.k-rsec__body { padding: 2px 0 6px; }
+.k-rsec__title { font-size: 13.5px; }
+.k-rsec__body { padding: 6px 0 4px; }
 .k-rsec__hint { display: none; }          /* a line back per section */
-.k-rrows { flex-direction: row; flex-wrap: wrap; gap: 5px; }
+.k-rrows { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+/* roomy enough to read and to grab confidently, incl. on touch */
 .k-rrow {
-  padding: 4px 9px 4px 7px; gap: 5px; border-radius: 999px;
+  padding: 6px 12px 6px 9px; gap: 7px; border-radius: 999px;
   background: var(--surface); border-color: var(--line);
-  font-size: 12px; line-height: 1.2;
+  font-size: 13px; line-height: 1.25;
 }
+.k-rrow__icon { width: 21px; height: 21px; }
 .k-rrow__grip { display: none; }          /* the whole chip is the handle */
 .k-rrow__label { white-space: nowrap; }
 
