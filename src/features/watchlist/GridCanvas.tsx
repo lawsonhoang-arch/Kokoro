@@ -234,6 +234,25 @@ export function GridCanvas({
     window.addEventListener("pointerup", up);
   };
 
+  /** After a resize, the box springs into its new size instead of just stopping
+   *  dead — it should feel like something soft you let go of, not a rectangle
+   *  that snapped. `dir` picks the wobble: a box pulled wider rebounds on the
+   *  axis it was pulled along. */
+  const settle = (key: string, dir: "x" | "y" | "xy") => {
+    // Deferred: releasing the handle also clears dragKey, and that re-render
+    // rewrites className — adding the class synchronously here would just be
+    // overwritten by React's commit. Run after the flush instead.
+    setTimeout(() => {
+      const el = ref.current?.querySelector(`.kg-item[data-key="${key}"]`) as HTMLElement | null;
+      if (!el) return;
+      const cls = "kg-item--settle-" + dir;
+      el.classList.remove("kg-item--settle-x", "kg-item--settle-y", "kg-item--settle-xy");
+      void el.offsetWidth; // restart the animation when two resizes land back to back
+      el.classList.add(cls);
+      setTimeout(() => el.classList.remove(cls), 620);
+    }, 0);
+  };
+
   const startResize = (e: RPE, key: string, dir: "e" | "s" | "se") => {
     if (!editable) return;
     e.preventDefault();
@@ -255,6 +274,7 @@ export function GridCanvas({
       document.body.classList.remove("k-resizing");
       setDragKey(null);
       setLayout((prev) => { const c = compact(prev, keys); persist(c); return c; });
+      settle(key, dir === "e" ? "x" : dir === "s" ? "y" : "xy");
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -376,6 +396,7 @@ export function GridCanvas({
           try { localStorage.setItem(storageKey + ":mh", JSON.stringify(cur)); } catch {}
           return cur;
         });
+        settle(key, "y"); // mobile only resizes height
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);

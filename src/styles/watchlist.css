@@ -2396,30 +2396,30 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
    on .k-app, so it replays every time you enter Shape mode. */
 
 /* the tabs and toolbar rise to reveal what's underneath */
-.k-app[data-sculpt="on"] .k-tabsbar { animation: k-lift .34s cubic-bezier(.2, .75, .3, 1) both; }
-.k-app[data-sculpt="on"] .k-subtools { animation: k-lift .34s cubic-bezier(.2, .75, .3, 1) .03s both; }
+.k-app[data-sculpt="on"] .k-tabsbar { animation: k-lift .48s cubic-bezier(.25, .6, .3, 1) both; }
+.k-app[data-sculpt="on"] .k-subtools { animation: k-lift .48s cubic-bezier(.25, .6, .3, 1) .04s both; }
 @keyframes k-lift {
-  from { transform: translateY(9px); opacity: .55; }
+  from { transform: translateY(6px); opacity: .7; }
   to   { transform: translateY(0);   opacity: 1; }
 }
 
 /* the palette unfolds into the space they leave */
 .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
-  animation: k-palette-in .38s cubic-bezier(.2, .75, .3, 1) both;
+  animation: k-palette-in .5s cubic-bezier(.25, .6, .3, 1) both;
   transform-origin: top center;
 }
 @keyframes k-palette-in {
-  from { opacity: 0; transform: translateY(-10px) scaleY(.9); }
+  from { opacity: 0; transform: translateY(-6px) scaleY(.94); }
   60%  { opacity: 1; }
   to   { opacity: 1; transform: translateY(0) scaleY(1); }
 }
 
 /* rule tokens cascade in behind it — the bit that makes the bar feel alive */
 .k-app[data-sculpt="on"] .k-rrow {
-  animation: k-tok-in .3s cubic-bezier(.2, .8, .3, 1.1) both;
+  animation: k-tok-in .38s cubic-bezier(.25, .7, .3, 1.02) both;
 }
 @keyframes k-tok-in {
-  from { opacity: 0; transform: translateY(6px) scale(.94); }
+  from { opacity: 0; transform: translateY(4px) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .k-app[data-sculpt="on"] .k-rrow:nth-child(1)  { animation-delay: .10s; }
@@ -2478,4 +2478,64 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
     animation: none !important;
   }
   .k-rrow:hover .k-rrow__icon, .k-rrow:hover .k-rrow__grip { transform: none !important; }
+}
+
+/* ===== boxes rebound when you resize them ================================
+   A box used to stop dead the instant you let go, which made it read as a
+   rigid rectangle that jumped between column widths. It now springs into its
+   new size with a squash-and-stretch settle: it overshoots on the axis you
+   pulled and compresses on the other, then rocks back. Volume looks preserved,
+   which is what sells "soft" — a plain scale bounce just reads as a blip.
+   Origin is top-left because that's the corner the box grows from. */
+/* scoped to [data-sculpt="on"] to outrank the .kg-item--edit entrance rule,
+   which is fill-mode:both and so keeps holding animation-name after it ends */
+.kg-item--settle-x, .kg-item--settle-y, .kg-item--settle-xy {
+  transform-origin: top left;
+  will-change: transform;
+}
+.k-app[data-sculpt="on"] .kg-item--settle-x  { animation: kg-settle-x  .62s cubic-bezier(.22, .68, .3, 1); }
+.k-app[data-sculpt="on"] .kg-item--settle-y  { animation: kg-settle-y  .62s cubic-bezier(.22, .68, .3, 1); }
+.k-app[data-sculpt="on"] .kg-item--settle-xy { animation: kg-settle-xy .62s cubic-bezier(.22, .68, .3, 1); }
+
+/* pulled wider -> stretches horizontally, pinches vertically, then rocks back */
+@keyframes kg-settle-x {
+  0%   { transform: scale(1,     1); }
+  26%  { transform: scale(1.022, .982); }
+  52%  { transform: scale(.991,  1.007); }
+  76%  { transform: scale(1.004, .998); }
+  100% { transform: scale(1,     1); }
+}
+/* pulled taller -> the same, on the other axis */
+@keyframes kg-settle-y {
+  0%   { transform: scale(1,     1); }
+  26%  { transform: scale(.982,  1.022); }
+  52%  { transform: scale(1.007, .991); }
+  76%  { transform: scale(.998,  1.004); }
+  100% { transform: scale(1,     1); }
+}
+/* corner drag -> a rounder wobble, no single axis to favour */
+@keyframes kg-settle-xy {
+  0%   { transform: scale(1,     1); }
+  26%  { transform: scale(1.018, 1.018); }
+  52%  { transform: scale(.993,  .993); }
+  76%  { transform: scale(1.003, 1.003); }
+  100% { transform: scale(1,     1); }
+}
+
+/* and it lifts slightly, so it reads as picked up while being reshaped */
+body.k-resizing .kg-item--active,
+body.k-resizing .kg-item--dragging {
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.55);
+}
+/* the handle you're holding swells a little */
+.kg-rz { transition: transform .15s cubic-bezier(.2, .8, .3, 1.3), opacity .15s ease; }
+@media (pointer: fine) {
+  .kg-item:hover .kg-rz { opacity: 1; }
+  .kg-rz:hover, .kg-rz:active { transform: scale(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kg-item--settle-x, .kg-item--settle-y, .kg-item--settle-xy { animation: none !important; }
+
+  .kg-rz:hover, .kg-rz:active { transform: none !important; }
 }
