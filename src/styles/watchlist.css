@@ -2386,3 +2386,96 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   }
   .drop-armed { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 45%, transparent); }
 }
+
+/* ===== entering Shape mode ==============================================
+   The palette lives below the tabs and Shape-list button in the flow, so
+   turning it on pushes the board down. That was instant and read as a jump.
+   Now the chrome above it lifts, the palette unfolds into the gap it leaves,
+   and the rule tokens cascade in after it — one continuous move instead of a
+   layout snap. Driven entirely off the data-sculpt attribute that was already
+   on .k-app, so it replays every time you enter Shape mode. */
+
+/* the tabs and toolbar rise to reveal what's underneath */
+.k-app[data-sculpt="on"] .k-tabsbar { animation: k-lift .34s cubic-bezier(.2, .75, .3, 1) both; }
+.k-app[data-sculpt="on"] .k-subtools { animation: k-lift .34s cubic-bezier(.2, .75, .3, 1) .03s both; }
+@keyframes k-lift {
+  from { transform: translateY(9px); opacity: .55; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* the palette unfolds into the space they leave */
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
+  animation: k-palette-in .38s cubic-bezier(.2, .75, .3, 1) both;
+  transform-origin: top center;
+}
+@keyframes k-palette-in {
+  from { opacity: 0; transform: translateY(-10px) scaleY(.9); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+/* rule tokens cascade in behind it — the bit that makes the bar feel alive */
+.k-app[data-sculpt="on"] .k-rrow {
+  animation: k-tok-in .3s cubic-bezier(.2, .8, .3, 1.1) both;
+}
+@keyframes k-tok-in {
+  from { opacity: 0; transform: translateY(6px) scale(.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.k-app[data-sculpt="on"] .k-rrow:nth-child(1)  { animation-delay: .10s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(2)  { animation-delay: .13s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(3)  { animation-delay: .16s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(4)  { animation-delay: .19s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(5)  { animation-delay: .22s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(6)  { animation-delay: .25s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(7)  { animation-delay: .28s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(8)  { animation-delay: .31s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(9)  { animation-delay: .34s; }
+.k-app[data-sculpt="on"] .k-rrow:nth-child(n+10) { animation-delay: .37s; }
+
+/* the section headings arrive just ahead of their tokens */
+.k-app[data-sculpt="on"] .k-rsec__head {
+  animation: k-tok-in .28s cubic-bezier(.2, .8, .3, 1.1) .06s both;
+}
+
+/* --- life inside the rules bar ----------------------------------------- */
+/* a token's icon leans in when you're about to grab it */
+.k-rrow__icon { transition: transform .18s cubic-bezier(.2, .8, .3, 1.3); }
+@media (pointer: fine) {
+  .k-rrow:hover .k-rrow__icon { transform: scale(1.16) rotate(-6deg); }
+}
+/* the grip only shows itself once you're on the token */
+.k-rrow__grip { transition: opacity .16s ease, transform .16s ease; opacity: .3; }
+@media (pointer: fine) {
+  .k-rrow:hover .k-rrow__grip { opacity: .85; transform: translateX(1px); }
+}
+/* an applied token's count pops when it changes */
+.k-rrow__count { animation: k-mark-pop .28s cubic-bezier(.2, .8, .3, 1.2); }
+/* a token already in play sits slightly forward */
+.k-rrow.applied { transition: box-shadow .2s ease; }
+/* the paint brush pulses while it's armed and waiting for a target */
+.k-rrow__paint.on { animation: k-brush 1.1s ease-in-out infinite; }
+@keyframes k-brush {
+  0%, 100% { transform: scale(1)    rotate(0deg); }
+  50%      { transform: scale(1.14) rotate(-8deg); }
+}
+/* picking a token up dims the rest, so the armed one reads as chosen */
+.k-rrow.painting { animation: k-mark-pop .26s cubic-bezier(.2, .8, .3, 1.2); }
+
+/* --- and the board answers --------------------------------------------- */
+/* boxes ease into their edit chrome rather than snapping into it */
+.kg-item { transition: box-shadow .22s ease, border-color .22s ease; }
+.k-app[data-sculpt="on"] .kg-item--edit { animation: k-tok-in .34s cubic-bezier(.2, .8, .3, 1.05) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-app[data-sculpt="on"] .k-tabsbar,
+  .k-app[data-sculpt="on"] .k-subtools,
+  .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed),
+  .k-app[data-sculpt="on"] .k-rrow,
+  .k-app[data-sculpt="on"] .k-rsec__head,
+  .k-app[data-sculpt="on"] .kg-item--edit,
+  .k-rrow__count, .k-rrow.painting, .k-rrow__paint.on {
+    animation: none !important;
+  }
+  .k-rrow:hover .k-rrow__icon, .k-rrow:hover .k-rrow__grip { transform: none !important; }
+}
