@@ -27,7 +27,9 @@ const STACK_MIN_H = 140; // px — smallest useful height for a phone box
 
 export type GRect = { x: number; y: number; w: number; h: number };
 type GLayout = Record<string, GRect>;
-export type GridItem = { key: string; node: ReactNode; rows: number; tint?: CSSProperties };
+// `full` packs the box across the whole width (its own row) — used for the
+// catch-all "Unsorted" box so it sits under the collections rather than beside one.
+export type GridItem = { key: string; node: ReactNode; rows: number; tint?: CSSProperties; full?: boolean };
 
 const collides = (a: GRect, b: GRect) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -92,9 +94,10 @@ function packFrom(items: GridItem[], startY = 0, base: GLayout = {}): GLayout {
   let x = 0, y = startY, rowMax = 0;
   for (const it of items) {
     const h = Math.max(MIN_H, it.rows);
-    if (x + DEFAULT_W > COLS) { x = 0; y += rowMax; rowMax = 0; }
-    out[it.key] = { x, y, w: DEFAULT_W, h };
-    x += DEFAULT_W;
+    const w = it.full ? COLS : DEFAULT_W;
+    if (x + w > COLS) { x = 0; y += rowMax; rowMax = 0; }
+    out[it.key] = { x, y, w, h };
+    x += w;
     rowMax = Math.max(rowMax, h);
   }
   return out;

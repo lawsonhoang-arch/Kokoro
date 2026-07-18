@@ -1164,17 +1164,28 @@ export default function WatchlistApp({
   // bucket isn't a box; it clutters the board (it's still on the All tab).
   const canvasColls = groups.filter((g) => !g.parentId);
   const canvasSections = listSections.filter((s) => s.label);
-  const panelKeys = [...canvasColls.map((g) => "g:" + g.id), ...canvasSections.map((s) => "s:" + s.key)];
-  // Ungrouped titles that aren't a named box (the catch-all bucket) don't belong
-  // to any collection — on the free-form board they float LOOSE on the canvas so
-  // you can see them and drag them into a collection to file them.
-  const looseTitles = listSections.filter((s) => !s.label).flatMap((s) => s.items);
+  // Titles in no collection get their own "Unsorted" box, listed last so it packs
+  // below the real ones. Derive from `singles` (ungrouped + filter-aware) rather
+  // than the catch-all section: in browse mode that section holds the WHOLE list,
+  // which would show every title as unsorted. Exclude anything already visible in
+  // a named section box so nothing appears twice.
+  const inSectionBox = new Set(canvasSections.flatMap((s) => s.items.map((i) => i.id)));
+  const looseTitles = singles.filter((e) => !inSectionBox.has(e.id));
+  // keep the box while shaping even when empty, so there's always a drop target
+  const showLooseBox = looseTitles.length > 0 || sculpt;
+  const panelKeys = [
+    ...canvasColls.map((g) => "g:" + g.id),
+    ...canvasSections.map((s) => "s:" + s.key),
+    ...(showLooseBox ? ["loose"] : []),
+  ];
 
   // Estimate a box's natural height in GridCanvas rows (~32px/row) from how many
   // titles it holds, so the auto-packed default isn't uniformly stubby.
   const estRows = (key: string) => {
     let n = 0;
-    if (key.startsWith("g:")) {
+    if (key === "loose") {
+      n = looseTitles.length;
+    } else if (key.startsWith("g:")) {
       const g = groupById[key.slice(2)];
       n = g ? g.entryIds.length : 0;
     } else {
@@ -1312,6 +1323,32 @@ export default function WatchlistApp({
       </GroupCard>
     );
   };
+  // Unsorted titles are a box on the board like any other — not an edit-mode-only
+  // strip — so they're visible while browsing and sit below the real collections.
+  const renderLooseBox = (): React.ReactNode => (
+    <div
+      className={
+        "k-group k-loosebox" +
+        (!sculpt ? " k-group--browse" : "") +
+        (armed && armed.type === "loose" ? " drop-armed" : "")
+      }
+      data-drop="loose"
+    >
+      <div className="k-group__head">
+        <span className="k-group__name k-loosebox__name">Unsorted</span>
+        <span className="k-group__count">{looseTitles.length}</span>
+      </div>
+      <div className="k-group__rows">
+        {looseTitles.length > 0 ? (
+          renderList(looseTitles, null)
+        ) : (
+          <div className="k-coll-empty">
+            Nothing loose — drop a title here to take it out of its collection.
+          </div>
+        )}
+      </div>
+    </div>
+  );
   const renderStatusSection = (s: Section) => (
     <div
       className="k-section"
@@ -1619,28 +1656,19 @@ export default function WatchlistApp({
                     key,
                     rows: estRows(key),
                     tint: tintFor(key),
-                    node: key.startsWith("g:")
-                      ? renderCollection(groupById[key.slice(2)])
-                      : renderStatusSection(sectionByKey[key.slice(2)]),
+                    full: key === "loose",
+                    node:
+                      key === "loose"
+                        ? renderLooseBox()
+                        : key.startsWith("g:")
+                          ? renderCollection(groupById[key.slice(2)])
+                          : renderStatusSection(sectionByKey[key.slice(2)]),
                   }))}
                   editable={sculpt}
                   storageKey={GRID_KEY + id}
                   resetToken={resetToken}
                 />
               )
-            )}
-
-            {/* unsorted titles float loose on the free-form canvas (Shape mode);
-                always present so a title can be dropped here to unsort it */}
-            {effectiveActive === "list" && gridLayout && sculpt && (
-              <div className={"k-loose" + (looseTitles.length === 0 ? " k-loose--empty" : "") + ((armed && armed.type === "loose") ? " drop-armed" : "")} data-drop="loose">
-                <div className="k-loose__label">
-                  {looseTitles.length > 0
-                    ? `Unsorted · ${looseTitles.length} loose on the canvas — drag any into a collection to file it`
-                    : "Unsorted — drop a title here to remove it from its collection"}
-                </div>
-                {looseTitles.length > 0 && renderList(looseTitles, null)}
-              </div>
             )}
               </Fragment>
             )}
