@@ -1323,30 +1323,22 @@ export default function WatchlistApp({
       </GroupCard>
     );
   };
-  // Unsorted titles are a box on the board like any other — not an edit-mode-only
-  // strip — so they're visible while browsing and sit below the real collections.
+  // Unsorted titles sit loose on the board — no panel, no header, no count. They
+  // are simply the titles that don't belong to a collection, so wrapping them in
+  // a box implied a grouping that doesn't exist. Still a drop target so a title
+  // can be dragged out of a collection onto them.
   const renderLooseBox = (): React.ReactNode => (
     <div
-      className={
-        "k-group k-loosebox" +
-        (!sculpt ? " k-group--browse" : "") +
-        (armed && armed.type === "loose" ? " drop-armed" : "")
-      }
+      className={"k-loosebare" + (armed && armed.type === "loose" ? " drop-armed" : "")}
       data-drop="loose"
     >
-      <div className="k-group__head">
-        <span className="k-group__name k-loosebox__name">Unsorted</span>
-        <span className="k-group__count">{looseTitles.length}</span>
-      </div>
-      <div className="k-group__rows">
-        {looseTitles.length > 0 ? (
-          renderList(looseTitles, null)
-        ) : (
-          <div className="k-coll-empty">
-            Nothing loose — drop a title here to take it out of its collection.
-          </div>
-        )}
-      </div>
+      {looseTitles.length > 0 ? (
+        renderList(looseTitles, null)
+      ) : (
+        <div className="k-loosebare__empty">
+          Drop a title here to take it out of its collection.
+        </div>
+      )}
     </div>
   );
   const renderStatusSection = (s: Section) => (

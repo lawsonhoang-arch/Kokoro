@@ -436,6 +436,7 @@ export function GridCanvas({
         return (
           <div
             key={it.key}
+            data-key={it.key}
             className={"kg-item" + (active ? " kg-item--active" : "") + (editable ? " kg-item--edit" : "")}
             style={{
               left: pxX(r.x),
