@@ -339,6 +339,16 @@ export default function WatchlistApp({
   // per-list key. Reset bumps this token so GridCanvas re-packs into a tidy grid.
   const [resetToken, setResetToken] = useState(0);
   const resetLayout = () => setResetToken((t) => t + 1);
+  // Phones render the board as a single full-width column, so per-card sizing
+  // has nothing to size against — reshaping there is limited to box height.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
   const seedRef = useRef(1);
 
   // Per-card "bento" size inside a box — cards can be cycled bigger so the board
@@ -1243,7 +1253,7 @@ export default function WatchlistApp({
         mode={mode}
         onGrab={onGrabEntry}
         size={cardSizes[e.id] || "reg"}
-        onResize={sculpt && gridLayout ? () => cycleCardSize(e.id) : undefined}
+        onResize={sculpt && gridLayout && !isNarrow ? () => cycleCardSize(e.id) : undefined}
       />
     );
   };

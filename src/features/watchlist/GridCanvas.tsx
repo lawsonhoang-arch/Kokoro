@@ -23,6 +23,7 @@ const GAP = 12;
 const DEFAULT_W = 12; // half-width by default → two boxes per row
 const MIN_W = 6;
 const MIN_H = 6;
+const STACK_MIN_H = 140; // px — smallest useful height for a phone box
 
 export type GRect = { x: number; y: number; w: number; h: number };
 type GLayout = Record<string, GRect>;
@@ -124,6 +125,8 @@ export function GridCanvas({
   // single full-width column with an explicit order (kept separate from the 2D
   // desktop layout so reordering on a phone never disturbs the desktop board).
   const [mOrder, setMOrder] = useState<string[]>([]);
+  // per-box heights for the phone column (px). Unset = natural height.
+  const [mHeights, setMHeights] = useState<Record<string, number>>({});
   const keys = items.map((i) => i.key);
   const keySig = keys.join(",");
 
@@ -165,12 +168,21 @@ export function GridCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetToken]);
 
-  // load the saved single-column (mobile) order
+  // load the saved single-column (mobile) order + per-box heights. Both live
+  // under their own keys so reshaping on a phone never disturbs the desktop board.
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(storageKey + ":m") || "[]");
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (Array.isArray(s)) setMOrder(s.filter((k: unknown): k is string => typeof k === "string"));
+    } catch {}
+    try {
+      const h = JSON.parse(localStorage.getItem(storageKey + ":mh") || "{}");
+      if (h && typeof h === "object" && !Array.isArray(h)) {
+        const clean: Record<string, number> = {};
+        for (const [k, v] of Object.entries(h)) if (typeof v === "number" && v > 0) clean[k] = v;
+        setMHeights(clean);
+      }
     } catch {}
   }, [storageKey]);
 
@@ -335,22 +347,79 @@ export function GridCanvas({
       window.addEventListener("pointerup", up);
       window.addEventListener("pointercancel", up);
     };
+    // Phone reshaping is limited to HEIGHT (the column is always full-width):
+    // drag the bottom edge to show more or less of a box. Stored per-box under
+    // its own key, so it never touches the desktop board's 2D layout.
+    const startStackResize = (e: RPE, key: string) => {
+      if (!editable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const bodyEl = ref.current?.querySelector(
+        `.kg-item--stack[data-key="${key}"] .kg-item__body`,
+      ) as HTMLElement | null;
+      const startH = bodyEl ? bodyEl.getBoundingClientRect().height : 240;
+      const sy = e.clientY;
+      document.body.classList.add("k-resizing");
+      const move = (ev: PointerEvent) => {
+        const h = Math.max(STACK_MIN_H, Math.round(startH + (ev.clientY - sy)));
+        setMHeights((prev) => (prev[key] === h ? prev : { ...prev, [key]: h }));
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+        document.body.classList.remove("k-resizing");
+        setMHeights((cur) => {
+          try { localStorage.setItem(storageKey + ":mh", JSON.stringify(cur)); } catch {}
+          return cur;
+        });
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+    };
+    // double-tap the handle clears the height back to natural (show everything)
+    const clearStackHeight = (key: string) =>
+      setMHeights((prev) => {
+        if (!(key in prev)) return prev;
+        const next = { ...prev };
+        delete next[key];
+        try { localStorage.setItem(storageKey + ":mh", JSON.stringify(next)); } catch {}
+        return next;
+      });
     return (
       <div ref={ref} className="kg kg--stack">
-        {ordered.map((it, i) => (
-          <div key={it.key} data-key={it.key} className={"kg-item kg-item--stack" + (dragKey === it.key ? " kg-item--dragging" : "")}>
-            {editable && (
+        {ordered.map((it, i) => {
+          const h = mHeights[it.key];
+          return (
+            <div key={it.key} data-key={it.key} className={"kg-item kg-item--stack" + (dragKey === it.key ? " kg-item--dragging" : "")}>
+              {editable && (
+                <div
+                  className="kg-move kg-move--stack"
+                  onPointerDown={(e) => startStackDrag(e, it.key)}
+                  title="Drag to reorder this box"
+                >
+                  <span className="kg-move__pill"><Ico name="move" s={12} /> Box {i + 1} · drag to move</span>
+                </div>
+              )}
               <div
-                className="kg-move kg-move--stack"
-                onPointerDown={(e) => startStackDrag(e, it.key)}
-                title="Drag to reorder this box"
+                className={"kg-item__body k-panel" + (h ? " is-sized" : "")}
+                style={h ? { ...it.tint, height: h } : it.tint}
               >
-                <span className="kg-move__pill"><Ico name="move" s={12} /> Box {i + 1} · drag to move</span>
+                {it.node}
               </div>
-            )}
-            <div className="kg-item__body k-panel" style={it.tint}>{it.node}</div>
-          </div>
-        ))}
+              {editable && (
+                <div
+                  className="kg-rz--stack"
+                  onPointerDown={(e) => startStackResize(e, it.key)}
+                  onDoubleClick={() => clearStackHeight(it.key)}
+                  title="Drag to set this box's height · double-tap to fit contents"
+                  aria-label="Resize box height"
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }

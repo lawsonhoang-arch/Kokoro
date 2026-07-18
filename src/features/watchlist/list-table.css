@@ -47,10 +47,29 @@
 .kg-item--dragging .kg-item__body.k-panel { box-shadow: 0 22px 48px -20px rgba(0,0,0,.7), 0 0 0 1px var(--accent); transform: scale(1.015); }
 .kg-item--dragging .kg-move__pill { background: var(--accent); filter: brightness(1.05); }
 
+/* Phone reshaping = HEIGHT only. When a box has an explicit height its contents
+   scroll inside it, so you can show more or less of a long collection. */
+.kg-item--stack .kg-item__body.k-panel.is-sized { overflow-y: auto; overscroll-behavior: contain; }
+.kg-rz--stack {
+  height: 18px; margin: -7px 0 0; border-radius: 0 0 var(--radius) var(--radius);
+  cursor: ns-resize; touch-action: none; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.kg-rz--stack::after {
+  content: ""; width: 44px; height: 4px; border-radius: 100px;
+  background: var(--line-strong); opacity: .75; transition: background .14s, opacity .14s, width .14s;
+}
+.kg-rz--stack:hover::after, .kg-rz--stack:active::after { background: var(--accent); opacity: 1; width: 64px; }
+/* the grab bar needs a real target on touch */
+@media (pointer: coarse) { .kg-rz--stack { height: 26px; margin-top: -6px; } }
+
 /* Reorder mode: collapse every box to its header (name + count) so the whole
    set fits on screen — you can then drag one past another with no scrolling,
    even when each box is taller than the viewport. The dragged one shows in full. */
 .kg--reordering .kg-item--stack { transition: transform .16s cubic-bezier(.2,.7,.3,1); }
+/* while reordering, a set height must still collapse (beats .is-sized) */
+.kg--reordering .kg-item--stack .kg-item__body.k-panel.is-sized { max-height: 58px; overflow: hidden; }
+.kg--reordering .kg-rz--stack { display: none; }
 .kg--reordering .kg-item__body.k-panel {
   max-height: 58px; overflow: hidden;
   -webkit-mask-image: linear-gradient(#000 62%, transparent);
