@@ -26,12 +26,20 @@ export function DisplayMenu({
   showLayout,
   onDisplay,
   onLayout,
+  cardMin,
+  cardMinLo,
+  cardMinHi,
+  onCardMin,
 }: {
   display: ViewMode;
   layout: LayoutMode;
   showLayout: boolean;
   onDisplay: (v: ViewMode) => void;
   onLayout: (l: LayoutMode) => void;
+  cardMin: number;
+  cardMinLo: number;
+  cardMinHi: number;
+  onCardMin: (v: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -74,6 +82,24 @@ export function DisplayMenu({
               {display === d.v && <span className="dm__check">✓</span>}
             </button>
           ))}
+          {/* Overall scale. Lives in this menu (not the toolbar) to keep the
+              bar uncluttered — it's already the "how titles are shown" control. */}
+          <div className="dm__sec dm__sec--div">Size</div>
+          <div className="dm__size">
+            <span className="dm__sizeg dm__sizeg--sm" aria-hidden="true" />
+            <input
+              className="dm__range"
+              type="range"
+              min={cardMinLo}
+              max={cardMinHi}
+              step={2}
+              value={cardMin}
+              onChange={(e) => onCardMin(Number(e.target.value))}
+              aria-label="Card size — smaller fits more per row"
+            />
+            <span className="dm__sizeg dm__sizeg--lg" aria-hidden="true" />
+          </div>
+          <div className="dm__note">Smaller fits more per row</div>
           {showLayout && (
             <>
               <div className="dm__sec dm__sec--div">Arrangement</div>

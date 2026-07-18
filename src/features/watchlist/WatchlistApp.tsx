@@ -58,6 +58,11 @@ import {
 const GLYPH_SET = "orbs" as const;
 const DIRECTION = "paper";
 const DENSITY = "regular";
+// card-grid scale bounds (px): the min column width cards fill against.
+// LOWER = smaller cards = more per row.
+const CARD_MIN_LO = 88;
+const CARD_MIN_HI = 260;
+const CARD_MIN_DEFAULT = 126;
 
 const VIEW_KEY = "kokoro_view";
 const LAYOUT_KEY = "kokoro_layout_mode";
@@ -339,6 +344,22 @@ export default function WatchlistApp({
   // per-list key. Reset bumps this token so GridCanvas re-packs into a tidy grid.
   const [resetToken, setResetToken] = useState(0);
   const resetLayout = () => setResetToken((t) => t + 1);
+  // Overall card scale: the min column width the card grid fills against, so a
+  // smaller value fits MORE cards per row. Separate from per-card form factor.
+  // NOTE: distinct from CARDSIZE_KEY below, which stores the per-card form factor
+  const CARDSCALE_KEY = "kokoro_cardscale_" + id;
+  const [cardMin, setCardMin] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem(CARDSCALE_KEY));
+      return v >= CARD_MIN_LO && v <= CARD_MIN_HI ? v : CARD_MIN_DEFAULT;
+    } catch {
+      return CARD_MIN_DEFAULT;
+    }
+  });
+  const chooseCardMin = (v: number) => {
+    setCardMin(v);
+    try { localStorage.setItem(CARDSCALE_KEY, String(v)); } catch {}
+  };
   // Phones render the board as a single full-width column, so per-card sizing
   // has nothing to size against — reshaping there is limited to box height.
   const [isNarrow, setIsNarrow] = useState(false);
@@ -1333,7 +1354,13 @@ export default function WatchlistApp({
       data-sculpt={sculpt ? "on" : "off"}
       data-density={DENSITY}
       data-picking={pickRule ? "1" : undefined}
-      style={accent ? ({ "--accent": accent } as React.CSSProperties) : undefined}
+      style={
+        {
+          ...(accent ? { "--accent": accent } : null),
+          // drives how many cards fit per row (and their size) everywhere
+          "--card-min": cardMin + "px",
+        } as React.CSSProperties
+      }
     >
       <div className="k-main">
         <SculptSidebar
@@ -1465,6 +1492,10 @@ export default function WatchlistApp({
               showLayout={false}
               onDisplay={chooseView}
               onLayout={chooseLayout}
+              cardMin={cardMin}
+              cardMinLo={CARD_MIN_LO}
+              cardMinHi={CARD_MIN_HI}
+              onCardMin={chooseCardMin}
             />
             {/* layout toggle — the way to get reshapeable boxes, obvious in Shape mode */}
             {sculpt && (

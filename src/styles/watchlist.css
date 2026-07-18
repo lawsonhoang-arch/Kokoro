@@ -1447,7 +1447,8 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 .k-cards { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; align-content: flex-start; }
 .k-card {
   position: relative; display: block; flex: 0 0 auto;
-  width: 196px; aspect-ratio: 3/4;
+  /* standalone card grids (outside a box) scale off the same size slider */
+  width: calc(var(--card-min, 126px) * 1.556); aspect-ratio: 3/4;
   border-radius: var(--radius-lg); overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1701,7 +1702,7 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 .k-panel .k-card { flex: 0 0 auto; min-width: 0; }
 .k-panel .k-rows { padding-bottom: 4px; }
 .k-panel .k-cards { min-width: 0; gap: 14px; }
-.k-panel .k-card { width: 176px; }
+.k-panel .k-card { width: calc(var(--card-min, 126px) * 1.4); }
 .k-app[data-density="compact"] .k-panel .k-card { width: 160px; }
 .k-app[data-density="comfy"]   .k-panel .k-card { width: 194px; }
 

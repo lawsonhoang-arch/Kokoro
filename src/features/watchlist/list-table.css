@@ -20,6 +20,33 @@
 .dm__hint { font-size: 11px; color: var(--ink-faint); }
 .dm__check { color: var(--accent); font-size: 13px; }
 
+/* ── Size slider (overall card scale — how many fit per row) ─────────────── */
+.dm__size { display: flex; align-items: center; gap: 10px; padding: 4px 10px 2px; }
+.dm__sizeg { flex: 0 0 auto; border-radius: 3px; background: var(--ink-faint); opacity: .75; }
+.dm__sizeg--sm { width: 8px; height: 10px; }
+.dm__sizeg--lg { width: 13px; height: 16px; }
+.dm__note { font-size: 10.5px; color: var(--ink-faint); padding: 2px 10px 8px; }
+.dm__range {
+  flex: 1; min-width: 0; height: 20px; margin: 0;
+  -webkit-appearance: none; appearance: none; background: none; cursor: pointer; touch-action: none;
+}
+.dm__range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 100px; background: var(--line-strong);
+}
+.dm__range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 15px; height: 15px; margin-top: -5.5px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface);
+  box-shadow: 0 1px 4px -1px rgba(0,0,0,.5); transition: transform .12s;
+}
+.dm__range:active::-webkit-slider-thumb { transform: scale(1.15); }
+.dm__range::-moz-range-track { height: 4px; border-radius: 100px; background: var(--line-strong); }
+.dm__range::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface);
+}
+.dm__range:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
 
 /* ── Alignment guides (free-form canvas snap lines) ─────────────────────── */
 .k-guide { position: absolute; z-index: 40; pointer-events: none; background: var(--accent); opacity: .9; }
@@ -171,9 +198,13 @@
 /* grid-auto-rows: max-content keeps every row at its natural card height — without
    it, a box with more cards than fit compresses the (overflow:hidden) cards to a
    sliver instead of letting the box scroll. */
-.kg-item .k-rows { display: grid; grid-template-columns: 1fr; grid-auto-rows: max-content; row-gap: 0; column-gap: 22px; align-content: start; }
-@container panel (min-width: 560px) { .kg-item .k-rows { grid-template-columns: 1fr 1fr; } }
-@container panel (min-width: 880px) { .kg-item .k-rows { grid-template-columns: 1fr 1fr 1fr; } }
+/* Rows/hybrid columns fill against the same size slider (a row needs roughly
+   twice a card's width), so one control scales every display. */
+.kg-item .k-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-min, 126px) * 2.15), 1fr));
+  grid-auto-rows: max-content; row-gap: 0; column-gap: 22px; align-content: start;
+}
 
 /* ── Airy items: inside a box the cards drop their own box (border/fill/shadow)
    and read as light rows split by a hairline — no more "box inside a box". ──── */
@@ -196,8 +227,10 @@
    Hybrid can only widen (its height is content-driven). ────────────────────── */
 .kg-item .k-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
-  grid-auto-rows: 168px;
+  /* --card-min drives how many cards fit per row (set from the size slider):
+     smaller min = more columns. Row height tracks it to hold the poster ratio. */
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-min, 126px), 1fr));
+  grid-auto-rows: calc(var(--card-min, 126px) * 1.3333);
   grid-auto-flow: row dense;
   gap: 12px;
 }
