@@ -1943,16 +1943,20 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
      so nothing lined up down the left edge. Anchor them all to the same value
      (the content gutter), which is what the eye reads as the page margin. */
   .k-app { --gutter: 16px; }
-  .k-tabsbar { padding: 8px var(--gutter) 10px; }
+  /* generous run-up under the title so it reads as a page title rather than a
+     label crammed against the tab rail */
+  .k-tabsbar { padding: 22px var(--gutter) 10px; }
   .k-subtools { padding: 10px var(--gutter) 10px; }
   .k-scroll { padding: 12px var(--gutter) 120px; }
 
   /* ── Phone header = simple app bar ───────────────────────────────────────
      Just a back arrow in the corner and the list name centered. The editorial
      eyebrow/crumbs and the titles·groups count are desktop-only chrome. */
+  /* padding stays symmetric so the absolutely-centred back arrow keeps lining
+     up with the name — the breathing room below lives on .k-tabsbar */
   .k-strip {
     position: relative; display: block; text-align: center;
-    padding: 10px calc(var(--gutter) + 38px) 10px;
+    padding: 14px calc(var(--gutter) + 38px);
     min-height: 38px;
   }
   /* back arrow, pinned to the corner and vertically centred on the name */
@@ -1975,7 +1979,7 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   .k-strip__lead { display: block; margin: 0; }
   .k-strip__title {
     white-space: normal; overflow-wrap: anywhere; text-align: center;
-    font-size: clamp(17px, 5vw, 21px); line-height: 1.2; letter-spacing: -0.01em;
+    font-size: clamp(19px, 5.6vw, 24px); line-height: 1.2; letter-spacing: -0.015em;
   }
 
   /* The tab rail scrolls horizontally; fade its trailing edge so a half-visible
