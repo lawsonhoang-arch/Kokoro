@@ -969,15 +969,19 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 @keyframes k-scrim-in { from { opacity: 0; } to { opacity: 1; } }
 
 .k-detail {
-  position: fixed; inset: 0; z-index: 110;
-  display: grid; place-items: center; padding: 4vh 4vw;
+  /* Starts BELOW the site nav rather than at inset:0. Centred in the full
+     viewport, a tall panel's top crept up into the nav band on shorter windows;
+     bounding the centring area here means it can never reach the nav. */
+  position: fixed; inset: var(--nav-h, 60px) 0 0 0; z-index: 110;
+  display: grid; place-items: center; padding: 3vh 4vw;
   background: transparent; border: none; flex: none;
   pointer-events: none;             /* let the scrim catch the gap clicks */
 }
 .k-detail__scroll {
   position: relative;
   width: min(100%, 1180px);
-  max-height: 92vh;
+  /* bounded by the area below the nav, not the whole viewport */
+  max-height: 100%;
   background: var(--surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lift); border: 1px solid var(--line);
   padding: 30px 36px 38px; overflow: auto;
