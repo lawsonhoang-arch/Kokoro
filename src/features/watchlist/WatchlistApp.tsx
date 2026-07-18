@@ -1400,17 +1400,6 @@ export default function WatchlistApp({
       }
     >
       <div className="k-main">
-        <SculptSidebar
-          onGrabToken={onGrabToken}
-          onPaint={(cat, key) => setPaint((p) => (p && p.cat === cat && p.key === key ? null : { cat, key }))}
-          paintState={paint}
-          globals={globals}
-          groups={groups}
-          customAxes={customAxes}
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={toggleSidebar}
-        />
-
         <div className="k-stage">
           <div className="k-strip">
             <div className="k-strip__eyebrow">
@@ -1581,6 +1570,21 @@ export default function WatchlistApp({
               <span>{sculpt ? "Done" : "Shape list"}</span>
             </button>
           </div>
+
+          {/* Rule palette sits ACROSS THE TOP of the board, not beside it: as a
+              side column it stole width from the canvas, so opening/closing it
+              reflowed every box and shifted the cards. Full-width here means it
+              only ever pushes the board down, leaving arrangements intact. */}
+          <SculptSidebar
+            onGrabToken={onGrabToken}
+            onPaint={(cat, key) => setPaint((p) => (p && p.cat === cat && p.key === key ? null : { cat, key }))}
+            paintState={paint}
+            globals={globals}
+            groups={groups}
+            customAxes={customAxes}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={toggleSidebar}
+          />
 
           <div className="k-scroll">
             {entries.length === 0 ? (

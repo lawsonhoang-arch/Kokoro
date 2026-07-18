@@ -1109,12 +1109,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
    RESPONSIVE — sidebar collapse only; detail is always modal
    ============================================================ */
 .k-scrim { display: none; }
-@media (max-width: 980px) {
-  /* sidebar overlays the stage as a drawer; when collapsed it's a slim rail, so
-     offset the stage's content by the rail width to keep it clear of it */
-  .k-sidebar { position: absolute; left: 0; top: 0; bottom: 0; z-index: 40; box-shadow: var(--shadow-lift); }
-  .k-main:has(.k-sidebar--collapsed) .k-stage { padding-left: 46px; }
-}
+/* (The palette used to overlay the stage as a left drawer below 980px, with the
+   stage padded to clear the collapsed rail. It's now a full-width bar at the top
+   of the stage at every size, so it stays in normal flow and needs neither.) */
 @media (max-width: 720px) {
   .k-topbar { padding: 0 14px; gap: 10px; height: 56px; }
   .k-brand__tag { display: none; }
@@ -1139,33 +1136,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   .k-group__head { flex-wrap: wrap; row-gap: 8px; padding: 12px 14px; }
   .k-group__rules { margin-left: 0; width: 100%; justify-content: flex-start; }
 
-  /* Sculpt palette → bottom sheet: the list stays visible above it, so you can
-     drag a rule token up onto Everything / a collection. */
-  .k-app[data-sculpt="on"] .k-sidebar {
-    position: fixed; inset: auto 0 0 0; top: auto; width: auto;
-    flex: none; height: min(50vh, 430px);
-    border-right: none; border-top: 1px solid var(--line-strong);
-    border-top-left-radius: 16px; border-top-right-radius: 16px;
-    z-index: 70; box-shadow: var(--shadow-lift);
-  }
-  /* collapsed = a slim bottom bar (section dots + an expand handle) */
-  .k-app[data-sculpt="on"] .k-sidebar--collapsed {
-    height: auto; flex-direction: row; align-items: center;
-    padding: 9px 14px calc(9px + env(safe-area-inset-bottom, 0px));
-    border-top-left-radius: 0; border-top-right-radius: 0;
-    background: color-mix(in oklab, var(--surface) 94%, transparent);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  }
-  .k-sidebar--collapsed .k-sidebar__rail {
-    order: 1; flex-direction: row; align-items: center; gap: 16px; padding: 0; width: 100%;
-  }
-  .k-sidebar--collapsed .k-sidebar__expand { order: 2; position: static; margin-left: auto; }
-  /* the palette opens upward from the bottom, so point the handle up */
-  .k-sidebar--collapsed .k-sidebar__expand svg { transform: rotate(180deg); }
-
-  /* keep the last list rows clear of the collapsed bottom bar; drop the ≤980
-     left-rail offset since the palette no longer sits on the left */
-  .k-app[data-sculpt="on"] .k-scroll { padding-bottom: 190px; }
+  /* (The old bottom-sheet palette lived here. The rule palette is now a
+     full-width bar at the TOP of the stage — see "RULE PALETTE AS A TOP BAR"
+     at the end of this file — so it no longer needs fixed bottom positioning
+     or the extra scroll padding that kept rows clear of it.) */
   .k-main:has(.k-sidebar--collapsed) .k-stage { padding-left: 0; }
 }
 
@@ -2007,4 +1981,65 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   /* a 10px scrollbar track was eating the right gutter; touch scrolls by drag */
   .k-scroll { scrollbar-width: none; }
   .k-scroll::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+/* ============================================================
+   RULE PALETTE AS A TOP BAR
+   It used to be a left column inside .k-main, so showing/hiding it changed the
+   canvas WIDTH — every box reflowed and the cards shifted, which made it
+   impossible to lay a board out deliberately. Now it lives inside .k-stage
+   above the scroll area and spans the full width, so it only ever pushes the
+   board DOWN and arrangements survive.
+   Last in the file so it beats the original column rules above.
+   ============================================================ */
+.k-sidebar {
+  flex: 0 0 auto; width: auto;
+  border-right: none; border-bottom: 1px solid var(--line);
+  /* keep the board in view — the columns scroll inside the bar */
+  max-height: min(40vh, 360px);
+  transition: max-height .32s cubic-bezier(.2,.7,.3,1), opacity .25s, border-color .25s;
+}
+/* browse mode: fold it away vertically (it used to collapse horizontally) */
+.k-app[data-sculpt="off"] .k-sidebar {
+  flex-basis: auto; width: auto;
+  max-height: 0; border-bottom-color: transparent;
+}
+/* collapsed: just the header strip + section chips, no token rows */
+.k-sidebar--collapsed { flex: 0 0 auto; width: auto; max-height: none; }
+
+/* header + tip go on ONE line to keep the bar shallow */
+.k-sidebar__head {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  padding: 12px var(--gutter) 10px;
+}
+.k-sidebar__eyebrow { order: 1; }
+.k-sidebar__title { order: 2; font-size: 15px; margin: 0; }
+.k-sidebar__hint { order: 3; flex: 1 1 260px; min-width: 0; margin: 0; font-size: 11.5px; }
+.k-sidebar__collapse, .k-sidebar__expand { top: 8px; right: var(--gutter); }
+.k-sidebar__foot { display: none; }
+
+/* sections become columns across the bar and scroll vertically if needed */
+.k-sidebar__body {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 22px;
+  padding: 2px var(--gutter) 14px;
+  overflow-y: auto;
+}
+.k-rsec { margin-top: 0; flex: 1 1 210px; min-width: 190px; max-width: 320px; }
+.k-rsec:first-child { margin-top: 0; }
+/* tokens wrap inside their column */
+.k-rrows { display: flex; flex-direction: column; gap: 6px; }
+
+/* the collapsed rail runs across instead of down */
+.k-sidebar--collapsed .k-sidebar__rail {
+  flex-direction: row; justify-content: flex-start; flex-wrap: wrap;
+  gap: 10px; padding: 4px var(--gutter) 12px;
+}
+
+@media (max-width: 520px) {
+  .k-sidebar { max-height: 46vh; }
+  .k-sidebar__head { padding: 10px var(--gutter) 8px; gap: 8px; }
+  .k-sidebar__title { font-size: 14px; }
+  .k-sidebar__hint { display: none; }
+  .k-sidebar__body { gap: 4px 14px; padding: 2px var(--gutter) 12px; }
+  .k-rsec { flex: 1 1 100%; min-width: 0; max-width: none; }
 }
