@@ -2145,7 +2145,20 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
   mask-image: linear-gradient(90deg, #000 calc(100% - 30px), transparent);
 }
+/* Desktop had no way to reach the tokens past the fold: no scrollbar, and a
+   mouse wheel scrolls vertically. Give pointer devices a real (slim) scrollbar
+   to drag; touch keeps the invisible one and swipes instead. */
 .k-rrows::-webkit-scrollbar { height: 0; }
+@media (pointer: fine) {
+  .k-rrows { scrollbar-width: thin; padding-bottom: 2px; }
+  .k-rrows::-webkit-scrollbar { height: 8px; }
+  .k-rrows::-webkit-scrollbar-track { background: transparent; }
+  .k-rrows::-webkit-scrollbar-thumb {
+    background: var(--line-strong); border-radius: 100px;
+    border: 2px solid transparent; background-clip: content-box;
+  }
+  .k-rrows:hover::-webkit-scrollbar-thumb { background: var(--ink-faint); background-clip: content-box; }
+}
 .k-rrow {
   flex: 0 0 auto;
   padding: 6px 12px 6px 9px; gap: 7px; border-radius: 999px;

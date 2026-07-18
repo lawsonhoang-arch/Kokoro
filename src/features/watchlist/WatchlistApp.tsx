@@ -978,6 +978,12 @@ export default function WatchlistApp({
     drag.current = { ...info, sx: e.clientX, sy: e.clientY, started: false, ghost: null };
     window.addEventListener("pointermove", onDragMove);
     window.addEventListener("pointerup", onDragUp);
+    // The rules row is `touch-action: pan-x`, so a horizontal swipe hands the
+    // gesture to the browser and fires pointercancel instead of pointerup.
+    // Without this the drag never tore down: the ghost clone stayed in the DOM
+    // and the listeners stayed attached, so swiping the row repeatedly left a
+    // pile of stuck chips.
+    window.addEventListener("pointercancel", onDragUp);
   };
 
   const onDragMove = (e: PointerEvent) => {
@@ -1002,11 +1008,14 @@ export default function WatchlistApp({
     const d = drag.current;
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragUp);
+    window.removeEventListener("pointercancel", onDragUp);
     document.body.style.cursor = "";
     drag.current = null;
     setArmed(null);
     if (!d) return;
     if (d.ghost) d.ghost.el.remove();
+    // aborted (the browser took the gesture as a pan) — tidy up, drop nothing
+    if (e.type === "pointercancel") return;
     if (!d.started) {
       // a tap (no drag) on a rule token toggles tap-to-apply: pick it up, then
       // tap Everything or a collection to add it there (tap the token to cancel)

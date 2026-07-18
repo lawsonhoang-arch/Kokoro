@@ -228,7 +228,18 @@ export function SculptSidebar({
               {open[sec.cat] && (
                 <div className="k-rsec__body">
                   <p className="k-rsec__hint">{sec.hint}</p>
-                  <div className="k-rrows">
+                  <div
+                    className="k-rrows"
+                    // the tokens run off to the right, but a wheel scrolls the
+                    // page vertically — translate it so the row moves sideways
+                    onWheel={(e) => {
+                      const el = e.currentTarget;
+                      if (el.scrollWidth <= el.clientWidth) return;
+                      const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                      if (!d) return;
+                      el.scrollLeft += d;
+                    }}
+                  >
                     {tokens.map((tok) => (
                       <RuleRow
                         key={tok.key}
