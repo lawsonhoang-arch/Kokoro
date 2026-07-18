@@ -7,7 +7,7 @@ import { Glyph } from "./Glyph";
 import { Ico } from "./Ico";
 import { EpisodeNotes } from "./EpisodeNotes";
 import { TakeNotes } from "./TakeNotes";
-import { DescriptionSection } from "@/features/submissions/DescriptionSection";
+import { AboutTab } from "./AboutTab";
 import { BASE_AXES } from "./types";
 import type { Entry, Feeling, GlyphSet, RateMode, SymbolStyle } from "./types";
 
@@ -62,6 +62,7 @@ export function DetailPanel({
 }: Props) {
   const ext = EXTERNAL_SCORES[entry.id];
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [tab, setTab] = useState<"rating" | "about">("rating");
   const [axisDraft, setAxisDraft] = useState<string | null>(null);
 
   const rateMode: RateMode = entry.rateMode ?? "glyphs";
@@ -132,8 +133,30 @@ export function DetailPanel({
           </div>
         </header>
 
-        {entry.titleId && <DescriptionSection titleId={entry.titleId} />}
+        {/* Switch between your own rating/notes and the catalogue info that the
+            /anime/[id] page shows, so you never have to leave the list to read up
+            on a title. */}
+        <div className="k-dtabs" role="tablist" aria-label="Detail view">
+          <button
+            type="button" role="tab" aria-selected={tab === "rating"}
+            className={"k-dtabs__b" + (tab === "rating" ? " on" : "")}
+            onClick={() => setTab("rating")}
+          >
+            Your rating
+          </button>
+          <button
+            type="button" role="tab" aria-selected={tab === "about"}
+            className={"k-dtabs__b" + (tab === "about" ? " on" : "")}
+            onClick={() => setTab("about")}
+          >
+            About
+          </button>
+        </div>
 
+        {tab === "about" && <AboutTab titleId={entry.titleId ?? null} />}
+
+        {tab === "rating" && (
+        <>
         <div className="k-impression">
           <div className="k-impression__col">
             <div className="k-impression__lbl">How you rate this — your choice</div>
@@ -330,6 +353,8 @@ export function DetailPanel({
             onClear={() => onClearWatched(entry.id)}
             onSetWatched={(eps) => onSetWatched(entry.id, eps)}
           />
+        )}
+        </>
         )}
 
         {onRemove && (
