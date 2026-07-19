@@ -198,8 +198,11 @@ export function SculptSidebar({
               onClick={onToggleCollapsed}
               title={(SECTIONS.find((s) => s.cat === cat)?.title ?? "") + (count ? ` — ${count} active` : "")}
             >
-              <span className={"k-rsec__dot k-rsec__dot--" + cat} />
-              {count > 0 && <span className="k-sidebar__railcount">{count}</span>}
+              {/* the count lives INSIDE the dot — one object to read instead of a
+                  dot plus a tag sitting beside it */}
+              <span className={"k-rsec__dot k-rsec__dot--" + cat}>
+                {count > 0 ? count : ""}
+              </span>
             </button>
           ))}
         </div>

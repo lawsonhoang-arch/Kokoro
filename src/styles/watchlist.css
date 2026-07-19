@@ -3329,3 +3329,41 @@ body.k-resizing .kg-item--dragging {
    for Your rating — the reverse of when the order was the other way round. */
 .k-dtabs[data-tab="about"]::before { transform: none; }
 .k-dtabs[data-tab="rating"]::before { transform: translateX(100%); }
+
+/* ---- Rules trigger: sit at the left margin, not stretched ----------------
+   inline-flex was not enough: the trigger is a flex child of a stretch
+   container, so it still filled the row and centred its contents. align-self
+   opts it out and lets it size to its own content, lining its left edge up
+   with the toolbar and the board. */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  align-self: flex-start;
+  width: auto !important;
+  max-width: max-content;
+  flex: 0 0 auto !important;
+  justify-content: flex-start;
+  margin-left: var(--gutter);
+  margin-right: auto;
+}
+
+/* ---- counts inside the dots --------------------------------------------- */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-rsec__dot {
+  /* sized for two digits; a single digit just sits in a circle */
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+}
+/* an empty dot stays a plain dot rather than a stretched pill */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-rsec__dot:empty {
+  min-width: 9px; width: 9px; height: 9px; padding: 0;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__railcount { display: none; }
