@@ -1085,6 +1085,22 @@ export default function WatchlistApp({
   };
 
   const dragScroller = useRef<HTMLElement | null>(null);
+  const dragY = useRef(0);
+  const edgeRaf = useRef(0);
+  const stopEdgePump = () => {
+    if (edgeRaf.current) cancelAnimationFrame(edgeRaf.current);
+    edgeRaf.current = 0;
+  };
+  const startEdgePump = () => {
+    if (edgeRaf.current) return;
+    const step = () => {
+      // a steady per-frame nudge: smooth at 60fps and still quick to cross a
+      // long board, without the lurching a large per-event jump produced
+      edgeScroll(dragScroller.current, dragY.current, 90, 13);
+      edgeRaf.current = requestAnimationFrame(step);
+    };
+    edgeRaf.current = requestAnimationFrame(step);
+  };
   const onDragMove = (e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
@@ -1098,16 +1114,20 @@ export default function WatchlistApp({
     // Drag near an edge and the board follows. Without this a rule could only
     // ever reach boxes already on screen — the palette drag had no autoscroll
     // at all, while the box drag has had it for a while.
-    // Scroll the BOARD, not the drag source. A rule token is dragged out of the
-    // rules panel, and the panel is itself scrollable — walking up from the
-    // source found the panel and auto-scrolled that, which looked like nothing
-    // happening because the board never moved.
+    // Scroll the BOARD, not the drag source: a rule token is dragged out of the
+    // rules panel, and the panel is itself scrollable, so walking up from the
+    // source auto-scrolled the palette instead.
     if (!dragScroller.current) {
       const board = document.querySelector(".k-scroll") as HTMLElement | null;
       dragScroller.current =
         board && board.scrollHeight > board.clientHeight + 4 ? board : findScroller(board);
     }
-    edgeScroll(dragScroller.current, e.clientY);
+    // Feed the pump rather than scrolling here. Driving autoscroll off
+    // pointermove meant it only advanced when the pointer MOVED — hold still at
+    // the edge and it stopped, so it read as slow and stuttery. The loop runs
+    // every frame from the last known position instead.
+    dragY.current = e.clientY;
+    startEdgePump();
     const tgt = findTarget(e.clientX, e.clientY, d.kind === "token" ? "token" : "entry", d.id);
     setArmed((prev) => {
       const same = prev && tgt && prev.type === tgt.type && (prev as { id?: string }).id === (tgt as { id?: string }).id;
@@ -1121,6 +1141,7 @@ export default function WatchlistApp({
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragUp);
     window.removeEventListener("pointercancel", onDragUp);
+    stopEdgePump();
     dragScroller.current = null;
     document.body.style.cursor = "";
     drag.current = null;
