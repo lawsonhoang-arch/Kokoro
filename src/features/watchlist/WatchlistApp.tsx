@@ -294,6 +294,7 @@ export default function WatchlistApp({
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SHAPES_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setShapes(JSON.parse(raw) as Record<string, string>);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
