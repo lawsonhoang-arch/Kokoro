@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { TOKENS, CAT_LABEL, sortBaseKey, sortIsAsc, isSortReversible } from "./rules";
 import { Ico } from "./Ico";
 import type { Group, RuleCat, Rules } from "./types";
@@ -49,6 +49,19 @@ export function RuleChip({
   );
 }
 
+/** Box silhouettes. Purely visual — a shaped box still occupies its normal
+ *  rectangular grid slot, so packing, resizing and drop targets are unaffected.
+ *  The glyph is a tiny rendering of the shape itself, which reads faster in a
+ *  row of six than any label would. */
+const SHAPES = [
+  { key: "box", label: "Square", glyph: "▢" },
+  { key: "round", label: "Rounded", glyph: "▭" },
+  { key: "pill", label: "Pill", glyph: "⬭" },
+  { key: "hex", label: "Hexagon", glyph: "⬡" },
+  { key: "angled", label: "Cut corner", glyph: "◸" },
+  { key: "notch", label: "Ticket", glyph: "⌸" },
+] as const;
+
 /* ---------------- GROUP CARD (manual merge stack) ---------------- */
 type GroupCardProps = {
   group: Group;
@@ -64,6 +77,10 @@ type GroupCardProps = {
   onToggleRule?: (gid: string, cat: RuleCat, key: string) => void;
   pinned?: boolean;
   onTogglePin?: (gid: string) => void;
+  /** current silhouette key; "box" is the plain rectangle */
+  shape?: string;
+  /** omitted outside Shape mode, which hides the picker */
+  onShape?: (gid: string, shape: string) => void;
   onOpen?: (gid: string) => void;
 };
 
@@ -78,10 +95,13 @@ export function GroupCard({
   onDissolve,
   onRemoveRule,
   onToggleRule,
+  shape = "box",
+  onShape,
   pinned,
   onTogglePin,
   onOpen,
 }: GroupCardProps) {
+  const [shapeOpen, setShapeOpen] = useState(false);
   const hasScoped =
     scoped &&
     (scoped.group.length || scoped.sort.length || scoped.color.length || scoped.tag.length);
@@ -103,6 +123,7 @@ export function GroupCard({
         (landed ? " k-landed" : "")
       }
       data-drop="group"
+      data-shape={shape}
       data-group-id={group.id}
       data-collid={group.id}
     >
@@ -131,6 +152,38 @@ export function GroupCard({
           }}
         />
         <span className="k-group__count">{group.entryIds.length}</span>
+        {onShape && (
+          <div className="k-shapepick" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="k-shapepick__btn"
+              onClick={() => setShapeOpen((v) => !v)}
+              title="Change this box’s shape"
+              aria-label="Change this box’s shape"
+              aria-expanded={shapeOpen}
+            >
+              {SHAPES.find((s) => s.key === shape)?.glyph ?? "▢"}
+            </button>
+            {shapeOpen && (
+              <div className="k-shapepick__menu" role="menu">
+                {SHAPES.map((s) => (
+                  <button
+                    key={s.key}
+                    role="menuitemradio"
+                    aria-checked={s.key === shape}
+                    className={"k-shapepick__opt" + (s.key === shape ? " on" : "")}
+                    onClick={() => {
+                      onShape(group.id, s.key);
+                      setShapeOpen(false);
+                    }}
+                  >
+                    <span className="k-shapepick__glyph">{s.glyph}</span>
+                    <span className="k-shapepick__lbl">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {onTogglePin && (
           <button
             className={"k-group__pin" + (pinned ? " on" : "")}

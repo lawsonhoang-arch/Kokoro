@@ -286,6 +286,26 @@ export default function WatchlistApp({
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
   const [armed, setArmed] = useState<ArmedTarget>(null);
+
+  // Per-box silhouette. Purely visual: the box still occupies its normal
+  // rectangular slot, so packing, resizing and drop targets are untouched.
+  const SHAPES_KEY = "kokoro_shapes_" + id;
+  const [shapes, setShapes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SHAPES_KEY);
+      if (raw) setShapes(JSON.parse(raw) as Record<string, string>);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  const setShape = (gid: string, shape: string) =>
+    setShapes((prev) => {
+      const next = { ...prev };
+      if (shape === "box") delete next[gid];
+      else next[gid] = shape;
+      try { localStorage.setItem(SHAPES_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
   // A box pulses for a moment after something lands in it, so a drop reads as
   // having been *received* rather than just ending.
   const [landed, setLanded] = useState<string | null>(null);
@@ -1363,6 +1383,8 @@ export default function WatchlistApp({
           (!!browseArm && browseArm.kind === "coll" && browseArm.id === g.id)
         }
         landed={landed === g.id}
+        shape={shapes[g.id] || "box"}
+        onShape={sculpt ? setShape : undefined}
         onRename={renameGroup}
         onDissolve={dissolveGroup}
         onRemoveRule={removeGroupRule}

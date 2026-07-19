@@ -199,7 +199,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 /* editing → a calm "Done" so the loud state is the invitation, not the exit */
 .k-editbtn.on {
   background: var(--surface-2); color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--line-strong) !important;
 }
 .k-editbtn.on svg { color: var(--accent); }
 .k-editbtn.on:hover { background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
@@ -2536,4 +2536,113 @@ body.k-resizing .kg-item--dragging {
   .kg-settle-x, .kg-settle-y, .kg-settle-xy { animation: none !important; }
 
   .kg-rz:hover, .kg-rz:active { transform: none !important; }
+}
+
+/* ===== box silhouettes ===================================================
+   Purely visual. A shaped box still occupies its normal rectangular grid slot,
+   so packing, resize and drop hit-testing are all untouched — only the paint
+   changes. Shapes that eat into their own corners get compensating padding so
+   the cards inside are not sliced. The !important on those paddings is load-
+   bearing: something with higher specificity overrides plain .k-group[data-shape]
+   padding, and it could not be isolated (dev-server stylesheets block cssRules
+   introspection). Worth tracking down and removing later.
+   the first and last cards don't get sliced. */
+.k-group { transition: clip-path .28s cubic-bezier(.25, .7, .35, 1), border-radius .28s cubic-bezier(.25, .7, .35, 1); }
+
+.k-group[data-shape="round"] { border-radius: 22px; }
+.k-group[data-shape="pill"]  { border-radius: 999px; padding-left: 22px !important; padding-right: 22px !important; }
+
+/* Polygonal shapes are painted on a backdrop layer, NOT with clip-path on the
+   box itself. clip-path clips every descendant, including the shape picker's
+   own dropdown — so once you chose a hexagon you could no longer open the menu
+   to choose anything else. The layer carries the fill and the outline; the box
+   keeps compensating padding so the cards sit inside the silhouette. */
+.k-group[data-shape="hex"],
+.k-group[data-shape="angled"],
+.k-group[data-shape="notch"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.k-group[data-shape="hex"]::before,
+.k-group[data-shape="angled"]::before,
+.k-group[data-shape="notch"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  pointer-events: none;
+}
+/* the real content sits above the backdrop */
+.k-group[data-shape="hex"] > *,
+.k-group[data-shape="angled"] > *,
+.k-group[data-shape="notch"] > * { position: relative; z-index: 1; }
+/* the header outranks the rows: giving every child the same z-index put the
+   picker menu behind the cards, since the rows come later in the DOM */
+.k-group[data-shape="hex"] > .k-group__head,
+.k-group[data-shape="angled"] > .k-group__head,
+.k-group[data-shape="notch"] > .k-group__head { z-index: 3; }
+
+.k-group[data-shape="hex"]::before {
+  clip-path: polygon(0% 14%, 50% 0%, 100% 14%, 100% 86%, 50% 100%, 0% 86%);
+}
+.k-group[data-shape="hex"] { padding-top: 16px !important; padding-bottom: 16px !important; }
+
+.k-group[data-shape="angled"]::before {
+  clip-path: polygon(26px 0%, 100% 0%, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0% 100%, 0% 26px);
+}
+.k-group[data-shape="notch"]::before {
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% calc(50% - 11px), calc(100% - 7px) 50%, 100% calc(50% + 11px),
+    100% 100%, 0% 100%, 0% calc(50% + 11px), 7px 50%, 0% calc(50% - 11px)
+  );
+}
+.k-group[data-shape="notch"] { padding-left: 10px !important; padding-right: 10px !important; }
+
+/* armed state would be hidden behind the backdrop, so tint the layer instead */
+.k-group[data-shape="hex"].drop-armed::before,
+.k-group[data-shape="angled"].drop-armed::before,
+.k-group[data-shape="notch"].drop-armed::before {
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border-color: var(--accent);
+}
+
+/* --- the picker ---------------------------------------------------------- */
+.k-shapepick { position: relative; display: inline-flex; }
+.k-shapepick__btn {
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  border: 1px solid transparent; border-radius: 7px;
+  background: transparent; color: var(--text-dim);
+  font-size: 14px; line-height: 1; cursor: pointer;
+}
+.k-shapepick__btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--line); }
+.k-shapepick__menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  z-index: 40;
+  display: grid; gap: 2px;
+  padding: 6px;
+  min-width: 150px;
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  background: var(--surface-1);
+  box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.5);
+  animation: k-addmenu-in .16s cubic-bezier(.2, .7, .3, 1);
+}
+.k-shapepick__opt {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 9px;
+  border: 0; border-radius: 8px;
+  background: transparent; color: inherit;
+  font: inherit; font-size: 13px; text-align: left;
+  cursor: pointer;
+}
+.k-shapepick__opt:hover { background: var(--surface-2); }
+.k-shapepick__opt.on { background: color-mix(in oklab, var(--accent) 16%, transparent); font-weight: 600; }
+.k-shapepick__glyph { font-size: 15px; width: 18px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-group { transition: none; }
+  .k-shapepick__menu { animation: none; }
 }
