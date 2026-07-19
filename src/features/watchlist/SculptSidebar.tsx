@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -168,6 +169,28 @@ export function SculptSidebar({
       group: false, sort: false, color: false, tag: false,
       [cat]: !o[cat],
     }));
+
+  // Dismiss by clicking away, rather than hunting for a close button. The
+  // listener goes on pointerdown so the panel is gone before the click lands on
+  // whatever is underneath — otherwise closing it would also hit the board.
+  // Registered in an effect, so the very click that OPENED the panel (whose
+  // pointerdown has already fired) cannot immediately close it again.
+  useEffect(() => {
+    if (collapsed) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      // .k-sidebar covers both the panel and the trigger, so neither self-closes
+      if (t?.closest(".k-sidebar")) return;
+      onToggleCollapsed();
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onToggleCollapsed(); };
+    document.addEventListener("pointerdown", away, true);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away, true);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [collapsed, onToggleCollapsed]);
 
   if (collapsed) {
     const totals = SECTIONS.map((sec) => ({

@@ -3498,3 +3498,5 @@ body.k-resizing .kg-item--dragging {
   align-items: center !important;
 }
 .k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail { margin: 0 !important; }
+/* No close button — the panel dismisses by clicking away or pressing Escape. */
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__collapse { display: none !important; }
