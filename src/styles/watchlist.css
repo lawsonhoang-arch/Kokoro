@@ -2750,8 +2750,18 @@ body.k-resizing .kg-item--dragging {
   clip-path: polygon(0% 13%, 50% 0%, 100% 13%, 100% 87%, 50% 100%, 0% 87%);
 }
 .k-group[data-shape="hex"] {
-  padding-top: 15% !important;
-  padding-bottom: 15% !important;
+  /* The slanted edges need MORE vertical inset than the flat sides need
+     horizontal, because the perpendicular distance to a diagonal is shorter
+     than the vertical drop to it. For points at 13% of a square box, matching
+     a 9% flat margin works out at 20% top and bottom:
+       slant line  2x + (1/0.13)y = S,  distance((m,p), line) = m  ->  p = 20%
+     Measured, 20% still left the slant ~10px tighter, because the flat margin
+     is not purely proportional - the panel and header add fixed pixels on top
+     of the percentage. 23% is the empirical match: measured slant vs flat is
+     42 vs 43px on a small hexagon and 78 vs 70px on a large one, so the slant
+     is never the tighter of the two. At the original 15% it was 33 vs 43. */
+  padding-top: 23% !important;
+  padding-bottom: 23% !important;
   padding-left: 9% !important;
   padding-right: 9% !important;
 }
