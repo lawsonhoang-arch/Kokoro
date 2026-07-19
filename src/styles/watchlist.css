@@ -3414,3 +3414,87 @@ body.k-resizing .kg-item--dragging {
 }
 .k-layoutseg button svg,
 .k-layoutseg button .k-ico { display: none; }
+
+/* ---- rules panel: drops from the top of the page ------------------------
+   The panel is portalled to <body>, so it is no longer inside .k-app and the
+   [data-sculpt="on"] ancestor selectors no longer reach it — these are scoped
+   to the element itself. Fixed to the viewport, below the site nav. */
+.k-sidebar:not(.k-sidebar--collapsed) {
+  position: fixed;
+  inset: var(--nav-h, 60px) 0 auto 0;
+  z-index: 200;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background: var(--surface-2);
+  box-shadow: 0 26px 60px -24px rgb(0 0 0 / .72);
+  animation: k-rules-drop .22s cubic-bezier(.25, .7, .35, 1);
+}
+.k-sidebar--closing {
+  animation: k-rules-lift .18s cubic-bezier(.4, 0, .7, .35) forwards !important;
+  pointer-events: none;
+}
+.k-sidebar:not(.k-sidebar--collapsed)::after {
+  content: ""; position: fixed; inset: 0; z-index: -1;
+  background: rgb(0 0 0 / .34); pointer-events: none;
+}
+
+/* ---- the trigger pill: label left, dots right, all on one line ----------
+   The dots were dropping below the label because the rail was still a block
+   from its sidebar days. Everything is one centred row now. */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  height: 34px;
+  padding: 0 10px 0 14px;
+  gap: 10px;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed::before { margin-right: 0; }
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail {
+  display: inline-flex; flex-direction: row; align-items: center;
+  gap: 5px; margin: 0; padding: 0; border: 0; background: none;
+  max-height: none; height: auto; flex: 0 0 auto;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__railsec {
+  display: inline-flex; align-items: center;
+  width: auto; height: auto; margin: 0; padding: 0; border: 0; background: none;
+}
+/* the chevron sits at the far right */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__expand { order: 9; margin-left: auto; }
+/* The panel is outside .k-app now, so rules scoped through it no longer reach
+   the header — which is where the close button lives. Re-assert on the element. */
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__head {
+  display: flex !important;
+  align-items: center;
+  gap: 14px;
+  padding: 12px var(--gutter, 16px);
+}
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__collapse {
+  display: inline-flex !important;
+  align-items: center; justify-content: center;
+  margin-left: auto; width: 28px; height: 28px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--text-dim); cursor: pointer;
+}
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__body { display: flex !important; }
+
+/* the rail sat outside the pill because the base sidebar styles still gave it
+   its own block box — pin it to the row */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail {
+  position: static !important;
+  align-self: center;
+  height: auto !important;
+  width: auto !important;
+  inset: auto !important;
+}
+/* .k-sidebar is a COLUMN by origin — it was a side panel. The collapsed pill
+   inherited that, so the label and the dots stacked and the dots hung off the
+   bottom edge. Forcing row is what puts them on one line. */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  flex-direction: row !important;
+  align-items: center !important;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail { margin: 0 !important; }

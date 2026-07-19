@@ -7,6 +7,7 @@ import {
   type PointerEvent as RPointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { TOKENS, type Token } from "./rules";
 import { Ico } from "./Ico";
 import type { Group, PaintState, RuleCat, Rules } from "./types";
@@ -210,7 +211,12 @@ export function SculptSidebar({
     );
   }
 
-  return (
+  // Portalled to <body>. As an in-flow child it inherited whichever ancestor
+  // happened to be positioned — once the trigger moved into the toolbar, the
+  // panel started opening from there instead of the top of the page, and no
+  // amount of position/inset on the panel could override that containing
+  // block. From <body> the viewport is the reference and it drops from the top.
+  return createPortal(
     <aside className={"k-sidebar" + (closing ? " k-sidebar--closing" : "")}>
       <div className="k-sidebar__head">
         <button className="k-sidebar__collapse" onClick={onToggleCollapsed} title="Collapse sidebar to recover screen space">
@@ -285,7 +291,8 @@ export function SculptSidebar({
           first wins.
         </span>
       </div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }
 
