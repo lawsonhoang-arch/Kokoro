@@ -58,8 +58,16 @@ export function findScroller(start: Element | null): HTMLElement | null {
 export function edgeScroll(scroller: HTMLElement | null, clientY: number, edge = 80, max = 22) {
   if (scroller) {
     const r = scroller.getBoundingClientRect();
-    if (clientY > r.bottom - edge) scroller.scrollTop += Math.min(max, (clientY - (r.bottom - edge)) / 2 + 5);
-    else if (clientY < r.top + edge) scroller.scrollTop -= Math.min(max, (r.top + edge - clientY) / 2 + 5);
+    // Clamp the trigger zones to the VISIBLE part of the scroller. The board is
+    // routinely taller than the window, so its own bottom edge sits off screen
+    // and the old test — clientY > r.bottom - edge — could never be satisfied:
+    // you would drag to the bottom of the screen and nothing scrolled. Where the
+    // scroller fits on screen this clamp is a no-op, so short scrollers behave
+    // exactly as before.
+    const top = Math.max(r.top, 0);
+    const bottom = Math.min(r.bottom, window.innerHeight);
+    if (clientY > bottom - edge) scroller.scrollTop += Math.min(max, (clientY - (bottom - edge)) / 2 + 5);
+    else if (clientY < top + edge) scroller.scrollTop -= Math.min(max, (top + edge - clientY) / 2 + 5);
   } else {
     const vh = window.innerHeight;
     if (clientY > vh - edge) window.scrollBy(0, Math.min(max, (clientY - (vh - edge)) / 2 + 5));
