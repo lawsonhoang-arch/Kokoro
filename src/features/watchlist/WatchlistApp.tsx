@@ -362,9 +362,10 @@ export default function WatchlistApp({
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(SIDEBAR_KEY) === "1";
+      const saved = localStorage.getItem(SIDEBAR_KEY);
+      return saved === null ? true : saved === "1";
     } catch {
-      return false;
+      return true;
     }
   });
   // On narrow screens the sidebar overlays the stage, so start it collapsed

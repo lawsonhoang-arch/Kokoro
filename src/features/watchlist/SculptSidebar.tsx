@@ -171,7 +171,19 @@ export function SculptSidebar({
       count: tokensFor(sec.cat).reduce((sum, t) => sum + countApplied(globals, groups, sec.cat, t.key), 0),
     }));
     return (
-      <aside className="k-sidebar k-sidebar--collapsed" aria-label="Sculpt sidebar (collapsed)">
+      // The collapsed rail is styled as a single "Rules" button, so the whole
+      // thing has to open it — otherwise the label reads as clickable but only
+      // the chevron and the dots actually respond.
+      <aside
+        className="k-sidebar k-sidebar--collapsed"
+        aria-label="Open the rules"
+        role="button"
+        tabIndex={0}
+        onClick={onToggleCollapsed}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleCollapsed(); }
+        }}
+      >
         <button className="k-sidebar__expand" onClick={onToggleCollapsed} title="Expand sculpt sidebar">
           <Ico name="chev" s={16} />
         </button>

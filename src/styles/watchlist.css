@@ -3084,3 +3084,74 @@ body.k-resizing .kg-item--dragging {
   padding-left: 9% !important;
   padding-right: 9% !important;
 }
+
+/* ===== rules as a real dropdown =========================================
+   The palette used to sit inline under the toolbar, adding a permanent band of
+   chips below the tabs — three stacked rows of chrome before you reached the
+   board. It is now a menu: a single trigger in the toolbar, and an overlay that
+   drops DOWN OVER the title, tabs and toolbar rather than pushing them, so
+   opening it costs no layout and closing it leaves nothing behind. */
+
+/* --- the trigger: the collapsed rail becomes one button ------------------ */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  position: static; width: auto; max-height: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 13px;
+  border: 1px solid var(--line-strong); border-radius: 100px;
+  background: var(--surface-2);
+  margin: 0 0 10px var(--gutter);
+  cursor: pointer;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed:hover { border-color: var(--accent); }
+.k-app[data-sculpt="on"] .k-sidebar--collapsed::before {
+  content: "Rules"; font-size: 13px; font-weight: 600; color: var(--text);
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__expand {
+  order: 9; width: 16px; height: 16px; padding: 0; border: 0; background: none;
+  color: var(--text-dim); transform: rotate(90deg);
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail {
+  display: inline-flex; flex-direction: row; gap: 5px; padding: 0; border: 0; background: none;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__railsec {
+  width: auto; height: auto; padding: 0; border: 0; background: none;
+}
+
+/* --- the open panel: an overlay, not a band ----------------------------- */
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  z-index: 60;
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background: var(--surface-2);
+  box-shadow: 0 26px 60px -24px rgb(0 0 0 / .72);
+  animation: k-rules-drop .2s cubic-bezier(.25,.7,.35,1);
+}
+@keyframes k-rules-drop {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* the stage becomes the positioning context so the overlay covers the header */
+.k-app[data-sculpt="on"] .k-stage { position: relative; }
+/* dim what it covers, so it reads as a menu over the page */
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed)::after {
+  content: ""; position: fixed; inset: 0; z-index: -1;
+  background: rgb(0 0 0 / .34);
+}
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__head { display: flex; }
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__collapse {
+  margin-left: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) { animation: none; }
+}
+/* Opening the menu removes the trigger from the flow, which yanked the board up
+   by its height — the exact jump the overlay was meant to avoid. Reserve the
+   same strip while the panel is open so the board never moves. */
+.k-app[data-sculpt="on"] .k-stage:has(.k-sidebar:not(.k-sidebar--collapsed)) .k-scroll {
+  margin-top: var(--rules-trigger-h, 64px);
+}
