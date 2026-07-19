@@ -3395,3 +3395,22 @@ body.k-resizing .kg-item--dragging {
    toolbar's control height rather than letting padding decide it */
 .k-app[data-sculpt="on"] .k-sidebar--collapsed { height: 34px; box-sizing: border-box; padding-block: 0; }
 .k-subtools { align-items: center; }
+
+/* ---- layout segment: bring it down toward the Cards button's size --------
+   It was 212x41 against Cards at 103x37 — nearly twice the width for a control
+   used far less often. It holds two labelled options so it cannot match 103
+   exactly without dropping the labels, which read better than icons here. So
+   the icons go instead (redundant beside a word), the padding tightens, and the
+   height matches its neighbours. */
+.k-layoutseg { height: 37px; box-sizing: border-box; padding: 3px; align-items: center; }
+.k-layoutseg button {
+  padding-left: 9px !important;
+  padding-right: 9px !important;
+  font-size: 12px;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.k-layoutseg button svg,
+.k-layoutseg button .k-ico { display: none; }
