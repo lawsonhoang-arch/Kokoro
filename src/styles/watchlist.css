@@ -2938,3 +2938,44 @@ body.k-resizing .kg-item--dragging {
   .k-group[data-shape="hex"] .k-card__meta,
   .k-group[data-shape="hex"] .k-tags { display: none; }
 }
+
+/* ---- box header: name + count left, controls hard right ------------------
+   The controls used to be loose flex children with the rules row after them,
+   which left them stranded mid-header. They now sit in one .k-group__acts
+   group ordered last and pushed right, so the arrangement holds whichever
+   controls are present — and in browse mode, where the shape picker and the
+   rule chips are gone but the header still has to line up the same way. */
+.k-group__head { display: flex; align-items: center; flex-wrap: nowrap; }
+.k-group__head > .k-group__name { order: 0; }
+.k-group__head > .k-group__count { order: 1; margin-right: 0; }
+.k-group__head > .k-group__scopebadge { order: 2; }
+.k-group__head > .k-group__rules { order: 3; min-width: 0; overflow: hidden; }
+.k-group__head > .k-group__acts {
+  order: 4;
+  margin-left: auto;          /* the only auto margin — everything else packs left */
+  display: flex; align-items: center; gap: 6px; flex: none;
+}
+/* browse mode keeps the same geometry; these beat the browse-specific rules
+   that previously re-spaced the header once shaping was off */
+.k-scroll .k-group--browse > .k-group__head > .k-group__acts,
+.k-panel .k-group--browse > .k-group__head > .k-group__acts { margin-left: auto; order: 4; }
+.k-scroll .k-group--browse > .k-group__head > .k-group__count,
+.k-panel .k-group--browse > .k-group__head > .k-group__count { order: 1; margin-right: 0; }
+@media (max-width: 640px) { .k-group__head > .k-group__acts { gap: 3px; } }
+/* Browse mode sized the name to fill, which pushed the count away from the
+   title — the very thing the header fix was for. Same content-sizing as
+   shaping, at the specificity the browse rules use. */
+.k-scroll .k-group--browse > .k-group__head > .k-group__name,
+.k-panel .k-group--browse > .k-group__head > .k-group__name,
+.k-scroll .k-group > .k-group__head > .k-group__name,
+.k-group__head > .k-group__name {
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(58%, 30ch);
+}
+/* Browse mode gave the count an auto left margin, which floated it away from
+   the title by whatever space was going — 240px at 1400, 95px at 390. That
+   scaling with viewport width is what identified it as an auto margin rather
+   than the name input's size. */
+.k-group__head .k-group__count { margin-left: 0 !important; margin-right: 0 !important; }

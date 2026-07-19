@@ -167,6 +167,11 @@ export function GroupCard({
           className="k-group__name"
           defaultValue={group.name}
           key={group.name}
+          /* Sized to the text so the count sits beside the title instead of
+             after an input holding its default ~20ch width. An attribute, not
+             CSS, because the browse-mode rules kept out-specifying the
+             stylesheet and field-sizing was not reliably applying there. */
+          size={Math.max(4, Math.min(28, group.name.length))}
           onClick={(e) => e.stopPropagation()}
           onBlur={(e) => onRename(group.id, e.target.value)}
           onKeyDown={(e) => {
@@ -174,6 +179,15 @@ export function GroupCard({
           }}
         />
         <span className="k-group__count">{group.entryIds.length}</span>
+        {!browse && hasScoped ? (
+          <span className="k-group__scopebadge" title={scopeTitle()}>
+            scoped
+          </span>
+        ) : null}
+        {/* Every box control lives in one group pinned to the far right, so the
+            cluster reads the same whether or not the shape picker and delete
+            button are present, and in browse mode as well as while shaping. */}
+        <div className="k-group__acts">
         {onShape && (
           <div className="k-shapepick" onClick={(e) => e.stopPropagation()}>
             <button
@@ -244,11 +258,7 @@ export function GroupCard({
         >
           <Ico name="ungroup" s={15} />
         </button>
-        {!browse && hasScoped ? (
-          <span className="k-group__scopebadge" title={scopeTitle()}>
-            scoped
-          </span>
-        ) : null}
+        </div>
         <div className="k-group__rules">
           {!browse &&
             CATS.flatMap((cat) =>
