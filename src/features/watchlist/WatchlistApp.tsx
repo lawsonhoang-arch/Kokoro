@@ -281,7 +281,28 @@ export default function WatchlistApp({
   };
 
 
+  // Rules were pure client state, so they vanished on reload — not just across
+  // devices, but on the same one. Persisted here per list. This is deliberately
+  // localStorage and therefore per-device: syncing rules across mobile and
+  // desktop needs a schema change to store them alongside the groups.
+  const RULES_KEY = "kokoro_rules_" + id;
   const [globals, setGlobals] = useState<Rules>(emptyRules);
+  const rulesHydrated = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RULES_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setGlobals({ ...emptyRules(), ...(JSON.parse(raw) as Rules) });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+  // Skip the FIRST run: on mount this fires with the empty initial state and
+  // would overwrite whatever hydration just read back. Same guard the groups
+  // sync uses, and for the same reason.
+  useEffect(() => {
+    if (!rulesHydrated.current) { rulesHydrated.current = true; return; }
+    try { localStorage.setItem(RULES_KEY, JSON.stringify(globals)); } catch {}
+  }, [globals, RULES_KEY]);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
@@ -1063,6 +1084,7 @@ export default function WatchlistApp({
     window.addEventListener("pointercancel", onDragUp);
   };
 
+  const dragScroller = useRef<HTMLElement | null>(null);
   const onDragMove = (e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
@@ -1073,6 +1095,19 @@ export default function WatchlistApp({
       document.body.style.cursor = "grabbing";
     }
     d.ghost!.el.style.transform = `translate(${e.clientX - d.ghost!.ox}px, ${e.clientY - d.ghost!.oy}px) rotate(-2deg) scale(1.02)`;
+    // Drag near an edge and the board follows. Without this a rule could only
+    // ever reach boxes already on screen — the palette drag had no autoscroll
+    // at all, while the box drag has had it for a while.
+    // Scroll the BOARD, not the drag source. A rule token is dragged out of the
+    // rules panel, and the panel is itself scrollable — walking up from the
+    // source found the panel and auto-scrolled that, which looked like nothing
+    // happening because the board never moved.
+    if (!dragScroller.current) {
+      const board = document.querySelector(".k-scroll") as HTMLElement | null;
+      dragScroller.current =
+        board && board.scrollHeight > board.clientHeight + 4 ? board : findScroller(board);
+    }
+    edgeScroll(dragScroller.current, e.clientY);
     const tgt = findTarget(e.clientX, e.clientY, d.kind === "token" ? "token" : "entry", d.id);
     setArmed((prev) => {
       const same = prev && tgt && prev.type === tgt.type && (prev as { id?: string }).id === (tgt as { id?: string }).id;
@@ -1086,6 +1121,7 @@ export default function WatchlistApp({
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragUp);
     window.removeEventListener("pointercancel", onDragUp);
+    dragScroller.current = null;
     document.body.style.cursor = "";
     drag.current = null;
     setArmed(null);
