@@ -378,7 +378,7 @@ export default function WatchlistApp({
 
   const [listView, setListView] = useState<ViewMode>(() => {
     try {
-      return (localStorage.getItem(VIEW_KEY + ff()) as ViewMode) || "cards";
+      return "cards"; // hydration-safe; the mount effect applies the stored value
     } catch {
       return "cards";
     }
@@ -442,7 +442,7 @@ export default function WatchlistApp({
     try {
       // default to the free-form board (boxes). Stack is a flat list that hides
       // manual collections in browse, so a fresh visitor would see no boxes.
-      return (localStorage.getItem(LAYOUT_KEY + ff()) as LayoutMode) || "grid";
+      return "grid"; // hydration-safe; the mount effect applies the stored value
     } catch {
       return "grid";
     }
@@ -469,14 +469,34 @@ export default function WatchlistApp({
   // smaller value fits MORE cards per row. Separate from per-card form factor.
   // NOTE: distinct from CARDSIZE_KEY below, which stores the per-card form factor
   const CARDSCALE_KEY = "kokoro_cardscale_" + id;
-  const [cardMin, setCardMin] = useState<number>(() => {
+  // Deliberately does NOT read localStorage. This component is SSR-ed, so the
+  // server rendered the default while the client initializer read the stored
+  // value — and React does not patch a style attribute mismatch, it says so
+  // outright. Client state already equalled the stored value, so nothing
+  // re-rendered and the server's default stayed in the DOM: saving worked, the
+  // value was in storage, and the page still showed the default. Starting both
+  // sides identical and applying the stored value from an effect forces the
+  // re-render that actually updates the attribute.
+  const [cardMin, setCardMin] = useState<number>(CARD_MIN_DEFAULT);
+  // Re-read the stored preferences once on the client. These useState
+  // initializers also run during SSR, where localStorage is unavailable and the
+  // catch hands back the default — so the value that survived was the default,
+  // not the saved one. Writing worked all along; only the read was lost.
+  useEffect(() => {
     try {
       const v = Number(localStorage.getItem(CARDSCALE_KEY + ff()));
-      return v >= CARD_MIN_LO && v <= CARD_MIN_HI ? v : CARD_MIN_DEFAULT;
-    } catch {
-      return CARD_MIN_DEFAULT;
-    }
-  });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (v >= CARD_MIN_LO && v <= CARD_MIN_HI) setCardMin(v);
+      const view = localStorage.getItem(VIEW_KEY + ff()) as ViewMode | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (view === "list" || view === "cards" || view === "hybrid") setListView(view);
+      const lay = localStorage.getItem(LAYOUT_KEY + ff()) as LayoutMode | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (lay === "grid" || lay === "stack") setLayoutMode(lay);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [CARDSCALE_KEY]);
+
   const chooseCardMin = (v: number) => {
     setCardMin(v);
     try { localStorage.setItem(CARDSCALE_KEY + ff(), String(v)); } catch {}
