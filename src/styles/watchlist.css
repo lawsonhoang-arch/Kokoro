@@ -2250,7 +2250,7 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
   padding: 9px 10px 9px 16px;
   border: 1px solid var(--line-strong);
   border-radius: 100px;
-  background: var(--surface-1);
+  background: var(--surface-2);
   box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.45);
   font-size: 13px;
 }
@@ -2626,7 +2626,7 @@ body.k-resizing .kg-item--dragging {
   padding: 6px;
   min-width: 150px;
   border: 1px solid var(--line-strong); border-radius: 12px;
-  background: var(--surface-1);
+  background: var(--surface-2);
   box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.5);
   animation: k-addmenu-in .16s cubic-bezier(.2, .7, .3, 1);
 }
@@ -2846,3 +2846,56 @@ body.k-resizing .kg-item--dragging {
   border-color: transparent;
 }
 .k-msel__btn:active { background: color-mix(in oklab, var(--accent) 88%, #000); }
+
+/* ---- box header: one left group, one right group ------------------------
+   The count belongs to the title, so it sits beside it; every control belongs
+   to the box, so they cluster at the far end. The auto margin lives on the
+   count rather than on the first button, so the grouping survives whichever
+   buttons are actually present — the shape picker disappears outside Advanced
+   mode, and the delete button when a box is the last one. */
+.k-group__head > .k-group__count { margin-right: auto; }
+.k-group__head { gap: 6px; }
+.k-group__head > .k-group__name { flex: 0 1 auto; min-width: 3ch; }
+/* keep the cluster together at every width instead of wrapping a stray button */
+.k-group__head { flex-wrap: nowrap; }
+.k-group__head > .k-shapepick,
+.k-group__head > .k-group__pin,
+.k-group__head > .k-group__open,
+.k-group__head > .k-group__dissolve { flex: none; }
+@media (max-width: 640px) {
+  .k-group__head { gap: 4px; }
+}
+
+/* ---- pill: stop the ends eating the content -----------------------------
+   13% of WIDTH was derived for a square-ish box; on a wide short one that is a
+   huge vertical inset while the actual end caps are only half the height. Cap
+   the radius to the height instead, so a pill stays a stadium and its inset
+   tracks the caps rather than the box's width. */
+.kg-item__body:has(> .k-group[data-shape="pill"]) { border-radius: 9999px; }
+.k-group[data-shape="pill"] {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  padding-left: clamp(18px, 7%, 78px) !important;
+  padding-right: clamp(18px, 7%, 78px) !important;
+}
+.k-group[data-shape="pill"] > .k-group__head { padding-left: 4px; padding-right: 4px; }
+
+/* The name is an <input>, so it holds its default ~20ch width and shoved the
+   count far from the title. field-sizing shrinks it to its text; the max-width
+   stops a long name from crowding out the controls. */
+.k-group__head > .k-group__name {
+  field-sizing: content;
+  max-width: min(58%, 30ch);
+}
+/* an existing auto margin on the buttons spread them across any spare width,
+   so the cluster only looked tight on narrow screens */
+.k-group__head > .k-shapepick,
+.k-group__head > .k-group__pin,
+.k-group__head > .k-group__open,
+.k-group__head > .k-group__dissolve { margin-left: 0; margin-right: 0; }
+/* descendant, not child: the delete button is wrapped, so the child selector
+   above never reached it and it kept drifting to the far edge */
+.k-group__head .k-shapepick,
+.k-group__head .k-group__pin,
+.k-group__head .k-group__open,
+.k-group__head .k-group__dissolve { margin-left: 0 !important; margin-right: 0 !important; }

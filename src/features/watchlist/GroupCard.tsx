@@ -233,6 +233,17 @@ export function GroupCard({
             <Ico name="expand" s={14} />
           </button>
         )}
+        {/* Dissolve belongs with the other box controls. It used to live at the
+            end of the rules row, which floated it to the far edge away from
+            open and pin. */}
+        <button
+          className="k-group__dissolve"
+          onClick={(e) => { e.stopPropagation(); onDissolve(group.id); }}
+          title="Dissolve collection"
+          aria-label="Dissolve collection"
+        >
+          <Ico name="ungroup" s={15} />
+        </button>
         {!browse && hasScoped ? (
           <span className="k-group__scopebadge" title={scopeTitle()}>
             scoped
@@ -251,13 +262,6 @@ export function GroupCard({
                 />
               )),
             )}
-          <button
-            className="k-group__dissolve"
-            onClick={() => onDissolve(group.id)}
-            title="Dissolve collection"
-          >
-            <Ico name="ungroup" s={15} />
-          </button>
         </div>
       </div>
       <div className="k-group__rows">{children}</div>
