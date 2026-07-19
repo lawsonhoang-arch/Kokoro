@@ -3155,3 +3155,10 @@ body.k-resizing .kg-item--dragging {
 .k-app[data-sculpt="on"] .k-stage:has(.k-sidebar:not(.k-sidebar--collapsed)) .k-scroll {
   margin-top: var(--rules-trigger-h, 64px);
 }
+/* REGRESSION FIX: this dimming layer is fixed/inset:0, so without disabling
+   pointer events it swallowed every click and drag across the whole viewport —
+   rules could not be dragged onto boxes, and the board was unreachable while
+   the menu was open. It is decoration; it must never take input. */
+.k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed)::after {
+  pointer-events: none;
+}
