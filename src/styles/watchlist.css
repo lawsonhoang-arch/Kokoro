@@ -3162,3 +3162,38 @@ body.k-resizing .kg-item--dragging {
 .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed)::after {
   pointer-events: none;
 }
+
+/* ===== mobile rules: let the panel scroll ================================
+   .k-rrow is touch-action: pan-x so a horizontal swipe scrolls the token row.
+   The cost is that VERTICAL movement went to the app as a rule-drag, so the
+   panel itself could never be scrolled — the rules below the fold were simply
+   unreachable on a phone.
+
+   On a coarse pointer the tokens do not need drag at all: tap-to-apply already
+   works there (tap a token, then tap a box). So hand both axes back to the
+   browser and let the panel scroll. */
+@media (pointer: coarse) {
+  .k-rrow { touch-action: pan-x pan-y; }
+  .k-app[data-sculpt="on"] .k-sidebar:not(.k-sidebar--collapsed) {
+    max-height: min(76vh, 560px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .k-rrows { touch-action: pan-x pan-y; }
+}
+
+/* ===== the Rules trigger sits under anything that overlaps it =============
+   The display menu and the size slider open downward from the toolbar and land
+   on top of the trigger. It is page furniture, they are transient — so it
+   yields rather than poking through them. */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed { z-index: 1; position: relative; }
+/* .dm__menu is the Cards/Stacked/Free-form + sizing popover; the other two are
+   the add-to-tab and shape menus. Names verified against the components rather
+   than guessed — an invented selector here would silently do nothing. */
+.dm__menu,
+.k-addmenu,
+.k-shapepick__menu { z-index: 80; }
+.dm { position: relative; z-index: 50; }
+.k-subtools { position: relative; z-index: 40; }
