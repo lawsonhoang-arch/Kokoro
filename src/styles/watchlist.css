@@ -2814,3 +2814,35 @@ body.k-resizing .kg-item--dragging {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
 }
 @media (max-width: 640px) { .k-advtoggle { padding: 6px 10px; font-size: 12px; } }
+
+/* ---- shaped boxes: match the real box colour ----------------------------
+   A shaped panel was filled with plain var(--surface), but an unshaped box is
+   color-mix(in oklab, var(--accent) 2.5%, var(--surface)) — very slightly warmed
+   by the accent. Against its neighbours the flat surface read as washed out, so
+   a box appeared to lose its colour the moment you gave it a shape. */
+.kg-item__body:has(> .k-group[data-shape="round"]),
+.kg-item__body:has(> .k-group[data-shape="pill"]),
+.kg-item__body:has(> .k-group[data-shape="hex"]),
+.kg-item__body:has(> .k-group[data-shape="angled"]),
+.kg-item__body:has(> .k-group[data-shape="notch"]) {
+  /* 4%, not the 2.5% an unshaped .k-group uses: a shaped box no longer paints
+     the outer grid item, and losing that layer cost it some warmth. Matched by
+     sampling the rendered pixel of a plain box (38,30,26) — 4% lands on
+     (39,30,24), where 2.5% sat at (36,29,23). */
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface)) !important;
+}
+
+/* ---- multi-select Clear: make it read as the action it is ----------------
+   An outline pill on a dark bar was nearly invisible; the bar announces a
+   selection, so its one control should carry the accent. */
+.k-msel__btn {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink, #1a1206);
+  font-weight: 600;
+}
+.k-msel__btn:hover {
+  background: color-mix(in oklab, var(--accent) 84%, #fff);
+  border-color: transparent;
+}
+.k-msel__btn:active { background: color-mix(in oklab, var(--accent) 88%, #000); }
