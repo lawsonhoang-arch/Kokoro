@@ -29,7 +29,10 @@ export type GRect = { x: number; y: number; w: number; h: number };
 type GLayout = Record<string, GRect>;
 // `full` packs the box across the whole width (its own row) — used for the
 // catch-all "Unsorted" box so it sits under the collections rather than beside one.
-export type GridItem = { key: string; node: ReactNode; rows: number; tint?: CSSProperties; full?: boolean };
+export type GridItem = { key: string; node: ReactNode; rows: number; tint?: CSSProperties; full?: boolean;
+  /** hexagons occupy a SQUARE footprint: the packer still sees a plain
+   *  rectangle, the resize just locks height to match width in pixels. */
+  square?: boolean };
 
 const collides = (a: GRect, b: GRect) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -158,6 +161,29 @@ export function GridCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keySig, storageKey]);
 
+  // Turning a box into a hexagon squares it straight away, rather than leaving
+  // it stretched until the next resize. Runs whenever the set of square boxes
+  // changes, and only touches boxes that are not already square.
+  const squareSig = items.filter((i) => i.square).map((i) => i.key).join(",");
+  useEffect(() => {
+    if (!cw || !squareSig) return;
+    setLayout((prev) => {
+      let changed = false;
+      const next: GLayout = { ...prev };
+      for (const k of squareSig.split(",")) {
+        const r = prev[k];
+        if (!r) continue;
+        const want = Math.max(MIN_H, Math.round((pxW(r.w) + GAP) / (ROW_H + GAP)));
+        if (want !== r.h) { next[k] = { ...r, h: want }; changed = true; }
+      }
+      if (!changed) return prev;
+      const packed = compact(next, keys);
+      try { localStorage.setItem(storageKey, JSON.stringify(packed)); } catch {}
+      return packed;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squareSig, cw]);
+
   // Reset → tidy auto-pack. resetToken starts at 0 and only increments when the
   // user hits Reset; guarding on `=== 0` (rather than a "first run" ref) is safe
   // under React's double-invoked effects, which otherwise fired a spurious reset
@@ -266,6 +292,7 @@ export function GridCanvas({
     e.stopPropagation();
     const start = layout[key];
     if (!start) return;
+    const isSquare = !!items.find((i) => i.key === key)?.square;
     const sx = e.clientX, sy = e.clientY;
     setDragKey(key);
     document.body.classList.add("k-resizing");
@@ -273,6 +300,13 @@ export function GridCanvas({
       let w = start.w, h = start.h;
       if (dir === "e" || dir === "se") w = Math.max(MIN_W, Math.min(COLS - start.x, start.w + Math.round((ev.clientX - sx) / (cellW + GAP))));
       if (dir === "s" || dir === "se") h = Math.max(MIN_H, start.h + Math.round((ev.clientY - sy) / (ROW_H + GAP)));
+      // A hexagon keeps a square footprint, so one drag scales both axes: the
+      // packer still sees an ordinary rectangle and nothing else has to change.
+      // For a pure vertical drag we go the other way and derive the width.
+      if (isSquare) {
+        if (dir === "s") w = Math.max(MIN_W, Math.min(COLS - start.x, Math.round((pxH(h) + GAP) / (cellW + GAP))));
+        h = Math.max(MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
+      }
       setLayout((prev) => compact({ ...prev, [key]: { ...prev[key], w, h } }, keys, key));
     };
     const up = () => {

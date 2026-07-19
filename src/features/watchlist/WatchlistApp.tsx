@@ -1734,6 +1734,7 @@ export default function WatchlistApp({
                     rows: estRows(key),
                     tint: tintFor(key),
                     full: key === "loose",
+                    square: key.startsWith("g:") && shapes[key.slice(2)] === "hex",
                     node:
                       key === "loose"
                         ? renderLooseBox()
