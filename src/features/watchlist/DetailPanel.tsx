@@ -138,29 +138,29 @@ export function DetailPanel({
             on a title. */}
         <div className="k-dtabs" data-tab={tab} role="tablist" aria-label="Detail view">
           <button
-            type="button" role="tab" aria-selected={tab === "rating"}
-            className={"k-dtabs__b" + (tab === "rating" ? " on" : "")}
-            onClick={() => setTab("rating")}
-          >
-            Your rating
-          </button>
-          <button
             type="button" role="tab" aria-selected={tab === "about"}
             className={"k-dtabs__b" + (tab === "about" ? " on" : "")}
             onClick={() => setTab("about")}
           >
             About
           </button>
+          <button
+            type="button" role="tab" aria-selected={tab === "rating"}
+            className={"k-dtabs__b" + (tab === "rating" ? " on" : "")}
+            onClick={() => setTab("rating")}
+          >
+            Your rating
+          </button>
         </div>
 
         {tab === "about" && (
-          <div className="k-dpane" data-dir="right" key="about">
+          <div className="k-dpane" data-dir="left" key="about">
             <AboutTab titleId={entry.titleId ?? null} />
           </div>
         )}
 
         {tab === "rating" && (
-        <div className="k-dpane" data-dir="left" key="rating">
+        <div className="k-dpane" data-dir="right" key="rating">
         <div className="k-impression">
           <div className="k-impression__col">
             <div className="k-impression__lbl">How you rate this — your choice</div>

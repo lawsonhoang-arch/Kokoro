@@ -3316,3 +3316,7 @@ body.k-resizing .kg-item--dragging {
    widths (101px vs 72px), so a flat 50% pill lined up with neither label. Grid
    columns are equal by construction and immune to that. */
 .k-dtabs { display: inline-grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; }
+/* About is now the LEFT tab, so the pill rests at 0 for About and travels right
+   for Your rating — the reverse of when the order was the other way round. */
+.k-dtabs[data-tab="about"]::before { transform: none; }
+.k-dtabs[data-tab="rating"]::before { transform: translateX(100%); }
