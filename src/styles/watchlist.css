@@ -3250,3 +3250,31 @@ body.k-resizing .kg-item--dragging {
   .k-app[data-sculpt="off"] .k-tabsbar,
   .k-app[data-sculpt="off"] .k-subtools { animation: none !important; }
 }
+
+/* ===== detail panel: slide between Rating and About =======================
+   Each pane mounts fresh when you switch, so a mount animation is the whole
+   mechanism — no exit needed, because the outgoing pane is gone before the
+   incoming one paints. Direction follows the tabs: About sits on the right, so
+   it enters from the right; Rating enters from the left. That makes the toggle
+   feel like moving along a strip rather than two unrelated screens.
+
+   overflow-x is clipped on the scroll container so a pane sliding in from off
+   to the side never widens the panel or shows a horizontal scrollbar. */
+.k-detail__scroll { overflow-x: clip; }
+.k-dpane { animation: k-dpane-right .26s cubic-bezier(.22, .7, .3, 1) both; }
+.k-dpane[data-dir="left"] { animation-name: k-dpane-left; }
+@keyframes k-dpane-right {
+  from { opacity: 0; transform: translateX(26px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes k-dpane-left {
+  from { opacity: 0; transform: translateX(-26px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+/* the pill marker glides between the two tabs instead of blinking across */
+.k-dtabs__b { transition: color .18s ease, background-color .22s cubic-bezier(.22,.7,.3,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-dpane { animation: none !important; }
+  .k-dtabs__b { transition: none; }
+}

@@ -153,10 +153,14 @@ export function DetailPanel({
           </button>
         </div>
 
-        {tab === "about" && <AboutTab titleId={entry.titleId ?? null} />}
+        {tab === "about" && (
+          <div className="k-dpane" data-dir="right" key="about">
+            <AboutTab titleId={entry.titleId ?? null} />
+          </div>
+        )}
 
         {tab === "rating" && (
-        <>
+        <div className="k-dpane" data-dir="left" key="rating">
         <div className="k-impression">
           <div className="k-impression__col">
             <div className="k-impression__lbl">How you rate this — your choice</div>
@@ -354,7 +358,7 @@ export function DetailPanel({
             onSetWatched={(eps) => onSetWatched(entry.id, eps)}
           />
         )}
-        </>
+        </div>
         )}
 
         {onRemove && (
