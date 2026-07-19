@@ -3278,3 +3278,41 @@ body.k-resizing .kg-item--dragging {
   .k-dpane { animation: none !important; }
   .k-dtabs__b { transition: none; }
 }
+
+/* ===== detail toggle: the pill travels between the two labels =============
+   The selected state was a background on whichever button was active, so it
+   blinked from one to the other. The pill is now a single element behind both
+   buttons that slides across — the thing that actually reads as a toggle.
+
+   Both buttons are given equal width so the pill can be a flat 50% and move by
+   exactly its own width; measuring two different label widths would need JS
+   and buys nothing here. */
+.k-dtabs { position: relative; display: inline-flex; gap: 0; }
+.k-dtabs__b { flex: 1 1 0; position: relative; z-index: 1; text-align: center; white-space: nowrap; }
+.k-dtabs::before {
+  content: "";
+  position: absolute;
+  top: 4px; bottom: 4px; left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-1);
+  transition: transform .3s cubic-bezier(.25, .75, .3, 1);
+  z-index: 0;
+}
+.k-dtabs[data-tab="about"]::before { transform: translateX(100%); }
+/* the button keeps only its text colour — the pill behind it is the highlight */
+.k-dtabs__b.on {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-dtabs::before { transition: none; }
+}
+/* flex:1 1 0 did not equalise them — a more specific rule kept their intrinsic
+   widths (101px vs 72px), so a flat 50% pill lined up with neither label. Grid
+   columns are equal by construction and immune to that. */
+.k-dtabs { display: inline-grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; }

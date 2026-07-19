@@ -136,7 +136,7 @@ export function DetailPanel({
         {/* Switch between your own rating/notes and the catalogue info that the
             /anime/[id] page shows, so you never have to leave the list to read up
             on a title. */}
-        <div className="k-dtabs" role="tablist" aria-label="Detail view">
+        <div className="k-dtabs" data-tab={tab} role="tablist" aria-label="Detail view">
           <button
             type="button" role="tab" aria-selected={tab === "rating"}
             className={"k-dtabs__b" + (tab === "rating" ? " on" : "")}
