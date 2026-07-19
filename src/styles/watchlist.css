@@ -3033,3 +3033,54 @@ body.k-resizing .kg-item--dragging {
     .k-group:focus-within > .k-group__head { transform: none; }
   }
 }
+
+/* ===== header as a band that belongs to the box ==========================
+   Previously it floated in as its own translucent pill. It is now an opaque
+   band pinned to the top of the box, and because it lives inside the panel that
+   carries the silhouette, the panel's clip-path trims it — so on a hexagon its
+   ends are cut by the slants, on a cut corner it loses that corner, and on a
+   pill its ends round off. It fits the shape by being clipped BY the shape
+   rather than by trying to redraw it.
+
+   Shapes whose top edge is not full width need the band pushed down to where
+   the box actually is that wide, or the clip would leave a sliver. */
+@media (hover: hover) and (pointer: fine) {
+  .k-group__head {
+    background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+    backdrop-filter: none;
+    border-radius: 0;
+    box-shadow: 0 6px 14px -12px rgb(0 0 0 / .6);
+  }
+  /* hidden state slides straight up behind its own top edge */
+  .k-group__head { transform: translateY(-100%); }
+
+  /* While shaping, the band stays put — you are working on the boxes, so their
+     names and controls should not depend on where the cursor happens to be. */
+  .k-app[data-sculpt="on"] .k-group__head {
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+/* on touch it was already static and visible; keep the same band treatment */
+.k-group__head {
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+}
+
+/* sit below the point / cut so the clip trims the band's ends rather than
+   erasing it — measured against each silhouette's top edge */
+.k-group[data-shape="hex"] > .k-group__head    { top: 11%; }
+.k-group[data-shape="angled"] > .k-group__head { top: 0; padding-left: 30px; }
+.k-group[data-shape="notch"] > .k-group__head  { top: 0; }
+.k-group[data-shape="pill"] > .k-group__head   { top: 8%; }
+/* the band is inside the clipped panel, so it needs no radius of its own —
+   remove the inherited one that used to round it against a square box */
+.k-group[data-shape] > .k-group__head { border-radius: 0; }
+/* A pill's end caps curve inward exactly where the title begins, so the band
+   needs both a push down into the straight middle and a real horizontal inset —
+   4px was left over from when the header was full width. */
+.k-group[data-shape="pill"] > .k-group__head {
+  top: 15%;
+  padding-left: 9% !important;
+  padding-right: 9% !important;
+}
