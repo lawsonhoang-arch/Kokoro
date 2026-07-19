@@ -23,6 +23,10 @@ const GAP = 12;
 const DEFAULT_W = 12; // half-width by default → two boxes per row
 const MIN_W = 6;
 const MIN_H = 6;
+// A hexagon may shrink far below a normal box: a beehive of single-title cells
+// is the whole point of the square footprint.
+const SQUARE_MIN_W = 3;
+const SQUARE_MIN_H = 3;
 const STACK_MIN_H = 140; // px — smallest useful height for a phone box
 
 export type GRect = { x: number; y: number; w: number; h: number };
@@ -178,7 +182,7 @@ export function GridCanvas({
         // a half-width box balloon into a huge square. Once it is already
         // square we leave the size alone, so a resized hexagon stays put.
         const w = r.h === Math.round((pxW(r.w) + GAP) / (ROW_H + GAP)) ? r.w : MIN_W;
-        const want = Math.max(MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
+        const want = Math.max(SQUARE_MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
         if (want !== r.h || w !== r.w) { next[k] = { ...r, w, h: want }; changed = true; }
       }
       if (!changed) return prev;
@@ -303,14 +307,15 @@ export function GridCanvas({
     document.body.classList.add("k-resizing");
     const move = (ev: PointerEvent) => {
       let w = start.w, h = start.h;
-      if (dir === "e" || dir === "se") w = Math.max(MIN_W, Math.min(COLS - start.x, start.w + Math.round((ev.clientX - sx) / (cellW + GAP))));
+      var minW = isSquare ? SQUARE_MIN_W : MIN_W;
+      if (dir === "e" || dir === "se") w = Math.max(minW, Math.min(COLS - start.x, start.w + Math.round((ev.clientX - sx) / (cellW + GAP))));
       if (dir === "s" || dir === "se") h = Math.max(MIN_H, start.h + Math.round((ev.clientY - sy) / (ROW_H + GAP)));
       // A hexagon keeps a square footprint, so one drag scales both axes: the
       // packer still sees an ordinary rectangle and nothing else has to change.
       // For a pure vertical drag we go the other way and derive the width.
       if (isSquare) {
-        if (dir === "s") w = Math.max(MIN_W, Math.min(COLS - start.x, Math.round((pxH(h) + GAP) / (cellW + GAP))));
-        h = Math.max(MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
+        if (dir === "s") w = Math.max(minW, Math.min(COLS - start.x, Math.round((pxH(h) + GAP) / (cellW + GAP))));
+        h = Math.max(SQUARE_MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
       }
       setLayout((prev) => compact({ ...prev, [key]: { ...prev[key], w, h } }, keys, key));
     };

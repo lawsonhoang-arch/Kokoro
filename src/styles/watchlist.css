@@ -2899,3 +2899,42 @@ body.k-resizing .kg-item--dragging {
 .k-group__head .k-group__pin,
 .k-group__head .k-group__open,
 .k-group__head .k-group__dissolve { margin-left: 0 !important; margin-right: 0 !important; }
+
+/* ===== hexagons: bigger interior, and small enough for a beehive ==========
+   The points were 13% deep, which forced 23% vertical padding to keep the
+   slant margin equal to the flat one — so most of the hexagon was empty. At
+   10% the slant is shallower and the same equal-margin solve gives 15%:
+
+     slant 2x + (1/0.10)y = S,  distance((m,p), slant) = m  ->  p = 14.9% at m = 6%
+
+   That hands roughly a fifth of the box's height back to the content. */
+.kg-item__body:has(> .k-group[data-shape="hex"]) {
+  clip-path: polygon(0% 10%, 50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%);
+}
+.k-group[data-shape="hex"] {
+  padding-top: 15% !important;
+  padding-bottom: 15% !important;
+  padding-left: 6% !important;
+  padding-right: 6% !important;
+}
+.k-group[data-shape="hex"] > .k-group__head { padding-left: 3%; padding-right: 3%; }
+
+/* A hexagon small enough to hold one title has no room for a header row, so
+   below ~230px it drops to just the artwork — which is what makes a beehive of
+   them readable rather than a grid of clipped labels. Container queries, so it
+   responds to the BOX, not the viewport. */
+.kg-item__body:has(> .k-group[data-shape="hex"]) { container-type: inline-size; container-name: hexbox; }
+@container hexbox (max-width: 230px) {
+  .k-group[data-shape="hex"] > .k-group__head { display: none; }
+  .k-group[data-shape="hex"] {
+    padding-top: 13% !important; padding-bottom: 13% !important;
+  }
+  /* the single card fills the usable middle band */
+  .k-group[data-shape="hex"] .k-group__rows { padding: 0 !important; }
+}
+/* smaller still: tighten everything so the art carries the cell */
+@container hexbox (max-width: 160px) {
+  .k-group[data-shape="hex"] { padding-left: 4% !important; padding-right: 4% !important; }
+  .k-group[data-shape="hex"] .k-card__meta,
+  .k-group[data-shape="hex"] .k-tags { display: none; }
+}
