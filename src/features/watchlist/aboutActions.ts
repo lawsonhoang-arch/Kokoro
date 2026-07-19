@@ -26,10 +26,11 @@ export type TitleAbout = {
  *  surface (the list's detail modal) can't mount — so this returns the same
  *  material serialised, letting both places show one set of facts. */
 export async function getTitleAboutAction(titleId: string): Promise<TitleAbout | null> {
-  const t = await getTitle(titleId);
+  // These were sequential, so every open paid two round trips before the first
+  // Jikan request could even start. getTrackMeta keys off the same id we were
+  // given, so it never needed to wait for getTitle.
+  const [t, meta] = await Promise.all([getTitle(titleId), getTrackMeta(titleId)]);
   if (!t) return null;
-
-  const meta = await getTrackMeta(t.id);
   // anime carry malId on the row; manga ids look like "mga:<malId>"
   const malId =
     meta?.malId ?? (t.kind === "manga" ? parseInt(t.id.replace(/^mga:/, ""), 10) || null : null);

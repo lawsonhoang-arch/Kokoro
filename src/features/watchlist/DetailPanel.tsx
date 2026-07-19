@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FEELINGS, SYMBOL_STYLES, GRADE_LETTERS, MOOD_EMOJI } from "./data";
 import { EXTERNAL_SCORES } from "./helpers";
 import { Glyph } from "./Glyph";
@@ -8,6 +8,7 @@ import { Ico } from "./Ico";
 import { EpisodeNotes } from "./EpisodeNotes";
 import { TakeNotes } from "./TakeNotes";
 import { AboutTab } from "./AboutTab";
+import { getTitleAboutAction } from "./aboutActions";
 import { BASE_AXES } from "./types";
 import type { Entry, Feeling, GlyphSet, RateMode, SymbolStyle } from "./types";
 
@@ -63,6 +64,15 @@ export function DetailPanel({
   const ext = EXTERNAL_SCORES[entry.id];
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [tab, setTab] = useState<"rating" | "about">("rating");
+  // Warm the About data as soon as the panel opens rather than when the tab is
+  // clicked. The underlying calls are cached for a week server-side but the
+  // FIRST one for a title queues five Jikan requests behind a rate limiter, so
+  // it is slow exactly once — this spends that wait while you are reading the
+  // rating tab instead of after you ask for About.
+  useEffect(() => {
+    if (!entry.titleId) return;
+    void getTitleAboutAction(entry.titleId).catch(() => {});
+  }, [entry.titleId]);
   const [axisDraft, setAxisDraft] = useState<string | null>(null);
 
   const rateMode: RateMode = entry.rateMode ?? "glyphs";
