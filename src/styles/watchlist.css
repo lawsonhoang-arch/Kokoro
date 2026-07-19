@@ -2682,3 +2682,60 @@ body.k-resizing .kg-item--dragging {
 @media (prefers-reduced-motion: reduce) {
   .kg-item__body:has(> .k-group[data-shape]) { transition: none; }
 }
+
+/* ===== shaped boxes: strip the rectangle behind them ======================
+   Clipping the panel left the outer grid item still painting its own rounded
+   rectangle — the box read as a square with a shape drawn inside it. When a
+   box is shaped, the item stops painting chrome entirely and the panel becomes
+   the only thing you see. */
+.kg-item:has(.k-group[data-shape="round"]),
+.kg-item:has(.k-group[data-shape="pill"]),
+.kg-item:has(.k-group[data-shape="hex"]),
+.kg-item:has(.k-group[data-shape="angled"]),
+.kg-item:has(.k-group[data-shape="notch"]) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* the panel carries the silhouette's fill; no ring, because an inset shadow
+   follows the border-box and would get sliced into fragments by the clip */
+.kg-item__body:has(> .k-group[data-shape="round"]),
+.kg-item__body:has(> .k-group[data-shape="pill"]),
+.kg-item__body:has(> .k-group[data-shape="hex"]),
+.kg-item__body:has(> .k-group[data-shape="angled"]),
+.kg-item__body:has(> .k-group[data-shape="notch"]) {
+  background: var(--surface) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* the .k-group backdrop layer from the first attempt is now redundant — the
+   panel does the painting — and it double-drew the silhouette */
+.k-group[data-shape="hex"]::before,
+.k-group[data-shape="angled"]::before,
+.k-group[data-shape="notch"]::before { display: none; }
+
+/* ===== keep the cards clear of the cut edges =============================
+   The clip eats into the corners, so content needs to sit inside the safe
+   area or titles get sliced. These paddings are measured against each
+   silhouette's deepest intrusion, with room to spare. */
+.k-group[data-shape="hex"] {
+  padding-top: 30px !important; padding-bottom: 30px !important;
+  padding-left: 22px !important; padding-right: 22px !important;
+}
+.k-group[data-shape="angled"] {
+  padding-top: 14px !important; padding-bottom: 14px !important;
+  padding-left: 18px !important; padding-right: 18px !important;
+}
+.k-group[data-shape="notch"] {
+  padding-left: 20px !important; padding-right: 20px !important;
+}
+.k-group[data-shape="pill"] {
+  padding-left: 34px !important; padding-right: 34px !important;
+}
+/* the header sits in the narrowest part of a hexagon, so pull it in further */
+.k-group[data-shape="hex"] > .k-group__head { padding-left: 26px; padding-right: 26px; }
+
+/* a gentler hexagon: the 14% points cut too deep once there are cards inside */
+.kg-item__body:has(> .k-group[data-shape="hex"]) {
+  clip-path: polygon(0% 22%, 50% 0%, 100% 22%, 100% 78%, 50% 100%, 0% 78%);
+}
