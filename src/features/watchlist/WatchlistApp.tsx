@@ -289,6 +289,23 @@ export default function WatchlistApp({
 
   // Per-box silhouette. Purely visual: the box still occupies its normal
   // rectangular slot, so packing, resizing and drop targets are untouched.
+  // Advanced mode gates the experimental shaping tools only. Rules, bookmarking,
+  // moving, resizing and everything else stay open — those are the product, not
+  // power-user extras. Shapes already applied keep rendering when it is off; the
+  // switch hides the controls, it does not undo your work.
+  const ADV_KEY = "kokoro_advanced";
+  const [advanced, setAdvanced] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    try { if (localStorage.getItem(ADV_KEY) === "1") setAdvanced(true); } catch {}
+  }, []);
+  const toggleAdvanced = () =>
+    setAdvanced((v) => {
+      const next = !v;
+      try { localStorage.setItem(ADV_KEY, next ? "1" : "0"); } catch {}
+      return next;
+    });
+
   const SHAPES_KEY = "kokoro_shapes_" + id;
   const [shapes, setShapes] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -1385,7 +1402,7 @@ export default function WatchlistApp({
         }
         landed={landed === g.id}
         shape={shapes[g.id] || "box"}
-        onShape={sculpt ? setShape : undefined}
+        onShape={sculpt && advanced ? setShape : undefined}
         onRename={renameGroup}
         onDissolve={dissolveGroup}
         onRemoveRule={removeGroupRule}
@@ -1619,6 +1636,22 @@ export default function WatchlistApp({
                   Free-form
                 </button>
               </div>
+            )}
+            {sculpt && (
+              <button
+                type="button"
+                className={"k-advtoggle" + (advanced ? " on" : "")}
+                onClick={toggleAdvanced}
+                aria-pressed={advanced}
+                title={
+                  advanced
+                    ? "Hide the experimental shaping tools"
+                    : "Show experimental shaping tools — box shapes, and more to come"
+                }
+              >
+                <span className="k-advtoggle__dot" />
+                Advanced
+              </button>
             )}
             <div className="k-subtools__spacer" />
             {gridLayout && sculpt && (

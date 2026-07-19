@@ -2790,3 +2790,27 @@ body.k-resizing .kg-item--dragging {
 .k-group[data-shape="notch"] > .k-group__head { min-width: 0; }
 .k-group[data-shape="hex"] .k-group__name,
 .k-group[data-shape="pill"] .k-group__name { min-width: 0; }
+
+/* ---- Advanced toggle -----------------------------------------------------
+   Gates the experimental shaping tools only. Deliberately quiet: it is a
+   preference, not an action, so it should not compete with Shape list. */
+.k-advtoggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 100px;
+  background: transparent; color: var(--text-dim);
+  font: inherit; font-size: 13px; cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+.k-advtoggle:hover { color: var(--text); border-color: var(--line-strong); }
+.k-advtoggle__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--line-strong);
+  transition: background-color .15s ease, box-shadow .15s ease;
+}
+.k-advtoggle.on { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 55%, transparent); }
+.k-advtoggle.on .k-advtoggle__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+@media (max-width: 640px) { .k-advtoggle { padding: 6px 10px; font-size: 12px; } }
