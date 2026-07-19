@@ -400,14 +400,28 @@ export default function WatchlistApp({
     } catch {}
   }, []);
 
-  const toggleSidebar = () =>
-    setSidebarCollapsed((v) => {
-      const n = !v;
-      try {
-        localStorage.setItem(SIDEBAR_KEY, n ? "1" : "0");
-      } catch {}
-      return n;
-    });
+  // Closing keeps the panel mounted for the length of its exit animation —
+  // CSS cannot animate an unmount, so without this the menu simply vanished
+  // while opening had a considered drop-in. Both directions now match.
+  const [sidebarClosing, setSidebarClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+  const RULES_EXIT_MS = 180;
+  const toggleSidebar = () => {
+    const save = (n: boolean) => { try { localStorage.setItem(SIDEBAR_KEY, n ? "1" : "0"); } catch {} };
+    if (!sidebarCollapsed) {
+      setSidebarClosing(true);
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      closeTimer.current = setTimeout(() => {
+        setSidebarClosing(false);
+        setSidebarCollapsed(true);
+        save(true);
+      }, RULES_EXIT_MS);
+      return;
+    }
+    setSidebarCollapsed(false);
+    save(false);
+  };
 
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
     try {
@@ -1747,6 +1761,7 @@ export default function WatchlistApp({
             groups={groups}
             customAxes={customAxes}
             collapsed={sidebarCollapsed}
+            closing={sidebarClosing}
             onToggleCollapsed={toggleSidebar}
           />
 

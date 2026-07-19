@@ -134,6 +134,8 @@ type SidebarProps = {
   groups: Group[];
   customAxes?: string[];
   collapsed: boolean;
+  /** true while the panel plays its exit animation before unmounting */
+  closing?: boolean;
   onToggleCollapsed: () => void;
 };
 
@@ -145,6 +147,7 @@ export function SculptSidebar({
   groups = [],
   customAxes = [],
   collapsed,
+  closing,
   onToggleCollapsed,
 }: SidebarProps) {
   // Custom rating axes are extra dimensions, so they sort just like a rating —
@@ -205,7 +208,7 @@ export function SculptSidebar({
   }
 
   return (
-    <aside className="k-sidebar">
+    <aside className={"k-sidebar" + (closing ? " k-sidebar--closing" : "")}>
       <div className="k-sidebar__head">
         <button className="k-sidebar__collapse" onClick={onToggleCollapsed} title="Collapse sidebar to recover screen space">
           <Ico name="chev" s={16} />

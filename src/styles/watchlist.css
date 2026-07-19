@@ -3197,3 +3197,56 @@ body.k-resizing .kg-item--dragging {
 .k-shapepick__menu { z-index: 80; }
 .dm { position: relative; z-index: 50; }
 .k-subtools { position: relative; z-index: 40; }
+
+/* ===== transitions that run both ways ====================================
+   Anything driven by `animation` only plays on mount, so a lot of this list
+   arrived with intent and then just blinked out. Where an element unmounts, it
+   is now held on screen long enough to play the reverse; where it merely
+   changes state, a transition already handles both directions. */
+
+/* --- rules menu: mirror the drop-in ------------------------------------- */
+.k-app[data-sculpt="on"] .k-sidebar--closing {
+  animation: k-rules-lift .18s cubic-bezier(.4, 0, .7, .35) forwards !important;
+  pointer-events: none;
+}
+@keyframes k-rules-lift {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+/* its dimming layer fades with it rather than cutting out */
+.k-app[data-sculpt="on"] .k-sidebar--closing::after {
+  animation: k-fade-out .18s ease forwards;
+}
+@keyframes k-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* --- the trigger: fade the two states into each other -------------------- */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  animation: k-trigger-in .2s cubic-bezier(.25, .7, .35, 1);
+}
+@keyframes k-trigger-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- state-driven pieces: swap animation for transition so they reverse --
+   .drop-armed and the header slide already transition, so they return on their
+   own. These three were animation-only and had no way back. */
+.k-msel { animation: k-msel-in .22s cubic-bezier(.2, .7, .3, 1); }
+.k-rulechip { animation: k-chip-in .2s cubic-bezier(.2, .8, .3, 1.1); }
+
+/* --- leaving Shape mode mirrors entering it ------------------------------
+   The entrance lifts the tabs and unfolds the palette; going back to browse
+   now settles them instead of cutting. */
+.k-app[data-sculpt="off"] .k-tabsbar,
+.k-app[data-sculpt="off"] .k-subtools {
+  animation: k-settle .34s cubic-bezier(.25, .7, .35, 1) both;
+}
+@keyframes k-settle {
+  from { transform: translateY(-4px); opacity: .8; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-app[data-sculpt="on"] .k-sidebar--closing,
+  .k-app[data-sculpt="on"] .k-sidebar--closing::after,
+  .k-app[data-sculpt="on"] .k-sidebar--collapsed,
+  .k-app[data-sculpt="off"] .k-tabsbar,
+  .k-app[data-sculpt="off"] .k-subtools { animation: none !important; }
+}
