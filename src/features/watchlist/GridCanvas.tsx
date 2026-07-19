@@ -173,8 +173,13 @@ export function GridCanvas({
       for (const k of squareSig.split(",")) {
         const r = prev[k];
         if (!r) continue;
-        const want = Math.max(MIN_H, Math.round((pxW(r.w) + GAP) / (ROW_H + GAP)));
-        if (want !== r.h) { next[k] = { ...r, h: want }; changed = true; }
+        // A box turning into a hexagon starts at its smallest square — big
+        // enough for the first card. Squaring the EXISTING width instead made
+        // a half-width box balloon into a huge square. Once it is already
+        // square we leave the size alone, so a resized hexagon stays put.
+        const w = r.h === Math.round((pxW(r.w) + GAP) / (ROW_H + GAP)) ? r.w : MIN_W;
+        const want = Math.max(MIN_H, Math.round((pxW(w) + GAP) / (ROW_H + GAP)));
+        if (want !== r.h || w !== r.w) { next[k] = { ...r, w, h: want }; changed = true; }
       }
       if (!changed) return prev;
       const packed = compact(next, keys);

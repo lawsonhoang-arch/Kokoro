@@ -2739,3 +2739,44 @@ body.k-resizing .kg-item--dragging {
 .kg-item__body:has(> .k-group[data-shape="hex"]) {
   clip-path: polygon(0% 22%, 50% 0%, 100% 22%, 100% 78%, 50% 100%, 0% 78%);
 }
+
+/* ===== shaped boxes: keep the header and cards out of the cut ============
+   Percentage padding resolves against the box WIDTH, and a hexagon is square,
+   so a percentage here tracks the clip's own percentage geometry at any size —
+   fixed pixel padding only ever worked at one size, which is why the label was
+   still being sliced on a small hexagon and floating on a large one. */
+.kg-item__body:has(> .k-group[data-shape="hex"]) {
+  /* shallower points than before: 22% ate too much of a one-card box */
+  clip-path: polygon(0% 13%, 50% 0%, 100% 13%, 100% 87%, 50% 100%, 0% 87%);
+}
+.k-group[data-shape="hex"] {
+  padding-top: 15% !important;
+  padding-bottom: 15% !important;
+  padding-left: 9% !important;
+  padding-right: 9% !important;
+}
+/* the header sits at the narrowest part of the hexagon, so inset it further */
+.k-group[data-shape="hex"] > .k-group__head {
+  padding-left: 6%; padding-right: 6%;
+}
+
+/* A pill's end caps are half its height wide, so a fixed inset cannot clear
+   them. These keep the label and the cards inside the straight middle. */
+.k-group[data-shape="pill"] {
+  /* a pill on a square box is a circle, whose top band is far too narrow for
+     a header — so push the content down into the wide middle as well as in */
+  padding-top: 13% !important;
+  padding-bottom: 13% !important;
+  padding-left: 13% !important;
+  padding-right: 13% !important;
+}
+.k-group[data-shape="pill"] > .k-group__head {
+  padding-left: 6%; padding-right: 6%;
+}
+
+/* nothing in a shaped box should be able to spill past the silhouette */
+.k-group[data-shape="hex"] > .k-group__head,
+.k-group[data-shape="pill"] > .k-group__head,
+.k-group[data-shape="notch"] > .k-group__head { min-width: 0; }
+.k-group[data-shape="hex"] .k-group__name,
+.k-group[data-shape="pill"] .k-group__name { min-width: 0; }
