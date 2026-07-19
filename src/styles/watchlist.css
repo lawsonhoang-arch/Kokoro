@@ -2494,29 +2494,29 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
    wobble ended. No will-change either: promoting and demoting a layer either
    side of a 400ms animation costs two repaints, which reads as a flicker. */
 .kg-settle-x, .kg-settle-y, .kg-settle-xy { transform-origin: top left; }
-.kg-settle-x  { animation: kg-settle-x  .42s cubic-bezier(.25, .7, .35, 1); }
-.kg-settle-y  { animation: kg-settle-y  .42s cubic-bezier(.25, .7, .35, 1); }
-.kg-settle-xy { animation: kg-settle-xy .42s cubic-bezier(.25, .7, .35, 1); }
+.kg-settle-x  { animation: kg-settle-x  .36s cubic-bezier(.25, .7, .35, 1); }
+.kg-settle-y  { animation: kg-settle-y  .36s cubic-bezier(.25, .7, .35, 1); }
+.kg-settle-xy { animation: kg-settle-xy .36s cubic-bezier(.25, .7, .35, 1); }
 
 /* pulled wider -> stretches horizontally, pinches vertically, then rocks back */
 @keyframes kg-settle-x {
   0%   { transform: scale(1,     1); }
-  35%  { transform: scale(1.010, .992); }
-  70%  { transform: scale(.997,  1.003); }
+  38%  { transform: scale(1.005, .996); }
+  72%  { transform: scale(.999,  1.001); }
   100% { transform: scale(1,     1); }
 }
 /* pulled taller -> the same, on the other axis */
 @keyframes kg-settle-y {
   0%   { transform: scale(1,     1); }
-  35%  { transform: scale(.992,  1.010); }
-  70%  { transform: scale(1.003, .997); }
+  38%  { transform: scale(.996,  1.005); }
+  72%  { transform: scale(1.001, .999); }
   100% { transform: scale(1,     1); }
 }
 /* corner drag -> a rounder wobble, no single axis to favour */
 @keyframes kg-settle-xy {
   0%   { transform: scale(1,     1); }
-  35%  { transform: scale(1.008, 1.008); }
-  70%  { transform: scale(.998,  .998); }
+  38%  { transform: scale(1.004, 1.004); }
+  72%  { transform: scale(.999,  .999); }
   100% { transform: scale(1,     1); }
 }
 
