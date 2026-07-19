@@ -2465,7 +2465,16 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
 /* --- and the board answers --------------------------------------------- */
 /* boxes ease into their edit chrome rather than snapping into it */
 .kg-item { transition: box-shadow .22s ease, border-color .22s ease; }
-.k-app[data-sculpt="on"] .kg-item--edit { animation: k-tok-in .34s cubic-bezier(.2, .8, .3, 1.05) both; }
+/* backwards, NOT both. k-tok-in ends on transform: translateY(0) scale(1), and
+   fill-mode:both holds that end state forever — and a CSS animation outranks an
+   inline style, so it overrode the inline transform that makes a dragged box
+   follow the cursor. The box simply would not move. backwards still holds the
+   START state before the animation begins (so there is no flash on entering
+   Shape mode) but releases once it has finished, handing transform back. */
+.k-app[data-sculpt="on"] .kg-item--edit { animation: k-tok-in .34s cubic-bezier(.2, .8, .3, 1.05) backwards; }
+/* belt and braces: a box being dragged or resized never runs the entrance */
+.k-app[data-sculpt="on"] .kg-item--edit.kg-item--active,
+.k-app[data-sculpt="on"] .kg-item--edit.kg-item--dragging { animation: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .k-app[data-sculpt="on"] .k-tabsbar,
