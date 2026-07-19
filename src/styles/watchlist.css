@@ -3367,3 +3367,31 @@ body.k-resizing .kg-item--dragging {
   min-width: 9px; width: 9px; height: 9px; padding: 0;
 }
 .k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__railcount { display: none; }
+
+/* ---- Rules trigger now lives in the toolbar row --------------------------
+   .k-subtools must stay position:static: the open panel is absolutely
+   positioned against .k-stage, and making the toolbar a containing block would
+   re-anchor the dropdown to the toolbar instead of the stage. Without a
+   position it also creates no stacking context, so the display menu's z-index
+   still beats the trigger's. */
+.k-subtools { position: static; z-index: auto; }
+
+.k-app[data-sculpt="on"] .k-sidebar--collapsed {
+  /* in the row now, so no margin of its own and no self-alignment override */
+  align-self: center;
+  margin: 0;
+  /* elongated: wide enough to read as a field rather than a chip, and to hold
+     four count dots without the label shifting as rules are added */
+  min-width: 210px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px 7px 15px;
+}
+.k-app[data-sculpt="on"] .k-sidebar--collapsed::before { margin-right: auto; }
+@media (max-width: 640px) {
+  .k-app[data-sculpt="on"] .k-sidebar--collapsed { min-width: 0; flex: 1 1 auto; }
+}
+/* the trigger is taller than its neighbours (18px count dots), so match the
+   toolbar's control height rather than letting padding decide it */
+.k-app[data-sculpt="on"] .k-sidebar--collapsed { height: 34px; box-sizing: border-box; padding-block: 0; }
+.k-subtools { align-items: center; }

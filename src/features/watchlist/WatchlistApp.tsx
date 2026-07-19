@@ -1744,6 +1744,21 @@ export default function WatchlistApp({
                 </button>
               </div>
             )}
+            {/* The rules trigger lives in the toolbar row, between the layout
+                segment and Advanced. The OPEN panel is absolutely positioned
+                against .k-stage, so .k-subtools must not become a containing
+                block — see the position:static note in the stylesheet. */}
+            <SculptSidebar
+              onGrabToken={onGrabToken}
+              onPaint={(cat, key) => setPaint((p) => (p && p.cat === cat && p.key === key ? null : { cat, key }))}
+              paintState={paint}
+              globals={globals}
+              groups={groups}
+              customAxes={customAxes}
+              collapsed={sidebarCollapsed}
+              closing={sidebarClosing}
+              onToggleCollapsed={toggleSidebar}
+            />
             {sculpt && (
               <button
                 type="button"
@@ -1788,17 +1803,6 @@ export default function WatchlistApp({
               side column it stole width from the canvas, so opening/closing it
               reflowed every box and shifted the cards. Full-width here means it
               only ever pushes the board down, leaving arrangements intact. */}
-          <SculptSidebar
-            onGrabToken={onGrabToken}
-            onPaint={(cat, key) => setPaint((p) => (p && p.cat === cat && p.key === key ? null : { cat, key }))}
-            paintState={paint}
-            globals={globals}
-            groups={groups}
-            customAxes={customAxes}
-            collapsed={sidebarCollapsed}
-            closing={sidebarClosing}
-            onToggleCollapsed={toggleSidebar}
-          />
 
           <div className="k-scroll">
             {entries.length === 0 ? (
