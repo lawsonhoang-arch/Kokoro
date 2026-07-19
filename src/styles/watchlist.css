@@ -2979,3 +2979,57 @@ body.k-resizing .kg-item--dragging {
    scaling with viewport width is what identified it as an auto margin rather
    than the name input's size. */
 .k-group__head .k-group__count { margin-left: 0 !important; margin-right: 0 !important; }
+
+/* ===== header slides down on hover =======================================
+   The header is lifted out of the flow and parked above the box, so at rest
+   the cards get the whole box and nothing reflows when it appears. On hover it
+   slides down OVER the top of the content rather than pushing it, which is why
+   it carries its own backdrop — it lands on artwork, not on empty panel.
+
+   Only where hover actually exists: on touch there is no way to bring it back,
+   so a coarse pointer keeps the header where it was. Also revealed by
+   :focus-within, so tabbing to the name or a control does not leave you
+   editing something you cannot see. */
+@media (hover: hover) and (pointer: fine) {
+  .k-group__head {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    z-index: 4;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: inherit;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--surface) 96%, transparent) 0%,
+      color-mix(in oklab, var(--surface) 92%, transparent) 70%,
+      transparent 100%
+    );
+    backdrop-filter: blur(7px);
+    transform: translateY(-102%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .22s cubic-bezier(.25,.7,.35,1), opacity .18s ease;
+  }
+  .k-group:hover > .k-group__head,
+  .k-group:focus-within > .k-group__head,
+  .k-group.drop-armed > .k-group__head {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* the box no longer reserves a header strip, so the content starts at the top */
+  .k-group > .k-group__rows { padding-top: 10px; }
+
+  /* a shaped box clips its own overflow, so park the header just inside the
+     silhouette instead of outside it, where the clip would eat it */
+  .k-group[data-shape="hex"] > .k-group__head,
+  .k-group[data-shape="angled"] > .k-group__head,
+  .k-group[data-shape="notch"] > .k-group__head,
+  .k-group[data-shape="pill"] > .k-group__head { transform: translateY(-100%); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .k-group__head { transition: opacity .01ms; transform: none; }
+    .k-group:hover > .k-group__head,
+    .k-group:focus-within > .k-group__head { transform: none; }
+  }
+}
