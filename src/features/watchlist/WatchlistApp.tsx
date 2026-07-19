@@ -251,6 +251,12 @@ export default function WatchlistApp({
     else { dragTabKey.current = null; setDropKey(null); }
   };
   const startTabTouchReorder = (e: React.PointerEvent, key: string) => {
+    // TOUCH ONLY. A mouse drag on a tab is handled by the HTML5 draggable
+    // handlers, but this path also ran for it: pointerup fired before the drop
+    // event, hit the "not started" branch, and cleared dragTabKey — so
+    // reorderTab then read null and bailed. Every drag event fired correctly
+    // and the tabs simply never moved.
+    if (e.pointerType !== "touch") return;
     tabTouch.current = { key, sx: e.clientX, sy: e.clientY, started: false };
     tabMovedRef.current = false;
     window.addEventListener("pointermove", tabTouchMove);
