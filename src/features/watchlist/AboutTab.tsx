@@ -3,13 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DescriptionSection } from "@/features/submissions/DescriptionSection";
-import { getTitleAboutAction, type TitleAbout } from "./aboutActions";
+import {
+  getTitleAboutAction,
+  getTitleAboutExtrasAction,
+  type TitleAbout,
+  type TitleAboutExtras,
+} from "./aboutActions";
 
 /** The "About" half of a detail surface: the same catalog material the
  *  /anime/[id] page shows (description, cast, staff, studios, trailer,
  *  suggestions). Loaded lazily the first time the tab is opened. */
 export function AboutTab({ titleId }: { titleId: string | null }) {
   const [data, setData] = useState<TitleAbout | null>(null);
+  // Staff, trailer and suggestions arrive separately so the top of the tab is
+  // not held hostage to three extra rate-limited requests.
+  const [extras, setExtras] = useState<TitleAboutExtras | null>(null);
   // start in "loading" rather than flipping it inside the effect — the panel is
   // keyed per entry, so this mounts fresh for each title anyway
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">(
@@ -22,9 +30,14 @@ export function AboutTab({ titleId }: { titleId: string | null }) {
     getTitleAboutAction(titleId)
       .then((d) => {
         if (!alive) return;
-         
         setData(d);
         setState("done");
+        // only chase the rest when there is something to chase it with
+        if (d?.malId) {
+          getTitleAboutExtrasAction(titleId)
+            .then((x) => { if (alive) setExtras(x); })
+            .catch(() => {});
+        }
       })
       .catch(() => alive && setState("error"));
     return () => {
@@ -85,11 +98,11 @@ export function AboutTab({ titleId }: { titleId: string | null }) {
             </section>
           )}
 
-          {data.staff.length > 0 && (
+          {extras && extras.staff.length > 0 && (
             <section className="k-about__sec">
               <h4 className="k-about__h">Staff</h4>
               <ul className="k-about__people">
-                {data.staff.slice(0, 8).map((s, i) => (
+                {extras.staff.slice(0, 8).map((s, i) => (
                   <li key={s.id ?? s.name + i} className="k-about__person">
                     {s.image && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -103,12 +116,12 @@ export function AboutTab({ titleId }: { titleId: string | null }) {
             </section>
           )}
 
-          {data.trailerId && (
+          {extras?.trailerId && (
             <section className="k-about__sec">
               <h4 className="k-about__h">Trailer</h4>
               <a
                 className="k-about__link"
-                href={`https://www.youtube.com/watch?v=${data.trailerId}`}
+                href={`https://www.youtube.com/watch?v=${extras.trailerId}`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -117,11 +130,11 @@ export function AboutTab({ titleId }: { titleId: string | null }) {
             </section>
           )}
 
-          {data.suggestions.length > 0 && (
+          {extras && extras.suggestions.length > 0 && (
             <section className="k-about__sec">
               <h4 className="k-about__h">If you liked this</h4>
               <div className="k-about__chips">
-                {data.suggestions.slice(0, 10).map((s) => (
+                {extras.suggestions.slice(0, 10).map((s) => (
                   <Link key={s.id} href={`/anime/${s.id}`} className="k-tag k-about__sugg">
                     {s.title}
                   </Link>
