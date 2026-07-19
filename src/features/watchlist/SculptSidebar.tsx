@@ -245,7 +245,6 @@ export function SculptSidebar({
         <button className="k-sidebar__collapse" onClick={onToggleCollapsed} title="Collapse sidebar to recover screen space">
           <Ico name="chev" s={16} />
         </button>
-        <div className="k-sidebar__eyebrow">Sculpt</div>
         <div className="k-sidebar__title">Organize your list</div>
         {/* Short on purpose: as a wide top bar the old three-sentence version ran
             to the edge and got clipped, which read as nav clutter. */}

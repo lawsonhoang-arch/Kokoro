@@ -3500,3 +3500,11 @@ body.k-resizing .kg-item--dragging {
 .k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__rail { margin: 0 !important; }
 /* No close button — the panel dismisses by clicking away or pressing Escape. */
 .k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__collapse { display: none !important; }
+/* The Sculpt eyebrow is gone, so the title leads. Nothing pushes from the left
+   any more — pin the row to the start so the title sits against the gutter. */
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__head {
+  justify-content: flex-start;
+  gap: 12px;
+}
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__title { margin-left: 0; }
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__hint { margin-left: 0; margin-right: auto; }
