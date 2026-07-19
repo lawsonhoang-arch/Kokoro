@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { TOKENS, CAT_LABEL, sortBaseKey, sortIsAsc, isSortReversible } from "./rules";
 import { Ico } from "./Ico";
 import type { Group, RuleCat, Rules } from "./types";
@@ -101,7 +102,28 @@ export function GroupCard({
   onTogglePin,
   onOpen,
 }: GroupCardProps) {
-  const [shapeOpen, setShapeOpen] = useState(false);
+  // Anchor rect for the shape menu. The menu is portalled to <body> because the
+  // panel that paints the box is clip-path'd to the chosen silhouette, and
+  // clip-path clips every descendant — an in-place dropdown gets sliced off.
+  const [shapeAt, setShapeAt] = useState<{ top: number; right: number } | null>(null);
+  const shapeOpen = shapeAt !== null;
+  const openShapeMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (shapeOpen) { setShapeAt(null); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    setShapeAt({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  };
+  useEffect(() => {
+    if (!shapeOpen) return;
+    const close = () => setShapeAt(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("pointerdown", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("pointerdown", close);
+    };
+  }, [shapeOpen]);
   const hasScoped =
     scoped &&
     (scoped.group.length || scoped.sort.length || scoped.color.length || scoped.tag.length);
@@ -156,15 +178,20 @@ export function GroupCard({
           <div className="k-shapepick" onClick={(e) => e.stopPropagation()}>
             <button
               className="k-shapepick__btn"
-              onClick={() => setShapeOpen((v) => !v)}
+              onClick={openShapeMenu}
               title="Change this box’s shape"
               aria-label="Change this box’s shape"
               aria-expanded={shapeOpen}
             >
               {SHAPES.find((s) => s.key === shape)?.glyph ?? "▢"}
             </button>
-            {shapeOpen && (
-              <div className="k-shapepick__menu" role="menu">
+            {shapeAt && createPortal(
+              <div
+                className="k-shapepick__menu"
+                role="menu"
+                style={{ position: "fixed", top: shapeAt.top, right: shapeAt.right }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
                 {SHAPES.map((s) => (
                   <button
                     key={s.key}
@@ -173,14 +200,15 @@ export function GroupCard({
                     className={"k-shapepick__opt" + (s.key === shape ? " on" : "")}
                     onClick={() => {
                       onShape(group.id, s.key);
-                      setShapeOpen(false);
+                      setShapeAt(null);
                     }}
                   >
                     <span className="k-shapepick__glyph">{s.glyph}</span>
                     <span className="k-shapepick__lbl">{s.label}</span>
                   </button>
                 ))}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         )}

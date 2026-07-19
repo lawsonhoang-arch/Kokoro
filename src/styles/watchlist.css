@@ -2646,3 +2646,39 @@ body.k-resizing .kg-item--dragging {
   .k-group { transition: none; }
   .k-shapepick__menu { animation: none; }
 }
+
+/* ===== shapes, applied to the visible chrome ==============================
+   The silhouette rules above target .k-group, but .k-group paints nothing on
+   the board — it is transparent with a 0px border. The element you actually
+   see is the panel wrapping it (.kg-item__body.k-panel, the one carrying the
+   box background and its 20px radius), so shaping .k-group alone changed the
+   attribute and the computed style while leaving the box looking identical.
+   These rules reach the panel from the shape state on its child. */
+.kg-item__body:has(> .k-group[data-shape="round"]) { border-radius: 22px; }
+.kg-item__body:has(> .k-group[data-shape="pill"])  { border-radius: 999px; }
+
+.kg-item__body:has(> .k-group[data-shape="hex"]) {
+  clip-path: polygon(0% 12%, 50% 0%, 100% 12%, 100% 88%, 50% 100%, 0% 88%);
+}
+.kg-item__body:has(> .k-group[data-shape="angled"]) {
+  clip-path: polygon(28px 0%, 100% 0%, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0% 100%, 0% 28px);
+}
+.kg-item__body:has(> .k-group[data-shape="notch"]) {
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% calc(50% - 12px), calc(100% - 8px) 50%, 100% calc(50% + 12px),
+    100% 100%, 0% 100%, 0% calc(50% + 12px), 8px 50%, 0% calc(50% - 12px)
+  );
+}
+/* clip-path on the panel would also clip the picker's dropdown, so the menu
+   is lifted out to fixed positioning — see .k-shapepick__menu below */
+.kg-item__body:has(> .k-group[data-shape]) { transition: clip-path .3s cubic-bezier(.25,.7,.35,1), border-radius .3s cubic-bezier(.25,.7,.35,1); }
+
+/* the shaped panel needs breathing room so cards don't sit in the cut corners */
+.k-group[data-shape="hex"]    { padding-top: 20px !important; padding-bottom: 20px !important; }
+.k-group[data-shape="notch"]  { padding-left: 12px !important; padding-right: 12px !important; }
+.k-group[data-shape="pill"]   { padding-left: 26px !important; padding-right: 26px !important; }
+.k-group[data-shape="angled"] { padding-top: 8px !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kg-item__body:has(> .k-group[data-shape]) { transition: none; }
+}
