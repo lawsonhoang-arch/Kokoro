@@ -243,13 +243,20 @@ export function GridCanvas({
     // rewrites className — adding the class synchronously here would just be
     // overwritten by React's commit. Run after the flush instead.
     setTimeout(() => {
-      const el = ref.current?.querySelector(`.kg-item[data-key="${key}"]`) as HTMLElement | null;
+      // The body, not the item itself: .kg-item--edit carries the enter-Shape-mode
+      // animation for the whole of Shape mode, and putting a second animation on
+      // the same element meant that removing this class handed animation-name
+      // back to that one — which restarted it from its 0% keyframe (opacity 0),
+      // so every box blinked once the wobble finished.
+      const el = ref.current?.querySelector(
+        `.kg-item[data-key="${key}"] .kg-item__body`,
+      ) as HTMLElement | null;
       if (!el) return;
-      const cls = "kg-item--settle-" + dir;
-      el.classList.remove("kg-item--settle-x", "kg-item--settle-y", "kg-item--settle-xy");
+      const cls = "kg-settle-" + dir;
+      el.classList.remove("kg-settle-x", "kg-settle-y", "kg-settle-xy");
       void el.offsetWidth; // restart the animation when two resizes land back to back
       el.classList.add(cls);
-      setTimeout(() => el.classList.remove(cls), 620);
+      setTimeout(() => el.classList.remove(cls), 480);
     }, 0);
   };
 

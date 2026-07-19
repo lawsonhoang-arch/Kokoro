@@ -2487,38 +2487,36 @@ body.k-resizing *, body.k-dragging-panel * { user-select: none !important; }
    pulled and compresses on the other, then rocks back. Volume looks preserved,
    which is what sells "soft" — a plain scale bounce just reads as a blip.
    Origin is top-left because that's the corner the box grows from. */
-/* scoped to [data-sculpt="on"] to outrank the .kg-item--edit entrance rule,
-   which is fill-mode:both and so keeps holding animation-name after it ends */
-.kg-item--settle-x, .kg-item--settle-y, .kg-item--settle-xy {
-  transform-origin: top left;
-  will-change: transform;
-}
-.k-app[data-sculpt="on"] .kg-item--settle-x  { animation: kg-settle-x  .62s cubic-bezier(.22, .68, .3, 1); }
-.k-app[data-sculpt="on"] .kg-item--settle-y  { animation: kg-settle-y  .62s cubic-bezier(.22, .68, .3, 1); }
-.k-app[data-sculpt="on"] .kg-item--settle-xy { animation: kg-settle-xy .62s cubic-bezier(.22, .68, .3, 1); }
+/* On .kg-item__body, never .kg-item: the item carries the enter-Shape-mode
+   animation for the whole of Shape mode, and a second animation on the same
+   element meant removing this class handed animation-name back to that one,
+   restarting it from its opacity-0 keyframe — every box blinked once the
+   wobble ended. No will-change either: promoting and demoting a layer either
+   side of a 400ms animation costs two repaints, which reads as a flicker. */
+.kg-settle-x, .kg-settle-y, .kg-settle-xy { transform-origin: top left; }
+.kg-settle-x  { animation: kg-settle-x  .42s cubic-bezier(.25, .7, .35, 1); }
+.kg-settle-y  { animation: kg-settle-y  .42s cubic-bezier(.25, .7, .35, 1); }
+.kg-settle-xy { animation: kg-settle-xy .42s cubic-bezier(.25, .7, .35, 1); }
 
 /* pulled wider -> stretches horizontally, pinches vertically, then rocks back */
 @keyframes kg-settle-x {
   0%   { transform: scale(1,     1); }
-  26%  { transform: scale(1.022, .982); }
-  52%  { transform: scale(.991,  1.007); }
-  76%  { transform: scale(1.004, .998); }
+  35%  { transform: scale(1.010, .992); }
+  70%  { transform: scale(.997,  1.003); }
   100% { transform: scale(1,     1); }
 }
 /* pulled taller -> the same, on the other axis */
 @keyframes kg-settle-y {
   0%   { transform: scale(1,     1); }
-  26%  { transform: scale(.982,  1.022); }
-  52%  { transform: scale(1.007, .991); }
-  76%  { transform: scale(.998,  1.004); }
+  35%  { transform: scale(.992,  1.010); }
+  70%  { transform: scale(1.003, .997); }
   100% { transform: scale(1,     1); }
 }
 /* corner drag -> a rounder wobble, no single axis to favour */
 @keyframes kg-settle-xy {
   0%   { transform: scale(1,     1); }
-  26%  { transform: scale(1.018, 1.018); }
-  52%  { transform: scale(.993,  .993); }
-  76%  { transform: scale(1.003, 1.003); }
+  35%  { transform: scale(1.008, 1.008); }
+  70%  { transform: scale(.998,  .998); }
   100% { transform: scale(1,     1); }
 }
 
@@ -2535,7 +2533,7 @@ body.k-resizing .kg-item--dragging {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kg-item--settle-x, .kg-item--settle-y, .kg-item--settle-xy { animation: none !important; }
+  .kg-settle-x, .kg-settle-y, .kg-settle-xy { animation: none !important; }
 
   .kg-rz:hover, .kg-rz:active { transform: none !important; }
 }
