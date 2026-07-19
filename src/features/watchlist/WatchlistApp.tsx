@@ -64,6 +64,15 @@ const CARD_MIN_LO = 88;
 const CARD_MIN_HI = 260;
 const CARD_MIN_DEFAULT = 126;
 
+// Format preferences are scoped per form factor. A phone and a desktop want
+// different answers to "cards or rows" and "how big", and they share one
+// localStorage on the same device — so without this suffix, picking Hybrid on a
+// narrow window overwrote the desktop choice and vice versa. The board layout
+// already did this with its ":m" / ":mh" keys; this brings format into line.
+const ff = () => {
+  try { return window.matchMedia("(max-width: 640px)").matches ? ":m" : ""; }
+  catch { return ""; }
+};
 const VIEW_KEY = "kokoro_view";
 const LAYOUT_KEY = "kokoro_layout_mode";
 const GRID_KEY = "kokoro_grid_"; // + list id → per-list free-form grid layout
@@ -363,7 +372,7 @@ export default function WatchlistApp({
 
   const [listView, setListView] = useState<ViewMode>(() => {
     try {
-      return (localStorage.getItem(VIEW_KEY) as ViewMode) || "cards";
+      return (localStorage.getItem(VIEW_KEY + ff()) as ViewMode) || "cards";
     } catch {
       return "cards";
     }
@@ -377,7 +386,7 @@ export default function WatchlistApp({
     // instant instead, which is what it should have been.
     setListView(v);
     try {
-      localStorage.setItem(VIEW_KEY, v);
+      localStorage.setItem(VIEW_KEY + ff(), v);
     } catch {}
   };
 
@@ -427,7 +436,7 @@ export default function WatchlistApp({
     try {
       // default to the free-form board (boxes). Stack is a flat list that hides
       // manual collections in browse, so a fresh visitor would see no boxes.
-      return (localStorage.getItem(LAYOUT_KEY) as LayoutMode) || "grid";
+      return (localStorage.getItem(LAYOUT_KEY + ff()) as LayoutMode) || "grid";
     } catch {
       return "grid";
     }
@@ -441,7 +450,7 @@ export default function WatchlistApp({
         if (m === "grid") setActiveTab("list");
       });
       try {
-        localStorage.setItem(LAYOUT_KEY, m);
+        localStorage.setItem(LAYOUT_KEY + ff(), m);
       } catch {}
     });
   };
@@ -456,7 +465,7 @@ export default function WatchlistApp({
   const CARDSCALE_KEY = "kokoro_cardscale_" + id;
   const [cardMin, setCardMin] = useState<number>(() => {
     try {
-      const v = Number(localStorage.getItem(CARDSCALE_KEY));
+      const v = Number(localStorage.getItem(CARDSCALE_KEY + ff()));
       return v >= CARD_MIN_LO && v <= CARD_MIN_HI ? v : CARD_MIN_DEFAULT;
     } catch {
       return CARD_MIN_DEFAULT;
@@ -464,7 +473,7 @@ export default function WatchlistApp({
   });
   const chooseCardMin = (v: number) => {
     setCardMin(v);
-    try { localStorage.setItem(CARDSCALE_KEY, String(v)); } catch {}
+    try { localStorage.setItem(CARDSCALE_KEY + ff(), String(v)); } catch {}
   };
   // Phones render the board as a single full-width column, so per-card sizing
   // has nothing to size against — reshaping there is limited to box height.
