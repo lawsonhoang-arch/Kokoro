@@ -491,3 +491,32 @@
 
 /* taste-matched recs: make the social-proof line pop */
 .shelf--recs .h-card__sub { color: var(--accent); font-family: var(--font-mono); font-size: 10.5px; }
+
+/* lead/rest rail groups stack like the rail always did (identical gaps on
+   desktop); on phones they are lifted out of the rail to interleave with the
+   main column. */
+.home-rail__lead, .home-rail__rest { display: flex; flex-direction: column; gap: 20px; }
+.home-rail__lead:empty, .home-rail__rest:empty { display: none; }
+
+/* ============================================================
+   PHONE — the rail is not a "sidebar at the bottom" here. The user's own
+   library (up next · lists) leads, right after the hero; catalogue discovery
+   (top rated · upcoming) trails the shelves. Achieved by flattening the two
+   columns with display:contents and ordering the pieces, so a returning user
+   is not made to scroll past every discovery shelf to reach their lists.
+   ============================================================ */
+@media (max-width: 640px) {
+  .home-grid { display: flex; flex-direction: column; gap: 0; }
+  .home-main, .home-rail { display: contents; }
+  .hero-carousel { order: -2; }
+  .home-rail__lead { order: -1; }
+  .home-rail__rest { order: 1; }
+  /* space the lifted groups like a section, and undo the tablet row layout */
+  .home-rail__lead, .home-rail__rest { flex: 0 0 auto; margin-top: 44px; }
+
+  /* Browse by genre: compact two-up tiles instead of one wide bar per row, so
+     twelve genres take six short rows rather than twelve tall ones. */
+  .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .genre-tile { height: 58px; }
+  .genre-tile__name { font-size: 14px; padding: 0 14px; }
+}

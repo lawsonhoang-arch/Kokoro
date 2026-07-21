@@ -78,6 +78,11 @@ export function HomeRail({
 
   return (
     <aside className="home-rail" aria-label="Your library, news and community">
+      {/* LEAD — the signed-in user's own library. On phones this group is
+          lifted to sit right after the hero (see home.css), so a returning user
+          reaches their up-next and lists without scrolling past every
+          discovery shelf. */}
+      <div className="home-rail__lead">
       {upnext.length > 0 && (
         <section className="hrail-card card">
           <div className="hrail-card__head">
@@ -122,6 +127,10 @@ export function HomeRail({
         </section>
       )}
 
+      </div>
+
+      {/* REST — catalogue discovery. Trails the shelves on phones. */}
+      <div className="home-rail__rest">
       <RankedPanel title="Top rated anime" items={topAnime} moreHref="/search?type=anime&sort=rated" />
       <RankedPanel title="Top rated manga" items={topManga} moreHref="/search?type=manga&sort=rated" />
 
@@ -153,6 +162,7 @@ export function HomeRail({
           </ul>
         </section>
       )}
+      </div>
     </aside>
   );
 }
