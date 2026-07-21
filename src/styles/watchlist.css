@@ -3508,3 +3508,28 @@ body.k-resizing .kg-item--dragging {
 }
 .k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__title { margin-left: 0; }
 .k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__hint { margin-left: 0; margin-right: auto; }
+
+/* ===== box colour: a gradient on the header bar, not the whole box ========
+   The box's mixed rule-colour (--tint) used to wash ~80% of the body. It now
+   reads as a soft horizontal gradient across the header bar only — subtler, and
+   it leaves the artwork below on a clean neutral surface. Painted as a ::before
+   overlay so it sits over whatever background the header carries in each mode
+   (rest, hover band, sculpt) without fighting those rules for the background
+   property. When no rules are applied --tint is transparent and the bar is plain. */
+.k-group__head { position: relative; }
+.k-group__head::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    color-mix(in oklab, var(--tint) 42%, transparent) 0%,
+    color-mix(in oklab, var(--tint) 15%, transparent) 46%,
+    transparent 82%
+  );
+  transition: --tint .55s ease;
+}
+/* keep the label, count and controls above the tint */
+.k-group__head > * { position: relative; z-index: 1; }

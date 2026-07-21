@@ -109,7 +109,10 @@
 
 /* Registering --tint as a real <color> lets it TRANSITION — so when a rule is
    applied/removed the box's whole colour animates from one paint to the next. */
-@property --tint { syntax: "<color>"; inherits: false; initial-value: transparent; }
+/* inherits:true so the header bar can read the panel-level tint. Nothing else
+   below the panel paints with --tint, and the transition still animates on the
+   element the value is set on. */
+@property --tint { syntax: "<color>"; inherits: true; initial-value: transparent; }
 
 /* The box IS the card now (reuses .k-panel's inner fill/scroll/container-query
    behaviour). One mixed "paint" colour (--tint) sits as a soft GLOW from the top
@@ -122,8 +125,8 @@
   box-shadow: 0 14px 36px -28px rgba(0,0,0,.75);
   overflow: hidden;
   padding: 4px 15px 10px;
+  /* the box body is plain now — the mixed rule-colour lives on the header bar */
   background:
-    radial-gradient(135% 82% at 50% -26%, color-mix(in oklab, var(--tint) 30%, transparent), transparent 66%),
     linear-gradient(162deg, color-mix(in oklab, var(--surface) 82%, transparent), color-mix(in oklab, var(--surface-2) 78%, transparent));
   transition: box-shadow .2s, --tint .55s ease;
 }
