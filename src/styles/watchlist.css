@@ -3523,13 +3523,17 @@ body.k-resizing .kg-item--dragging {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  /* vertical now: strongest at the top edge, fading down through the bar */
+  /* vertical: strongest at the top edge, fading down through the bar */
   background: linear-gradient(
     180deg,
     color-mix(in oklab, var(--tint) 46%, transparent) 0%,
     color-mix(in oklab, var(--tint) 18%, transparent) 50%,
     transparent 100%
   );
+  /* and fade the left/right ends so the band does not meet the box edge in a
+     hard line — it reads as a soft glow rather than a clipped rectangle */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
   transition: --tint .55s ease;
 }
 /* keep the label, count and controls above the tint */
