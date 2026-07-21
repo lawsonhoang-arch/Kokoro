@@ -3538,3 +3538,12 @@ body.k-resizing .kg-item--dragging {
 }
 /* keep the label, count and controls above the tint */
 .k-group__head > * { position: relative; z-index: 1; }
+
+/* rules dropdown: give the content a proper left/right margin so it does not
+   sit against the page edge. The panel itself stays full width (it drops from
+   the top edge); only the content is inset. */
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__head,
+.k-sidebar:not(.k-sidebar--collapsed) .k-sidebar__body {
+  padding-left: max(var(--gutter, 16px), 32px);
+  padding-right: max(var(--gutter, 16px), 32px);
+}
