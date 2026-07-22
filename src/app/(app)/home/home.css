@@ -514,6 +514,16 @@
   /* space the lifted groups like a section, and undo the tablet row layout */
   .home-rail__lead, .home-rail__rest { flex: 0 0 auto; margin-top: 44px; }
 
+  /* Hero: min-height:440 was a desktop banner value; on a ~360px screen it made
+     the hero taller than wide (portrait) with crammed text. Scale it down to a
+     mobile-appropriate banner and shrink the type to match. */
+  .hero { min-height: 300px; }
+  .hero__title { font-size: 25px; line-height: 1.12; }
+  .hero__body { padding: 24px 18px; gap: 12px; }
+  .hero__desc { font-size: 13.5px; }
+  .hero__eyebrow { font-size: 10px; }
+  .hero-carousel { border-radius: 18px; }
+
   /* Browse by genre: compact two-up tiles instead of one wide bar per row, so
      twelve genres take six short rows rather than twelve tall ones. */
   .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
