@@ -3546,3 +3546,9 @@ body.k-resizing .kg-item--dragging {
   padding-left: max(var(--gutter, 16px), 32px);
   padding-right: max(var(--gutter, 16px), 32px);
 }
+
+/* Open board: a plain unsorted list (fresh import, no collections) flows as a
+   card grid that grows with its content and scrolls, instead of a fixed-height
+   box that clips. */
+.k-openboard { padding: 2px var(--gutter, 22px) 24px; }
+.k-openboard > .k-cards, .k-openboard > .k-rows { width: 100%; }

@@ -111,7 +111,7 @@ export function BuildClient() {
     setBusy(true);
     try {
       const r = await buildListFromTitlesAction({ name: listName, hue, titleIds: ids });
-      if (r.ok) router.push(`/watchlist/${encodeURIComponent(r.listId)}`);
+      if (r.ok) router.replace(`/watchlist/${encodeURIComponent(r.listId)}`);
     } finally {
       setBusy(false);
     }

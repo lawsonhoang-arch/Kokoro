@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { searchCatalog } from "@/lib/catalog";
 import { ensureIndex, fuzzySearch } from "@/lib/search-index";
@@ -281,5 +282,6 @@ export async function buildListFromTitlesAction(input: {
       /* skip a title that fails to add rather than abort the whole import */
     }
   }
+  revalidatePath("/watchlist");
   return { ok: true, listId: created.id, added };
 }

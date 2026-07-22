@@ -1872,6 +1872,12 @@ export default function WatchlistApp({
                 <div style={{ padding: "30px 4px", color: "var(--ink-faint)", fontSize: 13 }}>
                   No collections yet — make one with <b>＋ New</b> and it becomes a box you can arrange here.
                 </div>
+              ) : !sculpt && panelKeys.length === 1 && panelKeys[0] === "loose" ? (
+                // A plain unsorted list (a fresh import, no collections yet) is an
+                // OPEN card grid that grows and scrolls — not a fixed-height box
+                // that clips its cards. The grid canvas is for arranging boxes, so
+                // it only kicks in once there's structure or you enter Shape mode.
+                <div className="k-openboard">{renderList(looseTitles, null)}</div>
               ) : (
                 <GridCanvas
                   items={panelKeys.map<GridItem>((key) => ({
