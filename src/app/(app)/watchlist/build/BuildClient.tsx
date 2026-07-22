@@ -242,11 +242,11 @@ function BuildCard({ card, onRemove, onSwap }: { card: Card; onRemove: () => voi
         {card.input && m && card.input.toLowerCase() !== m.title.toLowerCase() && (
           <span className="bcard__from">you wrote “{card.input}”</span>
         )}
-        {(card.alts.length > 0 || !m) && (
-          <button className="bcard__swap" onClick={() => setSwapOpen((v) => !v)}>
-            {m ? "Not right? Change" : "Find a match"}
-          </button>
-        )}
+        {/* always available — the swap panel has its own search, so a card can
+            be corrected even when there were no close alternatives */}
+        <button className="bcard__swap" onClick={() => setSwapOpen((v) => !v)}>
+          {m ? "Not right? Change" : "Find a match"}
+        </button>
       </div>
       {swapOpen && (
         <SwapPanel card={card} onPick={(t) => { onSwap(t); setSwapOpen(false); }} onClose={() => setSwapOpen(false)} />
