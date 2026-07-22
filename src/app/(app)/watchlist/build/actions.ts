@@ -234,7 +234,7 @@ async function matchOne(input: string): Promise<MatchRow> {
     await addHits(words.slice(0, k).join(" "));
     ({ anime, manga } = pickBest(pool, nScore));
   }
-  let strict = !!(anime || manga);
+  const strict = !!(anime || manga);
   let hits = pool;
 
   // Still nothing — try typo-tolerant fuzzy matching so a misspelling ("Fulmetal
