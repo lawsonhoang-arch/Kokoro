@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { searchCatalog } from "@/lib/catalog";
+import { ensureIndex } from "@/lib/search-index";
 import * as wl from "@/lib/watchlists";
 import { addEntry } from "@/lib/entries";
 import type { SearchResult } from "@/features/search/types";
@@ -103,6 +104,11 @@ function cleanLine(raw: string): string {
 export async function matchTitlesAction(text: string): Promise<MatchRow[]> {
   await requireUserId();
   if (!text || text.length > 20000) return [];
+
+  // Load the search index fully before matching. Without this the first lookups
+  // race a cold instance's index and silently get an empty result — which read
+  // as "spelled perfectly but not detected" for whatever titles came first.
+  await ensureIndex();
 
   // One title per line — the normal case. A line is only treated as an inline
   // list when it has TWO OR MORE commas ("A, B, C"): a single comma is usually

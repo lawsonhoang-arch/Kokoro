@@ -108,9 +108,7 @@ const COLD_WAIT_MS = 5000;
  *  timeout should mean "no results this once", not a 500. Crucially, the
  *  background load resolves (never rejects), so serving a stale copy while it
  *  runs can't leak an unhandled rejection. */
-export async function getIndex(): Promise<IndexRow[]> {
-  const fresh = cache && Date.now() - loadedAt < TTL;
-  if (fresh) return cache!;
+function startLoad(): Promise<IndexRow[]> {
   if (!loading) {
     loading = load()
       .then((rows) => { cache = rows; loadedAt = Date.now(); return rows; })
@@ -120,11 +118,26 @@ export async function getIndex(): Promise<IndexRow[]> {
       })
       .finally(() => { loading = null; });
   }
+  return loading;
+}
+
+export async function getIndex(): Promise<IndexRow[]> {
+  const fresh = cache && Date.now() - loadedAt < TTL;
+  if (fresh) return cache!;
+  const p = startLoad();
   // stale-while-revalidate: serve the old copy immediately if we have one
   if (cache) return cache;
   // no cache yet — wait only briefly, then serve empty while the load continues
   const bail = new Promise<IndexRow[]>((res) => setTimeout(() => res([]), COLD_WAIT_MS));
-  return Promise.race([loading, bail]);
+  return Promise.race([p, bail]);
+}
+
+/** Await the FULL index load — no cold-serve bail. For flows that prefer a
+ *  correct result over latency (bulk import matching), so early lookups don't
+ *  race an empty index on a cold instance. Cheap when the cache is warm. */
+export async function ensureIndex(): Promise<void> {
+  if (cache && Date.now() - loadedAt < TTL) return;
+  await startLoad();
 }
 
 export function toResult(r: IndexRow): SearchResult {
