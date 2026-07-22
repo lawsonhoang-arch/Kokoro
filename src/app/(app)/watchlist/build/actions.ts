@@ -157,18 +157,14 @@ async function matchOne(input: string): Promise<MatchRow> {
     .sort((a, b) => b.s - a.s || norm(a.h.title).length - norm(b.h.title).length);
 
   const bestStrict = (kind: "anime" | "manga") => scored.find((x) => x.h.kind === kind)?.h ?? null;
-  let anime = bestStrict("anime");
-  let manga = bestStrict("manga");
+  const anime = bestStrict("anime");
+  const manga = bestStrict("manga");
   const strict = !!(anime || manga);
 
-  // Nothing matched strictly — fall back to the single best fuzzy hit so the
-  // user still has something to correct, but flag it as unverified.
-  if (!strict && hits[0]) {
-    if (hits[0].kind === "manga") manga = hits[0];
-    else anime = hits[0];
-  }
-
-  // alternatives for correcting, excluding whatever we already chose
+  // No fuzzy fallback: a line with no confident match is left UNMATCHED rather
+  // than guessing the top hit — a wrong guess is worse than none, and nothing
+  // unmatched should end up in the list. The close hits are still returned as
+  // alternatives so the user can pick one by hand if they want.
   const chosen = new Set([anime?.id, manga?.id].filter(Boolean));
   const alternatives = hits.filter((h) => !chosen.has(h.id)).slice(0, 6);
   return { input, anime, manga, strict, alternatives };

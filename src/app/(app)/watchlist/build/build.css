@@ -159,3 +159,5 @@
 /* a loose (fuzzy) match to double-check */
 .bcard--flagged { border-color: color-mix(in oklab, var(--amber, #d9a441) 55%, var(--line)); }
 .bcard__flag--check { background: color-mix(in oklab, var(--amber, #d9a441) 85%, #000); color: #201400; }
+
+.build-sec__hint { margin: -4px 0 2px; font-size: 12.5px; color: var(--ink-faint); }

@@ -147,7 +147,14 @@ export function BuildClient() {
         <>
           <Section title="Anime" cards={animeCards} onRemove={removeCard} onSwap={swap} />
           <Section title="Manga" cards={mangaCards} onRemove={removeCard} onSwap={swap} />
-          <Section title="Needs a match" cards={needCards} onRemove={removeCard} onSwap={swap} muted />
+          <Section
+            title="Not matched"
+            hint="These won’t be added — find a match to keep one, or leave it out."
+            cards={needCards}
+            onRemove={removeCard}
+            onSwap={swap}
+            muted
+          />
         </>
       )}
 
@@ -186,9 +193,10 @@ export function BuildClient() {
 
 /* ---------------- a titled section of the board ---------------- */
 function Section({
-  title, cards, onRemove, onSwap, muted,
+  title, hint, cards, onRemove, onSwap, muted,
 }: {
   title: string;
+  hint?: string;
   cards: Card[];
   onRemove: (key: string) => void;
   onSwap: (key: string, t: SearchResult) => void;
@@ -200,6 +208,7 @@ function Section({
       <h2 className="build-sec__head">
         {title} <span className="build-sec__count">{cards.length}</span>
       </h2>
+      {hint && <p className="build-sec__hint">{hint}</p>}
       <div className="build-grid" role="list">
         {cards.map((c) => (
           <BuildCard key={c.key} card={c} onRemove={() => onRemove(c.key)} onSwap={(t) => onSwap(c.key, t)} />
