@@ -33,18 +33,40 @@ function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-/** Is `title` present in `line` as a run of whole words? This is the "strict"
- *  test — it lets a real title be found even when tags or notes sit next to it
- *  ("Attack on Titan  ·  shounen  ·  finished"), while a short stray word can't
- *  accidentally match (min length guards that). */
-function lineContainsTitle(nLine: string, nTitle: string): boolean {
-  if (!nTitle || nTitle.length < 3) return false;
-  return (
-    nLine === nTitle ||
+/** How well a catalogue title matches a written line, in "matched characters".
+ *  It works in BOTH directions, which is the whole point:
+ *   • the title sits inside the line, surrounded by tags/notes
+ *     ("Attack on Titan · shounen · finished") — matched = the title's length;
+ *   • the line is a whole-word prefix of a longer title, i.e. the user wrote a
+ *     short common name ("Demon Slayer" → "Demon Slayer: Kimetsu no Yaiba") —
+ *     matched = the whole line.
+ *  Scoring by matched length means the abbreviation of the real title beats a
+ *  stray generic word that happens to sit in the line ("Demon" inside "demon
+ *  slayer"), because the prefix match covers the whole line and the fragment
+ *  doesn't. 0 means no match. A short/vague line can't prefix-match (the
+ *  `specific` guard), so "One" won't latch onto everything. */
+function matchScore(nLine: string, nTitle: string): number {
+  if (!nTitle || nTitle.length < 2) return 0;
+  if (nLine === nTitle) return nLine.length + 0.5; // exact — nudge above ties
+  // title present in the line as whole words
+  if (
     nLine.startsWith(nTitle + " ") ||
     nLine.endsWith(" " + nTitle) ||
     nLine.includes(" " + nTitle + " ")
-  );
+  ) {
+    return nTitle.length;
+  }
+  // line is a whole-word prefix of the title (an abbreviation of the full name)
+  const specific = nLine.includes(" ") || nLine.length >= 5;
+  if (specific && nTitle.startsWith(nLine + " ")) return nLine.length;
+  return 0;
+}
+
+/** Best matched length for a hit, considering its display and native titles. */
+function hitScore(nLine: string, h: SearchResult): number {
+  const a = matchScore(nLine, norm(h.title));
+  const b = h.native ? matchScore(nLine, norm(h.native)) : 0;
+  return Math.max(a, b);
 }
 
 /** Strip the noise around a title on a hand-written line: leading list markers
@@ -120,14 +142,15 @@ async function matchOne(input: string): Promise<MatchRow> {
     return { input, anime: null, manga: null, strict: false, alternatives: [] };
   }
 
-  // strict hits: those whose title (or native title) appears as whole words in
-  // the line, so surrounding tags/notes don't break the match. Longest title
-  // first, so "One Piece" wins over "One" for a line that contains both.
-  const strictHits = hits
-    .filter((h) => lineContainsTitle(nLine, norm(h.title)) || (h.native && lineContainsTitle(nLine, norm(h.native))))
-    .sort((a, b) => norm(b.title).length - norm(a.title).length);
+  // score every hit; keep those that matched at all. Per kind, take the highest
+  // score, and on a tie prefer the SHORTER title — the canonical entry over a
+  // spin-off ("Demon Slayer: Kimetsu no Yaiba" over "…Mugen Train Arc").
+  const scored = hits
+    .map((h) => ({ h, s: hitScore(nLine, h) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || norm(a.h.title).length - norm(b.h.title).length);
 
-  const bestStrict = (kind: "anime" | "manga") => strictHits.find((h) => h.kind === kind) ?? null;
+  const bestStrict = (kind: "anime" | "manga") => scored.find((x) => x.h.kind === kind)?.h ?? null;
   let anime = bestStrict("anime");
   let manga = bestStrict("manga");
   const strict = !!(anime || manga);
