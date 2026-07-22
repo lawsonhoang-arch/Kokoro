@@ -3368,13 +3368,15 @@ body.k-resizing .kg-item--dragging {
 }
 .k-app[data-sculpt="on"] .k-sidebar--collapsed .k-sidebar__railcount { display: none; }
 
-/* ---- Rules trigger now lives in the toolbar row --------------------------
-   .k-subtools must stay position:static: the open panel is absolutely
-   positioned against .k-stage, and making the toolbar a containing block would
-   re-anchor the dropdown to the toolbar instead of the stage. Without a
-   position it also creates no stacking context, so the display menu's z-index
-   still beats the trigger's. */
-.k-subtools { position: static; z-index: auto; }
+/* ---- Rules trigger + Display menu live in the toolbar row ----------------
+   The toolbar is a stacking context above the board. It has to be: .k-stage has
+   a transform (its entrance animation) and so is itself a stacking context, and
+   within it the absolutely-positioned board boxes would otherwise paint over
+   the Display dropdown. Elevating the whole toolbar lifts the dropdown with it.
+   This was safe to restore once the rules panel started portalling to <body>
+   (position:fixed) — it no longer anchors to whatever ancestor is positioned,
+   so the toolbar being a containing block doesn't re-anchor it. */
+.k-subtools { position: relative; z-index: 50; }
 
 .k-app[data-sculpt="on"] .k-sidebar--collapsed {
   /* in the row now, so no margin of its own and no self-alignment override */
