@@ -16,11 +16,36 @@ async function requireUserId(): Promise<string> {
 export type MatchRow = {
   /** the raw line the user wrote */
   input: string;
-  /** best catalogue match, or null if nothing looked close */
-  match: SearchResult | null;
+  /** the anime the title matched, if any */
+  anime: SearchResult | null;
+  /** the manga the title matched, if any — a title can be both, and then both go
+   *  onto the board */
+  manga: SearchResult | null;
+  /** whether a match came from a strict title hit (title found as whole words in
+   *  the line) vs a loose fuzzy fallback — the loose ones are flagged to review */
+  strict: boolean;
   /** a few runners-up, so the user can correct a wrong guess without searching */
   alternatives: SearchResult[];
 };
+
+/** Normalise for comparison: lowercase, punctuation → spaces, collapse runs. */
+function norm(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Is `title` present in `line` as a run of whole words? This is the "strict"
+ *  test — it lets a real title be found even when tags or notes sit next to it
+ *  ("Attack on Titan  ·  shounen  ·  finished"), while a short stray word can't
+ *  accidentally match (min length guards that). */
+function lineContainsTitle(nLine: string, nTitle: string): boolean {
+  if (!nTitle || nTitle.length < 3) return false;
+  return (
+    nLine === nTitle ||
+    nLine.startsWith(nTitle + " ") ||
+    nLine.endsWith(" " + nTitle) ||
+    nLine.includes(" " + nTitle + " ")
+  );
+}
 
 /** Strip the noise around a title on a hand-written line: leading list markers
  *  (1. — • *), and trailing annotations people jot next to a show — a rating,
@@ -72,19 +97,44 @@ export async function matchTitlesAction(text: string): Promise<MatchRow[]> {
   const CONCURRENCY = 6;
   for (let i = 0; i < candidates.length; i += CONCURRENCY) {
     const batch = candidates.slice(i, i + CONCURRENCY);
-    const settled = await Promise.all(
-      batch.map(async (input): Promise<MatchRow> => {
-        try {
-          const hits = await searchCatalog(input, 5);
-          return { input, match: hits[0] ?? null, alternatives: hits.slice(1, 4) };
-        } catch {
-          return { input, match: null, alternatives: [] };
-        }
-      }),
-    );
+    const settled = await Promise.all(batch.map(matchOne));
     rows.push(...settled);
   }
   return rows;
+}
+
+async function matchOne(input: string): Promise<MatchRow> {
+  const nLine = norm(input);
+  let hits: SearchResult[] = [];
+  try {
+    hits = await searchCatalog(input, 12);
+  } catch {
+    return { input, anime: null, manga: null, strict: false, alternatives: [] };
+  }
+
+  // strict hits: those whose title (or native title) appears as whole words in
+  // the line, so surrounding tags/notes don't break the match. Longest title
+  // first, so "One Piece" wins over "One" for a line that contains both.
+  const strictHits = hits
+    .filter((h) => lineContainsTitle(nLine, norm(h.title)) || (h.native && lineContainsTitle(nLine, norm(h.native))))
+    .sort((a, b) => norm(b.title).length - norm(a.title).length);
+
+  const bestStrict = (kind: "anime" | "manga") => strictHits.find((h) => h.kind === kind) ?? null;
+  let anime = bestStrict("anime");
+  let manga = bestStrict("manga");
+  const strict = !!(anime || manga);
+
+  // Nothing matched strictly — fall back to the single best fuzzy hit so the
+  // user still has something to correct, but flag it as unverified.
+  if (!strict && hits[0]) {
+    if (hits[0].kind === "manga") manga = hits[0];
+    else anime = hits[0];
+  }
+
+  // alternatives for correcting, excluding whatever we already chose
+  const chosen = new Set([anime?.id, manga?.id].filter(Boolean));
+  const alternatives = hits.filter((h) => !chosen.has(h.id)).slice(0, 6);
+  return { input, anime, manga, strict, alternatives };
 }
 
 /** Create a new list from the verified titles and add them all. Returns the new

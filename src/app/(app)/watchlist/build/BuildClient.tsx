@@ -16,6 +16,8 @@ type Card = {
   input: string | null;
   match: SearchResult | null;
   alts: SearchResult[];
+  /** a loose (fuzzy fallback) match the user should double-check */
+  flagged: boolean;
 };
 
 let seq = 0;
@@ -43,9 +45,14 @@ export function BuildClient() {
     setBusy(true); setError(null);
     try {
       const rows: MatchRow[] = await matchTitlesAction(text);
-      setCards(
-        rows.map((r) => ({ key: mkKey(), input: r.input, match: r.match, alts: r.alternatives })),
-      );
+      const next: Card[] = [];
+      for (const r of rows) {
+        // a title can match both an anime and a manga — both go on the board
+        if (r.anime) next.push({ key: mkKey(), input: r.input, match: r.anime, alts: r.alternatives, flagged: !r.strict });
+        if (r.manga) next.push({ key: mkKey(), input: r.input, match: r.manga, alts: r.alternatives, flagged: !r.strict });
+        if (!r.anime && !r.manga) next.push({ key: mkKey(), input: r.input, match: null, alts: r.alternatives, flagged: true });
+      }
+      setCards(next);
       setStep("verify");
     } catch {
       setError("Couldn't read that just now — please try again.");
@@ -54,15 +61,17 @@ export function BuildClient() {
     }
   }, [busy, text]);
 
-  const matched = cards.filter((c) => c.match).length;
-  const unmatched = cards.length - matched;
+  const animeCards = cards.filter((c) => c.match?.kind === "anime");
+  const mangaCards = cards.filter((c) => c.match?.kind === "manga");
+  const needCards = cards.filter((c) => !c.match);
+  const matched = animeCards.length + mangaCards.length;
 
   const removeCard = (key: string) => setCards((cs) => cs.filter((c) => c.key !== key));
   const swap = (key: string, to: SearchResult) =>
     setCards((cs) =>
       cs.map((c) =>
         c.key === key
-          ? { ...c, match: to, alts: [c.match, ...c.alts].filter((x): x is SearchResult => !!x && x.id !== to.id).slice(0, 3) }
+          ? { ...c, match: to, flagged: false, alts: [c.match, ...c.alts].filter((x): x is SearchResult => !!x && x.id !== to.id).slice(0, 3) }
           : c,
       ),
     );
@@ -70,7 +79,7 @@ export function BuildClient() {
   const addTitle = (t: SearchResult) => {
     setCards((cs) => {
       if (cs.some((c) => c.match?.id === t.id)) return cs; // no dupes
-      return [...cs, { key: mkKey(), input: null, match: t, alts: [] }];
+      return [...cs, { key: mkKey(), input: null, match: t, alts: [], flagged: false }];
     });
   };
 
@@ -123,8 +132,8 @@ export function BuildClient() {
           <span className="build__eyebrow">Verify</span>
           <h1 className="build__title">Check the titles we found</h1>
           <p className="build__lede">
-            {matched} matched{unmatched > 0 ? ` · ${unmatched} need a look` : ""} · remove any that are
-            wrong, swap a bad guess, or search to add ones we missed.
+            {animeCards.length} anime · {mangaCards.length} manga{needCards.length > 0 ? ` · ${needCards.length} need a match` : ""}.
+            Remove anything wrong, fix a flagged guess, or search to add what we missed.
           </p>
         </div>
         <button className="build__btn build__btn--ghost" onClick={() => setStep("paste")}>← Edit notes</button>
@@ -135,11 +144,11 @@ export function BuildClient() {
       {cards.length === 0 ? (
         <p className="build__empty">Nothing on the board yet — search above to add titles.</p>
       ) : (
-        <div className="build-grid" role="list">
-          {cards.map((c) => (
-            <BuildCard key={c.key} card={c} onRemove={() => removeCard(c.key)} onSwap={(t) => swap(c.key, t)} />
-          ))}
-        </div>
+        <>
+          <Section title="Anime" cards={animeCards} onRemove={removeCard} onSwap={swap} />
+          <Section title="Manga" cards={mangaCards} onRemove={removeCard} onSwap={swap} />
+          <Section title="Needs a match" cards={needCards} onRemove={removeCard} onSwap={swap} muted />
+        </>
       )}
 
       <footer className="build__foot">
@@ -175,19 +184,46 @@ export function BuildClient() {
   );
 }
 
+/* ---------------- a titled section of the board ---------------- */
+function Section({
+  title, cards, onRemove, onSwap, muted,
+}: {
+  title: string;
+  cards: Card[];
+  onRemove: (key: string) => void;
+  onSwap: (key: string, t: SearchResult) => void;
+  muted?: boolean;
+}) {
+  if (cards.length === 0) return null;
+  return (
+    <section className={"build-sec" + (muted ? " build-sec--muted" : "")}>
+      <h2 className="build-sec__head">
+        {title} <span className="build-sec__count">{cards.length}</span>
+      </h2>
+      <div className="build-grid" role="list">
+        {cards.map((c) => (
+          <BuildCard key={c.key} card={c} onRemove={() => onRemove(c.key)} onSwap={(t) => onSwap(c.key, t)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ---------------- a single verification card ---------------- */
 function BuildCard({ card, onRemove, onSwap }: { card: Card; onRemove: () => void; onSwap: (t: SearchResult) => void }) {
   const [swapOpen, setSwapOpen] = useState(false);
   const m = card.match;
   return (
-    <div className={"bcard" + (m ? "" : " bcard--unmatched")} role="listitem">
+    <div className={"bcard" + (m ? "" : " bcard--unmatched") + (card.flagged && m ? " bcard--flagged" : "")} role="listitem">
       <div className="bcard__art" style={m?.cover ? undefined : { backgroundImage: poster(card.input ?? m?.id ?? "x") }}>
         {m?.cover && (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="bcard__cover" src={m.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
         )}
+        <span className="bcard__kind">{m ? m.kind : ""}</span>
         <button className="bcard__x" onClick={onRemove} title="Remove" aria-label="Remove">×</button>
         {!m && <span className="bcard__flag">No match</span>}
+        {m && card.flagged && <span className="bcard__flag bcard__flag--check">Check</span>}
       </div>
       <div className="bcard__body">
         <span className="bcard__title">{m ? m.title : card.input}</span>

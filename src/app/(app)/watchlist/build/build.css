@@ -133,3 +133,29 @@
 }
 
 .build__err { color: var(--warn, #d2686f); font-size: 13.5px; margin: 4px 0 0; }
+
+/* ---- sections: Anime · Manga · Needs a match ---- */
+.build-sec { display: flex; flex-direction: column; gap: 12px; }
+.build-sec + .build-sec { margin-top: 24px; }
+.build-sec__head {
+  display: flex; align-items: center; gap: 9px; margin: 0;
+  font-family: var(--font-title); font-weight: 800; font-size: 17px; letter-spacing: -.01em;
+}
+.build-sec__count {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-faint);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 100px; padding: 2px 9px;
+}
+.build-sec--muted .build-sec__head { color: var(--ink-soft); }
+
+/* kind badge on each card */
+.bcard__kind {
+  position: absolute; left: 6px; top: 6px; z-index: 2;
+  font-family: var(--font-mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: .07em;
+  color: #fff; background: rgba(0,0,0,.5); padding: 3px 7px; border-radius: 100px;
+  border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(2px);
+}
+.bcard__kind:empty { display: none; }
+
+/* a loose (fuzzy) match to double-check */
+.bcard--flagged { border-color: color-mix(in oklab, var(--amber, #d9a441) 55%, var(--line)); }
+.bcard__flag--check { background: color-mix(in oklab, var(--amber, #d9a441) 85%, #000); color: #201400; }
