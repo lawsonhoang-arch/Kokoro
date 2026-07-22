@@ -98,6 +98,10 @@
 .bcard__swap:hover { text-decoration: underline; }
 
 /* swap panel over a card */
+/* a card with its swap panel open must sit above its neighbours, or the next
+   card in the grid paints over the panel (each card is its own stacking context
+   from the entrance-animation transform) */
+.bcard:has(.bswap) { z-index: 20; }
 .bswap {
   position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30;
   display: flex; flex-direction: column; gap: 8px; padding: 10px;
