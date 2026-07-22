@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { HUES } from "@/lib/palette";
 import type { HueKey } from "@/lib/palette";
 import type { SearchResult } from "@/features/search/types";
@@ -30,9 +31,29 @@ function poster(seed: string): string {
   return `linear-gradient(150deg, oklch(0.5 0.13 ${a}), oklch(0.33 0.11 ${(a + 40) % 360}))`;
 }
 
+const FEELINGS = ["loved", "liked", "mixed", "dropped"] as const;
+
+/** Four rating orbs bouncing one after another — the app's own loading beat. */
+function OrbLoader({ caption }: { caption: string }) {
+  return (
+    <div className="orbload" role="status" aria-label={caption}>
+      <div className="orbload__orbs" aria-hidden="true">
+        {FEELINGS.map((f, i) => (
+          <span
+            key={f}
+            className={"orbload__orb orbload__orb--" + f}
+            style={{ animationDelay: `${i * 0.13}s` }}
+          />
+        ))}
+      </div>
+      <span className="orbload__cap">{caption}</span>
+    </div>
+  );
+}
+
 export function BuildClient() {
   const router = useRouter();
-  const [step, setStep] = useState<"paste" | "verify">("paste");
+  const [step, setStep] = useState<"paste" | "loading" | "verify">("paste");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [cards, setCards] = useState<Card[]>([]);
@@ -42,7 +63,7 @@ export function BuildClient() {
 
   const extract = useCallback(async () => {
     if (busy || !text.trim()) return;
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setStep("loading");
     try {
       const rows: MatchRow[] = await matchTitlesAction(text);
       const next: Card[] = [];
@@ -56,6 +77,7 @@ export function BuildClient() {
       setStep("verify");
     } catch {
       setError("Couldn't read that just now — please try again.");
+      setStep("paste");
     } finally {
       setBusy(false);
     }
@@ -95,30 +117,42 @@ export function BuildClient() {
     }
   }, [busy, cards, listName, hue, router]);
 
+  if (step === "loading") {
+    return (
+      <div className="build build--center">
+        <OrbLoader caption="Reading your list…" />
+      </div>
+    );
+  }
+
   if (step === "paste") {
+    const lines = text.trim() ? text.trim().split(/\r?\n/).filter((l) => l.trim()).length : 0;
     return (
       <div className="build">
-        <header className="build__head">
-          <span className="build__eyebrow">Import</span>
-          <h1 className="build__title">Build a list from your notes</h1>
-          <p className="build__lede">
-            Paste a written list — one title per line, however you jotted it down. We&rsquo;ll pull out
-            the titles and match them to the catalogue, then you check the grid before it becomes a list.
-          </p>
-        </header>
-        <textarea
-          className="build__paste"
-          placeholder={"Attack on Titan\nFrieren - 9/10\n1. Cowboy Bebop\n• Monster (rewatching)\n..."}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={14}
-          autoFocus
-        />
-        <div className="build__actions">
-          <span className="build__hint">{text.trim() ? `${text.trim().split(/\r?\n/).filter((l) => l.trim()).length} lines` : "Paste from your notes app, a doc, anywhere"}</span>
-          <button className="build__btn build__btn--go" onClick={extract} disabled={busy || !text.trim()}>
-            {busy ? "Reading…" : "Extract titles →"}
-          </button>
+        <div className="build__top">
+          <span className="build__eyebrow"><span className="build__rule" />Import from notes</span>
+          <Link className="build__back" href="/watchlist">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+            Lists
+          </Link>
+        </div>
+
+        <div className="build__station">
+          <textarea
+            className="build__paste"
+            placeholder={"Paste your list — one title per line, however you jotted it down.\n\nAttack on Titan\nFrieren\nJJK\nCowboy Bebop — 9/10\nClannad/Clannad: After Story"}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={14}
+            autoFocus
+          />
+          <div className="build__actions">
+            <span className="build__hint">{lines > 0 ? `${lines} line${lines === 1 ? "" : "s"}` : "Notes, a doc, a message — anywhere"}</span>
+            <button className="build__btn build__btn--go" onClick={extract} disabled={busy || !text.trim()}>
+              Extract titles
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+          </div>
         </div>
         {error && <p className="build__err">{error}</p>}
       </div>
@@ -127,17 +161,17 @@ export function BuildClient() {
 
   return (
     <div className="build">
-      <header className="build__head build__head--verify">
-        <div>
-          <span className="build__eyebrow">Verify</span>
-          <h1 className="build__title">Check the titles we found</h1>
-          <p className="build__lede">
-            {animeCards.length} anime · {mangaCards.length} manga{needCards.length > 0 ? ` · ${needCards.length} need a match` : ""}.
-            Remove anything wrong, fix a flagged guess, or search to add what we missed.
-          </p>
-        </div>
-        <button className="build__btn build__btn--ghost" onClick={() => setStep("paste")}>← Edit notes</button>
-      </header>
+      <div className="build__top">
+        <span className="build__eyebrow"><span className="build__rule" />Verify</span>
+        <button className="build__back" onClick={() => setStep("paste")}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          Edit notes
+        </button>
+      </div>
+      <p className="build__tally">
+        <b>{animeCards.length}</b> anime · <b>{mangaCards.length}</b> manga
+        {needCards.length > 0 ? <> · <b>{needCards.length}</b> to check</> : null}
+      </p>
 
       <AddBar onAdd={addTitle} existing={cards} />
 
