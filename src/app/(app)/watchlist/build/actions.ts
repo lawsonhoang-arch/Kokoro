@@ -54,17 +54,25 @@ function lineContainsTitle(nLine: string, nTitle: string): boolean {
 function cleanLine(raw: string): string {
   let s = raw.trim();
   if (!s) return "";
-  // leading bullet / number / checkbox markers
-  s = s.replace(/^\s*(?:[-*•·▪●○►▶>]+|\d+[.)]|\[[ xX]?\]|[✓✔☑])\s*/, "");
-  // a section header ("Watching:", "Plan to watch —") with nothing after it
-  if (/^[\w\s]{1,24}[:—-]\s*$/.test(s)) return "";
+  // strip inline markdown that wraps titles in notes: backticks, **bold**,
+  // __underline__, ~~strike~~ — so "**Title** `[tag]`" reduces to the title
+  s = s.replace(/`+/g, "").replace(/\*\*|__|~~/g, "");
+  // leading list markers: bullets, numbers, checkboxes, a lone * / _ emphasis
+  s = s.replace(/^\s*(?:[-*_•·▪●○►▶>]+|\d+[.)]|\[[ xX]?\]|[✓✔☑])\s*/, "");
+  // Remove ALL [bracketed] tags anywhere on the line ("[Action] [Adventure]").
+  // But if the line is ONLY a bracketed title (["Oshi no Ko"]-style), unwrap it
+  // instead of deleting everything.
+  const hasContentOutsideBrackets = s.replace(/\[[^\]]*\]/g, " ").trim().length > 0;
+  s = hasContentOutsideBrackets ? s.replace(/\[[^\]]*\]/g, " ") : s.replace(/[[\]]/g, " ");
+  // a section header ("Watching:", "Plan to watch —") with nothing meaningful after
+  if (/^[\w\s]{1,24}[:—-]\s*$/.test(s.trim())) return "";
   // trailing " - 9/10", " – finished", " (rewatching)", " — 12 eps"
   s = s.replace(/\s+[-–—(]\s*.*$/, "");
-  // trailing bracketed note with no dash: "Bleach [dropped]"
-  s = s.replace(/\s*\[[^\]]*\]\s*$/, "");
   // a bare score at the end: "Frieren 9.5"
   s = s.replace(/\s+\d{1,2}(?:\.\d)?\s*\/?\s*(?:10|5)?\s*$/, "");
-  return s.trim();
+  // stray trailing emphasis / whitespace, then collapse runs
+  s = s.replace(/[\s*_~]+$/, "");
+  return s.replace(/\s+/g, " ").trim();
 }
 
 /** Break a pasted note into candidate titles and match each to the catalogue.
