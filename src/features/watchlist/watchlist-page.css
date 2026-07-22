@@ -35,7 +35,17 @@ body.kk-watchlist-route .k-app::after {
   top: var(--nav-h) !important;
 }
 
-/* The builder is an immersive full-screen editor with its own topbar (and a
-   "Lists" back link), so the global mobile bottom bar would only clutter it and
-   cover its controls. Hide it here — exit via the topbar. */
-body.kk-watchlist-route .mnav { display: none; }
+/* On tablet/desktop the builder is an immersive editor with its own topbar and
+   a "Lists" back link, so the bottom bar is redundant — hide it there. But on a
+   PHONE the top nav strip is also hidden (≤520px), so hiding the bottom bar too
+   left NO way to reach Home, Community, etc. — the user was trapped on the list.
+   Keep the bottom nav on phones; only hide it where the top nav still exists. */
+@media (min-width: 521px) {
+  body.kk-watchlist-route .mnav { display: none; }
+}
+/* and leave room for it so the last board content isn't hidden behind it */
+@media (max-width: 520px) {
+  body.kk-watchlist-route .k-app {
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+}
