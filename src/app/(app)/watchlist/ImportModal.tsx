@@ -7,7 +7,7 @@ import { importAniListAction, importMalAction, importListFileAction } from "./ac
 import type { ImportSummary } from "@/lib/importList";
 import type { KokoroImportResult } from "@/lib/importKokoro";
 
-type Source = "anilist" | "mal" | "kokoro";
+type Source = "anilist" | "mal" | "kokoro" | "notes";
 type Result = { ok: true; summary: ImportSummary } | { ok: false; error: string };
 
 export function ImportModal({ onClose }: { onClose: () => void }) {
@@ -73,9 +73,22 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
             <button role="tab" aria-selected={source === "anilist"} className={"import__tab" + (source === "anilist" ? " on" : "")} onClick={() => pick("anilist")}>AniList</button>
             <button role="tab" aria-selected={source === "mal"} className={"import__tab" + (source === "mal" ? " on" : "")} onClick={() => pick("mal")}>MyAnimeList</button>
             <button role="tab" aria-selected={source === "kokoro"} className={"import__tab" + (source === "kokoro" ? " on" : "")} onClick={() => pick("kokoro")}>Kokoro file</button>
+            <button role="tab" aria-selected={source === "notes"} className={"import__tab" + (source === "notes" ? " on" : "")} onClick={() => pick("notes")}>From notes</button>
           </div>
 
-          {source === "anilist" ? (
+          {source === "notes" ? (
+            <div className="import__panel">
+              <label className="import__label">Paste a written list</label>
+              <p className="import__hint" style={{ marginTop: 0 }}>
+                Have a list jotted in your notes, a doc, or a message? Paste it in and we&apos;ll pull
+                out the titles, match them to the catalogue, and let you check the grid — plus
+                search-add anything we miss — before it becomes a list.
+              </p>
+              <Link className="btn btn--primary" href="/watchlist/build" onClick={onClose} style={{ marginTop: 4 }}>
+                Open the builder →
+              </Link>
+            </div>
+          ) : source === "anilist" ? (
             <div className="import__panel">
               <label className="import__label" htmlFor="al-user">Your AniList username</label>
               <div className="import__row">
