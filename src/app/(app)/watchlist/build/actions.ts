@@ -156,48 +156,96 @@ export async function matchTitlesAction(text: string): Promise<MatchRow[]> {
   const CONCURRENCY = 6;
   for (let i = 0; i < candidates.length; i += CONCURRENCY) {
     const batch = candidates.slice(i, i + CONCURRENCY);
-    const settled = await Promise.all(batch.map(matchOne));
-    rows.push(...settled);
+    const settled = await Promise.all(batch.map(matchWithSlash));
+    for (const r of settled) rows.push(...r);
   }
   return rows;
 }
 
-async function matchOne(input: string): Promise<MatchRow> {
-  const nLine = norm(input);
-  // a known fan abbreviation searches its canonical title instead
-  const query = ABBREV[nLine] ?? input;
-  const nMatch = norm(query);
-  let hits: SearchResult[] = [];
-  try {
-    hits = await searchCatalog(query, 12);
-  } catch {
-    return { input, anime: null, manga: null, strict: false, alternatives: [] };
-  }
+/** Match a candidate, and if it matches nothing AND holds a "/" — a compound
+ *  like "Clannad/Clannad: After Story" — match each slash-part separately and
+ *  emit them as their own rows. The whole line is tried first, so a slash that
+ *  is PART of a title ("Fate/stay night") matches as one and is never split. */
+async function matchWithSlash(input: string): Promise<MatchRow[]> {
+  const whole = await matchOne(input);
+  if (!input.includes("/")) return [whole];
 
-  // score every hit; keep those that matched at all. Per kind, take the highest
-  // score, and on a tie prefer the SHORTER title — the canonical entry over a
-  // spin-off ("Demon Slayer: Kimetsu no Yaiba" over "…Mugen Train Arc").
-  const scored = hits
-    .map((h) => ({ h, s: hitScore(nMatch, h) }))
+  // If the WHOLE line matches a title exactly, the "/" is part of that title
+  // ("Fate/stay night", "Fate/Zero") — keep it as one, don't split. Otherwise
+  // the "/" is a separator between titles ("Clannad/Clannad: After Story"), and
+  // a mere prefix match of the whole (e.g. just "Clannad") shouldn't suppress
+  // the split — match each part on its own.
+  const nLine = norm(input);
+  const wholeIsExact =
+    (whole.anime && norm(whole.anime.title) === nLine) ||
+    (whole.manga && norm(whole.manga.title) === nLine);
+  if (wholeIsExact) return [whole];
+
+  const parts = input.split("/").map((p) => p.trim()).filter((p) => p.length >= 2);
+  const matched: MatchRow[] = [];
+  const seen = new Set<string>();
+  for (const part of parts) {
+    const r = await matchOne(part);
+    // de-dupe across parts (e.g. "Clannad/Clannad: After Story" — same base)
+    const key = (r.anime?.id ?? "") + "|" + (r.manga?.id ?? "");
+    if ((r.anime || r.manga) && !seen.has(key)) { seen.add(key); matched.push(r); }
+  }
+  return matched.length > 0 ? matched : [whole];
+}
+
+/** Pick the best anime + manga from a candidate pool, scored against the full
+ *  line. Highest matched length wins; ties go to the shorter (canonical) title. */
+function pickBest(pool: SearchResult[], nLine: string) {
+  const scored = pool
+    .map((h) => ({ h, s: hitScore(nLine, h) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s || norm(a.h.title).length - norm(b.h.title).length);
+  const anime = scored.find((x) => x.h.kind === "anime")?.h ?? null;
+  const manga = scored.find((x) => x.h.kind === "manga")?.h ?? null;
+  return { anime, manga };
+}
 
-  const bestStrict = (kind: "anime" | "manga") => scored.find((x) => x.h.kind === kind)?.h ?? null;
-  let anime = bestStrict("anime");
-  let manga = bestStrict("manga");
+async function matchOne(input: string): Promise<MatchRow> {
+  const nLine = norm(input);
+  // a known fan abbreviation searches (and scores against) its canonical title
+  const query = ABBREV[nLine] ?? input;
+  const nScore = norm(query);
+  const words = nScore.split(" ").filter((w) => w.length > 0);
+
+  // Build a candidate pool. Search the full line first; if that doesn't yield a
+  // confident match, shrink to the leading word-prefixes ("Clannad After Story
+  // finished" → "Clannad After Story" → … → "Clannad"), because the title
+  // usually sits at the START and trailing words are tags/notes. Stop as soon
+  // as a strict match appears.
+  const pool: SearchResult[] = [];
+  const seen = new Set<string>();
+  const addHits = async (sub: string) => {
+    if (sub.length < 2) return;
+    try {
+      for (const h of await searchCatalog(sub, 8)) {
+        if (!seen.has(h.id)) { seen.add(h.id); pool.push(h); }
+      }
+    } catch { /* ignore a failed sub-search */ }
+  };
+
+  await addHits(words.join(" "));
+  let { anime, manga } = pickBest(pool, nScore);
+  for (let k = words.length - 1; k >= 1 && !(anime || manga); k--) {
+    await addHits(words.slice(0, k).join(" "));
+    ({ anime, manga } = pickBest(pool, nScore));
+  }
   let strict = !!(anime || manga);
+  let hits = pool;
 
-  // No confident (substring/abbreviation) match — try typo-tolerant fuzzy
-  // matching so a misspelling ("Fulmetal Alchemist", "Cowboy Bebob") still
-  // resolves. Fuzzy matches ARE included, but marked non-strict so the board
-  // flags them "Check" for a glance. Only a title that matches nothing at all
-  // (not even fuzzily) is left out.
+  // Still nothing — try typo-tolerant fuzzy matching so a misspelling ("Fulmetal
+  // Alchemist", "Cowboy Bebob") still resolves. Fuzzy matches are included but
+  // marked non-strict so the board flags them "Check". Only a title that matches
+  // nothing at all (not even fuzzily) is left out.
   if (!strict) {
     const fuzzy = await fuzzySearch(input, 8);
     if (fuzzy.length > 0) {
       anime = fuzzy.find((h) => h.kind === "anime") ?? null;
       manga = fuzzy.find((h) => h.kind === "manga") ?? null;
-      strict = false;
       if (anime || manga) hits = fuzzy;
     }
   }
