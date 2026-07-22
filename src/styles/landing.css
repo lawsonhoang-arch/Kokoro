@@ -28,8 +28,8 @@
   --feel-dropped: oklch(0.62 0.02 64);
   /* type — rounded humanist pairing */
   --font-title: "Nunito", system-ui, sans-serif;
-  --font-ui: "Nunito Sans", "Nunito", system-ui, sans-serif;
-  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+  --font-ui: "Nunito", system-ui, sans-serif;
+  --font-mono: "Hanken Grotesk", system-ui, sans-serif;
   --w-display: 800;   /* big headlines */
   --w-head: 700;      /* medium titles  */
   --maxw: 1180px;
@@ -37,8 +37,8 @@
 
 /* ---- rounded type pairings (kept for the app-wide switcher) ---- */
 html[data-font="onest"]     { --font-title:"Onest",system-ui,sans-serif;               --font-ui:"Onest",system-ui,sans-serif;             --w-display:700; --w-head:600; }
-html[data-font="nunito"]    { --font-title:"Nunito",system-ui,sans-serif;              --font-ui:"Nunito Sans","Nunito",system-ui,sans-serif; --w-display:800; --w-head:700; }
-html[data-font="figtree"]   { --font-title:"Figtree",system-ui,sans-serif;             --font-ui:"Figtree",system-ui,sans-serif;           --w-display:700; --w-head:600; }
+html[data-font="nunito"]    { --font-title:"Nunito",system-ui,sans-serif;              --font-ui:"Nunito",system-ui,sans-serif; --w-display:800; --w-head:700; }
+/* figtree option retired — the app is Nunito + Hanken Grotesk */
 html[data-font="bricolage"] { --font-title:"Bricolage Grotesque",system-ui,sans-serif; --font-ui:"Hanken Grotesk",system-ui,sans-serif;     --w-display:600; --w-head:600; }
 html[data-font="quicksand"] { --font-title:"Quicksand",system-ui,sans-serif;           --font-ui:"Hanken Grotesk",system-ui,sans-serif;    --w-display:700; --w-head:600; }
 html[data-font="serif"]     { --font-title:"Newsreader",Georgia,serif;                 --font-ui:"Hanken Grotesk",system-ui,sans-serif;    --w-display:500; --w-head:560; }

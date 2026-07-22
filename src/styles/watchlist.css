@@ -42,8 +42,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   --shadow-lift: 0 26px 60px rgba(0,0,0,0.52), 0 8px 18px rgba(0,0,0,0.32);
   --glow: 0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent), 0 8px 28px color-mix(in oklab, var(--accent) 32%, transparent);
   --font-title: "Nunito", system-ui, sans-serif;
-  --font-ui: "Nunito Sans", "Nunito", system-ui, sans-serif;
-  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+  --font-ui: "Nunito", system-ui, sans-serif;
+  --font-mono: "Hanken Grotesk", system-ui, sans-serif; /* subtext */
   --title-weight: 700;
   --title-style: normal;
   --uppercase-spacing: 0.18em;
@@ -100,9 +100,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-2: 0 8px 22px rgba(0,0,0,0.5);
   --shadow-lift: 0 20px 48px rgba(0,0,0,0.6), 0 0 0 1px var(--line-strong);
-  --font-title: "Spectral", Georgia, serif;
+  /* fonts inherit the 2-font system (Nunito + Hanken Grotesk) */
   --title-weight: 500;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --grain: 1;
 }
 
@@ -123,8 +122,6 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
   --shadow-1: 0 2px 6px rgba(120,70,40,0.08);
   --shadow-2: 0 10px 26px rgba(120,70,40,0.13);
   --shadow-lift: 0 22px 50px rgba(120,70,40,0.22), 0 6px 14px rgba(120,70,40,0.12);
-  --font-title: "Figtree", system-ui, sans-serif;
-  --font-ui: "Figtree", system-ui, sans-serif;
   --title-weight: 700;
 }
 
@@ -1386,13 +1383,13 @@ body.k-entry-dragging, body.k-entry-dragging * { cursor: grabbing !important; us
 }
 .k-eps__note-date { flex: 0 0 auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); padding-top: 2px; }
 .k-eps__note-body {
-  font-family: "Spectral", Georgia, serif; font-size: 14px; line-height: 1.55; color: var(--ink); min-width: 0;
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.55; color: var(--ink); min-width: 0;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .k-eps__compose {
   width: 100%; resize: vertical; min-height: 64px;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
-  padding: 11px 13px; font-family: "Spectral", Georgia, serif; font-size: 14.5px; line-height: 1.55; color: var(--ink);
+  padding: 11px 13px; font-family: var(--font-ui); font-size: 14.5px; line-height: 1.55; color: var(--ink);
 }
 .k-eps__compose:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .k-eps__actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }

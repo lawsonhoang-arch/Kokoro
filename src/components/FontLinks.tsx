@@ -1,15 +1,13 @@
-// Google Fonts <link>s. The prototype loaded fonts this way, and keeping it
-// lets the ported CSS reference literal family names ("Nunito", "Spline Sans
-// Mono", "Spectral", …) verbatim. React 19 hoists these into <head>; the
-// `precedence` prop on the stylesheet makes React manage + de-dupe it.
+// Google Fonts <link>s. React 19 hoists these into <head>; the `precedence`
+// prop on the stylesheet makes React manage + de-dupe it.
+//
+// The app runs on TWO fonts: Nunito for main text, Hanken Grotesk for subtext
+// (labels, counts, meta, captions). Everything else the prototype pulled in
+// (Nunito Sans, Spectral, Figtree, two monos) has been retired.
 const FONTS_HREF =
   "https://fonts.googleapis.com/css2?" +
   "family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&" +
-  "family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&" +
-  "family=Spectral:ital,wght@0,400;0,500;0,600;1,400&" +
-  "family=Figtree:wght@400;500;600;700;800&" +
-  "family=Spline+Sans+Mono:wght@400;500;600&" +
-  "family=JetBrains+Mono:wght@400;500;600&display=swap";
+  "family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
 
 export function FontLinks() {
   return (

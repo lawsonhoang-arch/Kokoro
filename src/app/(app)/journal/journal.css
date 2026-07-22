@@ -168,7 +168,7 @@
 }
 
 .entry__text {
-  font-family: "Spectral", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 16px; line-height: 1.65; color: var(--ink);
   font-weight: 400;
   max-width: 70ch;
@@ -182,7 +182,7 @@
   border-left: 3px solid var(--accent);
   background: color-mix(in oklab, var(--accent) 7%, var(--surface));
   border-radius: 0 var(--radius) var(--radius) 0;
-  font-style: italic; color: var(--ink-soft); font-family: "Spectral", Georgia, serif; font-size: 14.5px;
+  font-style: italic; color: var(--ink-soft); font-family: var(--font-ui); font-size: 14.5px;
 }
 .entry__quote::before { content: "“"; color: var(--accent); margin-right: 4px; font-size: 18px; line-height: 1; }
 .entry__quote::after  { content: "”"; color: var(--accent); margin-left: 4px;  font-size: 18px; line-height: 1; }
@@ -208,7 +208,7 @@
   border-radius: var(--radius);
   padding: 16px 18px;
   color: var(--ink-faint);
-  font-family: "Spectral", Georgia, serif; font-size: 15px;
+  font-family: var(--font-ui); font-size: 15px;
   transition: border-color .15s, color .15s;
   cursor: text;
 }
@@ -299,13 +299,13 @@
   width: 100%; min-height: 96px; resize: vertical;
   border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface-2); padding: 13px 15px;
-  font-family: "Spectral", Georgia, serif; font-size: 15.5px; line-height: 1.6; color: var(--ink);
+  font-family: var(--font-ui); font-size: 15.5px; line-height: 1.6; color: var(--ink);
 }
 .jform__quote {
   width: 100%; border: 1px solid var(--line); border-left: 3px solid var(--accent);
   border-radius: 0 var(--radius) var(--radius) 0;
   background: color-mix(in oklab, var(--accent) 6%, var(--surface-2)); padding: 10px 14px;
-  font-family: "Spectral", Georgia, serif; font-style: italic; font-size: 14px; color: var(--ink-soft);
+  font-family: var(--font-ui); font-style: italic; font-size: 14px; color: var(--ink-soft);
 }
 .jform__body:focus, .jform__quote:focus, .jform__ep:focus {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent);
