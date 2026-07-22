@@ -473,3 +473,89 @@ export async function getGenreFeatureTiles(
     return { genre, cover: best?.cover ?? null };
   });
 }
+
+/* ===== fuzzy matching (typo-tolerant) — for the notes-import matcher ========
+   The main relevance() is pure substring, so it returns nothing for a
+   misspelling ("Fulmetal Alchemist"). This scans the in-memory index with a
+   token-level edit-distance similarity so typos still resolve. It is heavier
+   than relevance(), so it is only used as a fallback for lines that didn't
+   match exactly, and it is bounded by a cheap first-letter pre-filter. */
+
+function fnorm(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// bounded Levenshtein: bails once the distance is known to exceed `cap`.
+function levCapped(a: string, b: string, cap: number): number {
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > cap) return cap + 1;
+  let prev = new Array(lb + 1);
+  for (let j = 0; j <= lb; j++) prev[j] = j;
+  for (let i = 1; i <= la; i++) {
+    let best = i;
+    const cur = new Array(lb + 1);
+    cur[0] = i;
+    const ca = a.charCodeAt(i - 1);
+    for (let j = 1; j <= lb; j++) {
+      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      if (cur[j] < best) best = cur[j];
+    }
+    if (best > cap) return cap + 1;
+    prev = cur;
+  }
+  return prev[lb];
+}
+
+function tokenSim(a: string, b: string): number {
+  if (a === b) return 1;
+  const m = Math.max(a.length, b.length);
+  if (m === 0) return 1;
+  if (Math.abs(a.length - b.length) > 3) return 0;
+  const d = levCapped(a, b, 3);
+  return d > 3 ? 0 : 1 - d / m;
+}
+
+export async function fuzzySearch(query: string, limit = 6): Promise<SearchResult[]> {
+  const q = fnorm(query);
+  if (q.length < 3) return [];
+  const qtok = q.split(" ").filter((t) => t.length > 0);
+  if (qtok.length === 0) return [];
+  const qFirst = new Set(qtok.map((t) => t[0]));
+  const rows = await getIndex();
+
+  const scored: Array<{ s: number; r: IndexRow }> = [];
+  for (const r of rows) {
+    if (!r) continue;
+    // a title far shorter than the query can't contain it — skip
+    if (r.lc.length + 4 < q.length) continue;
+    const ttok = r.lc.split(/[^a-z0-9]+/).filter((t) => t.length > 0);
+    // cheap pre-filter: at least one title token must share a first letter with
+    // a query token (typos rarely change the first character)
+    if (!ttok.some((t) => qFirst.has(t[0]))) continue;
+
+    let sum = 0;
+    let matchedAll = true;
+    for (const qt of qtok) {
+      let best = 0;
+      for (const tt of ttok) {
+        const s = tokenSim(qt, tt);
+        if (s > best) best = s;
+        if (best === 1) break;
+      }
+      if (best < 0.6) { matchedAll = false; break; }
+      sum += best;
+    }
+    if (!matchedAll) continue;
+    const score = sum / qtok.length;
+    if (score >= 0.82) scored.push({ s: score, r });
+  }
+
+  scored.sort(
+    (a, b) =>
+      b.s - a.s ||
+      a.r.lc.length - b.r.lc.length ||
+      (b.r.popularity ?? 0) - (a.r.popularity ?? 0),
+  );
+  return scored.slice(0, limit).map((h) => toResult(h.r));
+}

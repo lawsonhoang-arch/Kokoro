@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { searchCatalog } from "@/lib/catalog";
-import { ensureIndex } from "@/lib/search-index";
+import { ensureIndex, fuzzySearch } from "@/lib/search-index";
 import * as wl from "@/lib/watchlists";
 import { addEntry } from "@/lib/entries";
 import type { SearchResult } from "@/features/search/types";
@@ -33,6 +33,29 @@ export type MatchRow = {
 function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
+
+/** Common fan abbreviations → a canonical title to search. These are community
+ *  conventions no algorithm can derive (JJK isn't the initials of Jujutsu
+ *  Kaisen), so the popular ones are mapped by hand. Keys are normalised. */
+const ABBREV: Record<string, string> = {
+  jjk: "Jujutsu Kaisen",
+  aot: "Attack on Titan", snk: "Attack on Titan", "shingeki no kyojin": "Attack on Titan",
+  fmab: "Fullmetal Alchemist: Brotherhood", fma: "Fullmetal Alchemist",
+  dbz: "Dragon Ball Z", dbs: "Dragon Ball Super", db: "Dragon Ball",
+  hxh: "Hunter x Hunter", kny: "Demon Slayer", "kimetsu no yaiba": "Demon Slayer",
+  jojo: "JoJo's Bizarre Adventure", opm: "One Punch Man",
+  mha: "My Hero Academia", bnha: "My Hero Academia", "boku no hero": "My Hero Academia",
+  csm: "Chainsaw Man", tpn: "The Promised Neverland",
+  nge: "Neon Genesis Evangelion", eva: "Evangelion",
+  konosuba: "KonoSuba", madoka: "Puella Magi Madoka Magica",
+  rezero: "Re:Zero", "re zero": "Re:Zero",
+  ygo: "Yu-Gi-Oh", ohshc: "Ouran High School Host Club",
+  fmt: "Fruits Basket", "code geass": "Code Geass",
+  "steins gate": "Steins;Gate", ass: "Assassination Classroom",
+  bsd: "Bungo Stray Dogs", ttgl: "Tengen Toppa Gurren Lagann", gurren: "Tengen Toppa Gurren Lagann",
+  aoashi: "Ao Ashi", spy: "Spy x Family", sxf: "Spy x Family",
+  dandadan: "Dan Da Dan", "the boy and the heron": "The Boy and the Heron",
+};
 
 /** How well a catalogue title matches a written line, in "matched characters".
  *  It works in BOTH directions, which is the whole point:
@@ -141,9 +164,12 @@ export async function matchTitlesAction(text: string): Promise<MatchRow[]> {
 
 async function matchOne(input: string): Promise<MatchRow> {
   const nLine = norm(input);
+  // a known fan abbreviation searches its canonical title instead
+  const query = ABBREV[nLine] ?? input;
+  const nMatch = norm(query);
   let hits: SearchResult[] = [];
   try {
-    hits = await searchCatalog(input, 12);
+    hits = await searchCatalog(query, 12);
   } catch {
     return { input, anime: null, manga: null, strict: false, alternatives: [] };
   }
@@ -152,19 +178,30 @@ async function matchOne(input: string): Promise<MatchRow> {
   // score, and on a tie prefer the SHORTER title — the canonical entry over a
   // spin-off ("Demon Slayer: Kimetsu no Yaiba" over "…Mugen Train Arc").
   const scored = hits
-    .map((h) => ({ h, s: hitScore(nLine, h) }))
+    .map((h) => ({ h, s: hitScore(nMatch, h) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s || norm(a.h.title).length - norm(b.h.title).length);
 
   const bestStrict = (kind: "anime" | "manga") => scored.find((x) => x.h.kind === kind)?.h ?? null;
-  const anime = bestStrict("anime");
-  const manga = bestStrict("manga");
-  const strict = !!(anime || manga);
+  let anime = bestStrict("anime");
+  let manga = bestStrict("manga");
+  let strict = !!(anime || manga);
 
-  // No fuzzy fallback: a line with no confident match is left UNMATCHED rather
-  // than guessing the top hit — a wrong guess is worse than none, and nothing
-  // unmatched should end up in the list. The close hits are still returned as
-  // alternatives so the user can pick one by hand if they want.
+  // No confident (substring/abbreviation) match — try typo-tolerant fuzzy
+  // matching so a misspelling ("Fulmetal Alchemist", "Cowboy Bebob") still
+  // resolves. Fuzzy matches ARE included, but marked non-strict so the board
+  // flags them "Check" for a glance. Only a title that matches nothing at all
+  // (not even fuzzily) is left out.
+  if (!strict) {
+    const fuzzy = await fuzzySearch(input, 8);
+    if (fuzzy.length > 0) {
+      anime = fuzzy.find((h) => h.kind === "anime") ?? null;
+      manga = fuzzy.find((h) => h.kind === "manga") ?? null;
+      strict = false;
+      if (anime || manga) hits = fuzzy;
+    }
+  }
+
   const chosen = new Set([anime?.id, manga?.id].filter(Boolean));
   const alternatives = hits.filter((h) => !chosen.has(h.id)).slice(0, 6);
   return { input, anime, manga, strict, alternatives };
