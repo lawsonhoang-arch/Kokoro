@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { TrackedTitle } from "@/lib/calendar";
 
@@ -87,6 +87,19 @@ export function CalendarClient({ events, tracked }: { events: EventLite[]; track
   };
   const selDate = new Date(sel + "T12:00:00");
 
+  // Mobile shows a horizontal day strip (this month's days) instead of the
+  // cramped month grid. Keep the selected/today cell scrolled into view.
+  const monthDays = useMemo(() => cells.filter((c) => c.inMonth), [cells]);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const selCellRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = selCellRef.current;
+    const box = stripRef.current;
+    if (!el || !box || box.clientWidth === 0) return; // hidden on desktop → no-op
+    box.scrollLeft +=
+      el.getBoundingClientRect().left - box.getBoundingClientRect().left - box.clientWidth / 2 + el.clientWidth / 2;
+  }, [sel, cursor]);
+
   return (
     <div className="cal">
       <div className="cal-toolbar">
@@ -113,6 +126,37 @@ export function CalendarClient({ events, tracked }: { events: EventLite[]; track
         </span>
       </div>
 
+      {/* MOBILE week strip — swipeable days with colour pips (replaces the
+          cramped month grid on a phone; the month grid is hidden ≤520px) */}
+      <div className="cal-weekstrip" ref={stripRef}>
+        {monthDays.map((c) => {
+          const items = itemsFor(c.iso, c.dow);
+          const isSel = c.iso === sel;
+          return (
+            <button
+              key={c.iso}
+              ref={isSel ? selCellRef : undefined}
+              type="button"
+              onClick={() => setSel(c.iso)}
+              className={
+                "cal-wday" +
+                (c.iso < todayIso ? " cal-wday--past" : "") +
+                (c.iso === todayIso ? " cal-wday--today" : "") +
+                (isSel ? " cal-wday--sel" : "")
+              }
+            >
+              <span className="cal-wday__dow">{WEEKDAYS[(c.dow + 6) % 7]}</span>
+              <span className="cal-wday__num">{c.day}</span>
+              <span className="cal-wday__pips">
+                {items.slice(0, 3).map((it, i) => (
+                  <i key={i} className={"cal-pip cal-pip--" + it.type} />
+                ))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="cal-layout">
         <div className="cal-grid" role="grid" key={`${cursor.y}-${cursor.m}`} data-dir={dir}>
           {WEEKDAYS.map((d) => (
@@ -134,6 +178,7 @@ export function CalendarClient({ events, tracked }: { events: EventLite[]; track
                 className={
                   "cal-cell" +
                   (c.inMonth ? "" : " cal-cell--muted") +
+                  (c.iso < todayIso ? " cal-cell--past" : "") +
                   (c.iso === todayIso ? " cal-cell--today" : "") +
                   (isSel ? " cal-cell--sel" : "")
                 }

@@ -2,6 +2,7 @@ import "@/styles/entity.css";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { Page } from "@/shell/Page";
+import { BackButton } from "@/components/BackButton";
 import { getStudio, type StudioWork } from "@/lib/titleExtras";
 import { isFollowingEntity } from "@/lib/entities";
 import { FollowEntityButton } from "@/features/entities/FollowEntityButton";
@@ -48,6 +49,7 @@ export default async function StudioPage({ params }: { params: Promise<{ id: str
 
   return (
     <Page width="wide">
+      <BackButton />
       <header className="epage__hero">
         {studio.image ? (
           // eslint-disable-next-line @next/next/no-img-element

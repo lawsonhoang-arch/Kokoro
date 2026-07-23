@@ -2,6 +2,7 @@ import "@/styles/entity.css";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { Page } from "@/shell/Page";
+import { BackButton } from "@/components/BackButton";
 import { getCharacter, type CharacterAppearance, type CharacterVoice } from "@/lib/titleExtras";
 import { isFollowingEntity } from "@/lib/entities";
 import { FollowEntityButton } from "@/features/entities/FollowEntityButton";
@@ -72,6 +73,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
 
   return (
     <Page width="wide">
+      <BackButton />
       <header className="epage__hero">
         {character.image ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { needsOnboarding, getSuggestedPeople, getStarterTitles, ONBOARD_GENRES } from "@/lib/onboarding";
+import { needsOnboarding, getSuggestedPeople, getStarterTitles, ONBOARD_GENRES, HOME_FOCUS } from "@/lib/onboarding";
 import { WelcomeClient } from "./WelcomeClient";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export default async function WelcomePage() {
   return (
     <WelcomeClient
       genres={[...ONBOARD_GENRES]}
+      focusOptions={HOME_FOCUS.map((f) => ({ key: f.key, label: f.label, hint: f.hint }))}
       initialName={displayName}
       people={people}
       initialTitles={starters}

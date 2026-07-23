@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { toggleFavorite, isFavorite } from "@/lib/favorites";
 import { followUser } from "@/lib/follows";
-import { completeOnboarding, getStarterTitles } from "@/lib/onboarding";
+import { completeOnboarding, getStarterTitles, setHomeFocus } from "@/lib/onboarding";
 import type { SearchResult } from "@/features/search/types";
 
 async function requireUserId(): Promise<string> {
@@ -27,6 +27,7 @@ export type FinishOnboardingInput = {
   name?: string;
   favoriteIds?: string[];
   followIds?: string[];
+  focus?: string[];
 };
 
 /** Persist everything the user chose, then mark the flow complete. Best-effort:
@@ -58,6 +59,14 @@ export async function finishOnboardingAction(input: FinishOnboardingInput): Prom
       await followUser(userId, id);
     } catch {
       /* skip */
+    }
+  }
+
+  if (input.focus?.length) {
+    try {
+      await setHomeFocus(userId, input.focus);
+    } catch {
+      /* ignore */
     }
   }
 

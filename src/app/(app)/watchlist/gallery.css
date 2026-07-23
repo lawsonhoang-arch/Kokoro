@@ -456,3 +456,62 @@
 .import__stats b { color: var(--ink); font-family: var(--font-mono); }
 .import__stat--muted { color: var(--ink-faint); }
 .import__result-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+
+/* ============================================================
+   MOBILE (phones ≤520px) — the desktop cards are hover-reveal posters, so
+   their stats never appear on a touch screen. Rebuild each card as a stacked
+   full-width card: cover collage on top, name + counts always visible below
+   (matches the mobile wireframe). Single column, no side-scroll.
+   ============================================================ */
+@media (max-width: 520px) {
+  /* tools row: keep search + sort but let it breathe on a phone */
+  .wl-tools { padding: 9px 12px; margin-bottom: 18px; gap: 8px; }
+  .wl-tools__search input { font-size: 13px; }
+  .wl-tools__sort { padding: 6px 10px; font-size: 11px; }
+
+  .wl-section-head { margin: 22px 0 12px; padding-bottom: 9px; }
+  .wl-section-head:first-of-type { margin-top: 2px; }
+
+  .wl-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  /* card → vertical stack (cover block, then always-on info panel) */
+  .wl-card {
+    aspect-ratio: auto; display: flex; flex-direction: column;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .wl-card:hover { transform: none; } /* no lift on touch */
+  .wl-card__cover { position: relative; inset: auto; height: 128px; flex: none; }
+  .wl-card__cover::after { display: none; } /* drop the top scrim; nothing overlays it now */
+  .wl-card__mono { font-size: 46px; }
+  /* badges sit on the cover and are always visible (no hover on a phone) */
+  .wl-card__eyebrow { opacity: 1; transform: none; top: 9px; left: 9px; }
+  .wl-card__pinbtn { opacity: 1; transform: none; }
+
+  /* panel flows below the cover instead of overlaying it */
+  .wl-card__panel { position: relative; inset: auto; padding: 12px 14px 13px; background: var(--surface); }
+  .wl-card__panel::before { display: none; }
+  .wl-card__title { font-size: 16px; }
+  .wl-card__desc { font-size: 12px; -webkit-line-clamp: 1; margin-top: 3px; }
+  /* the reveal is always open on mobile — stats + options are the point */
+  .wl-card__reveal { max-height: none; opacity: 1; overflow: visible; margin-top: 11px; }
+  .wl-card__foot { margin-top: 10px; padding-top: 10px; }
+  /* the options menu opens upward from the foot; keep it on-screen */
+  .wl-card__menu { left: 8px; right: 8px; min-width: 0; bottom: 46px; }
+
+  /* New-list: compact full-width dashed bar instead of a tall ghost card */
+  .wl-new {
+    flex-direction: row; justify-content: flex-start; gap: 13px;
+    min-height: 0; padding: 15px 16px; text-align: left;
+  }
+  .wl-new:hover { transform: none; }
+  .wl-new__icon { width: 40px; height: 40px; flex: none; }
+  .wl-new__icon svg { width: 18px; height: 18px; }
+  .wl-new__title { font-size: 15px; }
+  .wl-new__hint { display: none; }
+
+  /* empty state: trim the big vertical padding */
+  .wl-empty { padding: 48px 20px 54px; gap: 14px; }
+  .wl-empty__art { width: 150px; height: 100px; }
+  .wl-empty__title { font-size: 21px; }
+  .wl-empty__lede { font-size: 13.5px; }
+}

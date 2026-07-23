@@ -42,9 +42,8 @@ export default async function NewsPage() {
   return (
     <Page width="wide">
       <PageHead
-        eyebrow="News · Anime & industry"
-        title="What's happening in anime"
-        lede="A calm daily briefing — announcements, adaptations, release dates, and interviews, gathered from across the industry and summarised for you."
+        eyebrow="Industry"
+        title="What's happening"
         actions={
           isMod ? (
             <Link className="btn btn--primary" href="/news/admin">

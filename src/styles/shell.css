@@ -326,6 +326,19 @@
 .page { max-width: 1760px; margin: 0 auto; padding: 38px 28px 120px; }
 .page--narrow { max-width: 1120px; }
 .page--wide   { max-width: 2040px; }
+
+/* "← Back" button — sits at the top of detail pages; reused inline elsewhere */
+.backbtn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 15px 8px 12px; margin-bottom: 18px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-soft);
+  font-family: var(--font-ui); font-weight: 600; font-size: 13px; cursor: pointer;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.backbtn:hover { color: var(--ink); border-color: var(--line-strong); background: var(--surface-3); }
+.backbtn svg { transition: transform .14s; }
+.backbtn:hover svg { transform: translateX(-2px); }
+.backbtn--inline { margin-bottom: 0; } /* when placed in a row, not as a page-top block */
 .page__head { margin-bottom: 32px; display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .page__head > div { flex: 1 1 0; min-width: 280px; }
 .page__head > .actions { flex: 0 0 auto; min-width: 0; display: flex; gap: 10px; justify-content: flex-end; }

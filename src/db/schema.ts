@@ -48,6 +48,10 @@ export const users = pgTable("users", {
   // when the user finished the first-run onboarding flow. null = not yet onboarded
   // (new sign-ups); existing accounts are backfilled to now() so they skip it.
   onboardedAt: timestamp("onboarded_at"),
+  // focus areas the user picked in onboarding ("what do you want to track most?").
+  // Drives Home shelf order on desktop and which shelves show on mobile. null/[] =
+  // the default order. Values are keys from HOME_FOCUS (seasonal, manga, …).
+  homeFocus: text("home_focus").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

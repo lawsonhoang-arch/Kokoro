@@ -78,11 +78,7 @@ export default async function CommunityPage() {
 
   return (
     <Page width="wide">
-      <PageHead
-        eyebrow="Community · Public"
-        title="What everyone's watching"
-        lede="Discussions, reviews, and hot takes from across the catalog — plus a feed of what the people you follow are into."
-      />
+      <PageHead title="Community" />
       <CommunityTabs discussions={discussions} following={followingTab} followingCount={following.length} />
     </Page>
   );

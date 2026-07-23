@@ -22,20 +22,24 @@ function hueOf(s: string): number {
   return (h % 6) + 1;
 }
 
+type FocusOption = { key: string; label: string; hint: string };
+
 type Props = {
   genres: string[];
+  focusOptions: FocusOption[];
   initialName: string;
   people: SuggestedPerson[];
   initialTitles: SearchResult[];
 };
 
-const STEPS = ["Hello", "Tastes", "Favorites", "People"];
+const STEPS = ["Hello", "Tastes", "Focus", "Favorites", "People"];
 
-export function WelcomeClient({ genres, initialName, people, initialTitles }: Props) {
+export function WelcomeClient({ genres, focusOptions, initialName, people, initialTitles }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(initialName);
   const [pickedGenres, setPickedGenres] = useState<Set<string>>(new Set());
+  const [pickedFocus, setPickedFocus] = useState<Set<string>>(new Set());
   const [titles, setTitles] = useState<SearchResult[]>(initialTitles);
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [follows, setFollows] = useState<Set<string>>(new Set());
@@ -67,7 +71,7 @@ export function WelcomeClient({ genres, initialName, people, initialTitles }: Pr
     if (finishing) return;
     setFinishing(true);
     try {
-      await finishOnboardingAction({ name, favoriteIds: [...favs], followIds: [...follows] });
+      await finishOnboardingAction({ name, favoriteIds: [...favs], followIds: [...follows], focus: [...pickedFocus] });
       router.push("/home?welcome=1");
     } catch {
       setFinishing(false);
@@ -138,8 +142,46 @@ export function WelcomeClient({ genres, initialName, people, initialTitles }: Pr
           </section>
         )}
 
-        {/* ---- step 2: favorites ---- */}
+        {/* ---- step 2: focus areas ---- */}
         {step === 2 && (
+          <section className="wl__step">
+            <h1 className="wl__h">What do you want to track most?</h1>
+            <p className="wl__p">Pick the things you care about — they lead your home page, and are what shows first on your phone. Choose as many as you like.</p>
+            <div className="wl__focus">
+              {focusOptions.map((f) => {
+                const on = pickedFocus.has(f.key);
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className={"wl__focusbtn" + (on ? " is-on" : "")}
+                    aria-pressed={on}
+                    onClick={() => toggle(pickedFocus, f.key, setPickedFocus)}
+                  >
+                    <span className="wl__focus-check" aria-hidden="true">
+                      {on ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                      ) : null}
+                    </span>
+                    <span className="wl__focus-text">
+                      <span className="wl__focus-label">{f.label}</span>
+                      <span className="wl__focus-hint">{f.hint}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="wl__actions">
+              <button className="wl__back" onClick={() => setStep(1)}>Back</button>
+              <button className="wl__next" onClick={() => setStep(3)}>
+                {pickedFocus.size ? "Continue" : "Skip"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* ---- step 3: favorites ---- */}
+        {step === 3 && (
           <section className="wl__step">
             <h1 className="wl__h">Pick some favorites</h1>
             <p className="wl__p">
@@ -182,16 +224,16 @@ export function WelcomeClient({ genres, initialName, people, initialTitles }: Pr
               </div>
             )}
             <div className="wl__actions">
-              <button className="wl__back" onClick={() => setStep(1)}>Back</button>
-              <button className="wl__next" onClick={() => setStep(3)}>
+              <button className="wl__back" onClick={() => setStep(2)}>Back</button>
+              <button className="wl__next" onClick={() => setStep(4)}>
                 {favs.size ? "Continue" : "Skip"}
               </button>
             </div>
           </section>
         )}
 
-        {/* ---- step 3: people ---- */}
-        {step === 3 && (
+        {/* ---- step 4: people ---- */}
+        {step === 4 && (
           <section className="wl__step">
             <h1 className="wl__h">Follow a few people</h1>
             <p className="wl__p">Their reviews and activity fill your feed. You can always find more later.</p>
@@ -229,7 +271,7 @@ export function WelcomeClient({ genres, initialName, people, initialTitles }: Pr
               </ul>
             )}
             <div className="wl__actions">
-              <button className="wl__back" onClick={() => setStep(2)}>Back</button>
+              <button className="wl__back" onClick={() => setStep(3)}>Back</button>
               <button className="wl__next" onClick={finish} disabled={finishing}>
                 {finishing ? "Setting up…" : "Enter Kokoro"}
               </button>

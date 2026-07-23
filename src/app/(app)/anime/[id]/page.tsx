@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { coverVT } from "@/lib/vt";
 import { Page } from "@/shell/Page";
+import { BackButton } from "@/components/BackButton";
 import { getTitle } from "@/lib/catalog";
 import { isCompleted } from "@/lib/completions";
 import { isFavorite } from "@/lib/favorites";
@@ -57,6 +58,7 @@ export default async function AnimePage({ params }: { params: Promise<{ id: stri
 
   return (
     <Page>
+      <BackButton />
       <div className="anime-hero">
         {/* the cover morphs in from whichever poster card was clicked (shared
             view-transition name), landing continuity across the navigation */}

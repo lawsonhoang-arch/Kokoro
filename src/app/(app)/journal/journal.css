@@ -1,10 +1,11 @@
 /* ============================================================
    JOURNAL — left rail of anime · right timeline of entries.
    ============================================================ */
+/* Stacked: the diary reading area (all entries / a selected title) on top, and
+   a searchable title "history" below it. Centered at a readable measure. */
 .journal {
-  display: grid; grid-template-columns: 320px 1fr;
-  gap: 32px;
-  align-items: start;
+  display: flex; flex-direction: column; gap: 30px;
+  max-width: 880px; margin: 0 auto;
 }
 
 /* ---- Left rail: anime you've written about ---- */
@@ -78,8 +79,53 @@
   font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);
 }
 
+/* ---- History: the searchable list of every title in your diary, below the
+   reading area. Search filters it; clicking a title switches the timeline. ---- */
+.jhistory {
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  overflow: hidden;
+}
+.jhistory__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 15px 16px 11px;
+}
+.jhistory__title {
+  font-family: var(--font-title); font-weight: 800; font-size: 17px;
+  letter-spacing: -0.01em; color: var(--ink); margin: 0;
+}
+.jhistory__new {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 100px; cursor: pointer;
+  font-family: var(--font-ui); font-weight: 700; font-size: 12.5px;
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--accent) 34%, var(--line));
+  transition: background .14s, border-color .14s;
+}
+.jhistory__new:hover {
+  background: color-mix(in oklab, var(--accent) 18%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--line));
+}
+.jhistory__search {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 14px 8px; padding: 9px 13px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-faint);
+  font-family: var(--font-mono); font-size: 12px;
+}
+.jhistory__search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; }
+.jhistory__list { padding: 2px 8px 10px; max-height: 460px; overflow-y: auto; scrollbar-width: thin; }
+
 /* ---- Right side: selected anime's notes timeline ---- */
-.timeline { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.timeline { min-width: 0; }
+/* Keyed on the scope in JournalApp, so switching titles replays this fade-in —
+   a small mini "page transition" for the reading area. Reuses the app's page
+   keyframe (transitions.css) so the feel matches the rest of the site. */
+.timeline__view {
+  display: flex; flex-direction: column; gap: 18px;
+  animation: kk-page-fade-in 0.34s cubic-bezier(.2, .7, .3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) { .timeline__view { animation: none; } }
 .timeline__head {
   display: flex; align-items: flex-end; gap: 22px;
   padding-bottom: 18px; border-bottom: 1px solid var(--line);
@@ -125,14 +171,21 @@
   font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint);
   letter-spacing: 0.04em;
 }
-.entry__rail::before {
-  content: ""; position: absolute; top: 14px; bottom: -22px; left: 6px; width: 1px;
-  background: var(--line);
+/* Continuous connector line down the dot column. Each entry paints a segment
+   from its top edge down through the 18px flex gap to the next entry, so the
+   segments meet edge-to-edge; the first/last are trimmed to start/end at their
+   dot (~30px down) so the line doesn't poke past the end dots. The dot's opaque
+   fill (z-index above the line) sits cleanly on top of it. */
+.entry::before {
+  content: ""; position: absolute; left: 6px; top: 0; bottom: -20px; width: 1px;
+  background: var(--line); z-index: 0;
 }
-.entry:last-child .entry__rail::before { display: none; }
+.entry:first-of-type::before { top: 30px; }
+.entry:last-of-type::before { bottom: auto; height: 30px; }
+.entry:only-of-type::before { display: none; }
 .entry__dot {
   position: absolute; left: 0; top: 6px; width: 13px; height: 13px; border-radius: 50%;
-  background: var(--surface); border: 2px solid var(--accent);
+  background: var(--surface); border: 2px solid var(--accent); z-index: 1;
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
 }
 .entry__date { padding-left: 24px; }
@@ -196,12 +249,18 @@
 .entry__foot button:hover { color: var(--accent); }
 
 /* compose-new entry stub at top */
+/* Centered writing/rating form with the date stamped above it. */
 .compose {
-  display: grid; grid-template-columns: 96px 1fr; gap: 22px;
-  padding: 18px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 18px 0 22px;
   margin-bottom: 8px;
 }
-.compose__avatar { padding-left: 24px; padding-top: 4px; color: var(--ink-faint); font-family: var(--font-mono); font-size: 10.5px; }
+.compose__avatar {
+  text-align: center; color: var(--ink-faint);
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.03em;
+}
+/* the writing + rating boxes fill a comfortable centered measure */
+.compose__box, .jcompose { width: 100%; max-width: 560px; }
 .compose__box {
   background: color-mix(in oklab, var(--surface-2) 60%, transparent);
   border: 1px dashed var(--line-strong);
@@ -369,6 +428,15 @@
 .entry__foot .jdanger { color: var(--feel-dropped); font-weight: 600; }
 .journal-empty { color: var(--ink-faint); font-size: 14px; line-height: 1.6; padding: 24px 0; max-width: 52ch; }
 
+/* search-titles bar — sits above the diary history and narrows it by title */
+.jsearch {
+  display: flex; align-items: center; gap: 9px;
+  margin: 4px 0 12px; padding: 10px 15px; border-radius: 100px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-faint);
+}
+.jsearch input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 14px; }
+.jsearch input::placeholder { color: var(--ink-faint); }
+
 /* the all-systems rating control (.jrate*) now lives in the shared
    styles/rating-control.css, imported by this page (see journal/page.tsx). */
 
@@ -430,3 +498,34 @@
 .entry__actverb--favorited { color: var(--feel-loved, oklch(0.66 0.16 25)); }
 .entry__acttitle { font-family: var(--font-title); font-weight: 700; font-size: 15px; color: var(--ink); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .entry__acttitle:hover { color: var(--accent); }
+
+/* woven-in events are now click-to-focus (they switch the diary to that title
+   instead of leaving for its detail page) — give them a button affordance */
+.entry--pick { cursor: pointer; border-radius: 10px; transition: background .14s; }
+.entry--pick:hover { background: color-mix(in oklab, var(--surface-2) 50%, transparent); }
+.entry--pick:hover .entry__acttitle { color: var(--accent); }
+.entry--pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================================
+   MOBILE (phones ≤520px) — the layout already stacks (rail over timeline) at
+   920px. On a phone, cap the title rail as a compact, scrollable index so the
+   composer + timeline stay reachable below it, and give entries room to breathe.
+   ============================================================ */
+@media (max-width: 520px) {
+  .journal { gap: 20px; }
+
+  /* entries: a slimmer date rail so note text has the width on a phone */
+  .entry { grid-template-columns: 60px 1fr; gap: 13px; padding: 16px 0; }
+  .entry__date { padding-left: 22px; }
+  .entry__head { margin-bottom: 9px; gap: 8px; }
+
+  .timeline__head { gap: 12px; }
+  .timeline__cover { width: 52px; height: 74px; }
+  .timeline__title { font-size: 20px; }
+
+  /* filters wrap instead of overflowing the row */
+  .jfilters { flex-wrap: wrap; gap: 8px; }
+
+  /* history panel: a touch shorter so the reading area stays the focus */
+  .jhistory__list { max-height: 50vh; }
+}

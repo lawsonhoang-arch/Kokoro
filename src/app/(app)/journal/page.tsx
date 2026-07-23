@@ -34,11 +34,7 @@ export default async function JournalPage() {
 
   return (
     <Page width="wide">
-      <PageHead
-        eyebrow="Journal · Your private diary"
-        title="What you've been watching & thinking about"
-        lede="A private diary — episode notes and quotes worth keeping, woven together with what you've marked watched and loved. Only you can see this."
-      />
+      <PageHead title="Your journal" />
       <JournalAppLoader entries={entries} activity={activity} now={now} />
     </Page>
   );

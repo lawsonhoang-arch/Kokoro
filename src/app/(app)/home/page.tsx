@@ -7,11 +7,12 @@ import { Page, PageHead } from "@/shell/Page";
 import { Avatar } from "@/components/ui";
 import { SectionHead } from "@/components/SectionHead";
 import {
-  getHeroSlides, getRecommendations, searchCatalogFull,
+  getHeroSlides, getRecommendations, searchCatalogFull, getUserTopGenres,
 } from "@/lib/catalog";
 import { getGenreFeatureTiles, getSeasonal, getLatestUpdated, getUnderratedGems, getUpcoming } from "@/lib/search-index";
 import { getWatchlists } from "@/lib/watchlists";
 import { getTrackedTitles } from "@/lib/calendar";
+import { getHomeFocus } from "@/lib/onboarding";
 import { HeroCarousel } from "./HeroCarousel";
 import { getPublishedPicks } from "@/lib/editorial";
 import { isModerator } from "@/lib/submissions";
@@ -63,17 +64,18 @@ function heroPoster(seed: string): CSSProperties {
 
 // A discovery shelf: section head + horizontal poster row (hidden if empty).
 function Shelf({
-  title, sub, moreHref, items, ranked,
+  title, sub, moreHref, items, ranked, className,
 }: {
   title: React.ReactNode;
   sub?: string;
   moreHref: string;
   items: SearchResult[];
   ranked?: boolean;
+  className?: string;
 }) {
   if (items.length === 0) return null;
   return (
-    <section className="section">
+    <section className={"section" + (className ? " " + className : "")}>
       <SectionHead title={title} sub={sub} moreLabel="See all →" moreHref={moreHref} />
       <div className="shelf" role="list">
         {items.map((it, i) => (
@@ -142,7 +144,7 @@ async function HomeContent({
   // Each fetch degrades to a safe fallback on failure, so a single slow/timed-out
   // query renders a partial Home rather than 500-ing or hanging the whole page.
   const noRecs = { seedGenre: null, seedTitle: null, results: [] };
-  const [heroSlides, latestUpdated, seasonal, topAnime, trending, gems, topManga, newManga, recs, picks, genreTiles, upcoming, lists, tracked] = await Promise.all([
+  const [heroSlides, latestUpdated, seasonal, topAnime, trending, gems, topManga, newManga, recs, picks, userTopGenres, upcoming, lists, tracked, homeFocus] = await Promise.all([
     withTimeout(getHeroSlides(userId, 6), []),
     getLatestUpdated(14),
     getSeasonal(14),
@@ -154,10 +156,11 @@ async function HomeContent({
     searchCatalogFull("", { type: "manga", sort: "newest" }, 1, 28, undefined, true),
     userId ? withTimeout(getRecommendations(userId, 14), noRecs) : Promise.resolve(noRecs),
     withTimeout(getPublishedPicks(), []),
-    getGenreFeatureTiles(GENRE_FEATURES),
+    userId ? withTimeout(getUserTopGenres(userId, 6), [] as string[]) : Promise.resolve([] as string[]),
     getUpcoming(6),
     userId ? withTimeout(getWatchlists(userId), []) : Promise.resolve([]),
     userId ? withTimeout(getTrackedTitles(userId), []) : Promise.resolve([]),
+    userId ? withTimeout(getHomeFocus(userId), [] as string[]) : Promise.resolve([] as string[]),
   ]);
 
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -166,6 +169,73 @@ async function HomeContent({
   const topMangaItems = topManga.results;
   const seenManga = new Set(topMangaItems.map((m) => m.id));
   const newMangaItems = newManga.results.filter((m) => !seenManga.has(m.id)).slice(0, 14);
+
+  // Browse-by-genre is personalised: the user's top three library genres, plus
+  // one deliberately DIFFERENT genre for range. New/empty libraries fall back to
+  // the broad default set so the row is never empty.
+  // Browse-by-genre shows ALL the featured genres, each with its own hand-picked
+  // representative cover (distinct per genre — no duplicate covers), ordered so
+  // the user's most-tracked genres lead. On a phone only the first few tiles show
+  // (see home.css). New/empty libraries get the featured set in its default order.
+  const topRank = userTopGenres.filter(Boolean).map((g) => g.toLowerCase());
+  const rankOf = (g: string) => {
+    const i = topRank.indexOf(g.toLowerCase());
+    return i === -1 ? 999 : i;
+  };
+  const featured = [...GENRE_FEATURES].sort((a, b) => rankOf(a.genre) - rankOf(b.genre));
+  const genreTiles = await getGenreFeatureTiles(featured);
+
+  // Personalised shelf order (from onboarding "what do you want to track most?").
+  // Focus keys map 1:1 to these shelves; picked areas lead in the order the user
+  // chose, the rest follow in the default order. On mobile, only picked shelves
+  // show (un-picked get `section--deskonly`, hidden below 640px) — unless nothing
+  // was picked, when the default order shows in full on both.
+  const SHELF_KEYS = ["seasonal", "updates", "trending", "manga", "gems", "recs"] as const;
+  const picked = homeFocus.filter((k): k is (typeof SHELF_KEYS)[number] => (SHELF_KEYS as readonly string[]).includes(k));
+  const focusSet = new Set<string>(picked);
+  const shelfOrder = picked.length
+    ? [...picked, ...SHELF_KEYS.filter((k) => !focusSet.has(k))]
+    : [...SHELF_KEYS];
+  const deskOnly = (k: string) => (focusSet.size > 0 && !focusSet.has(k) ? "section--deskonly" : undefined);
+  const shelfNodes: Record<(typeof SHELF_KEYS)[number], React.ReactNode> = {
+    seasonal: (
+      <Shelf key="seasonal" title={`${cap(seasonal.season)} ${seasonal.year}`} sub="This season's most popular anime"
+        moreHref="/search?type=anime&sort=popular" items={seasonal.results} className={deskOnly("seasonal")} />
+    ),
+    updates: (
+      <Shelf key="updates" title="Latest updated" sub="Currently airing — new episodes & seasons"
+        moreHref="/search?type=anime&sort=popular" items={latestUpdated} className={deskOnly("updates")} />
+    ),
+    trending: (
+      <Shelf key="trending" title="Trending" sub="What people are watching most"
+        moreHref="/search?type=anime&sort=popular" items={trending.results} className={deskOnly("trending")} />
+    ),
+    manga: (
+      <Shelf key="manga" title="New manga" sub="Recently added to the catalog"
+        moreHref="/search?type=manga&sort=newest" items={newMangaItems} className={deskOnly("manga")} />
+    ),
+    gems: (
+      <Shelf key="gems" title="Underrated gems" sub="Highly rated, under the radar"
+        moreHref="/search?type=anime&sort=rated" items={gems} className={deskOnly("gems")} />
+    ),
+    recs: (
+      <Shelf
+        key="recs"
+        title={
+          <>
+            Because you added{" "}
+            <em style={{ color: "var(--accent)", fontStyle: "normal" }}>
+              {recs.seedTitle ?? recs.seedGenre}
+            </em>
+          </>
+        }
+        sub={recs.seedGenre ? `More ${recs.seedGenre} · matched to your lists` : undefined}
+        moreHref={`/search?genre=${encodeURIComponent(recs.seedGenre ?? "")}&sort=rated`}
+        items={recs.results}
+        className={deskOnly("recs")}
+      />
+    ),
+  };
 
   return (
     <>
@@ -204,56 +274,9 @@ async function HomeContent({
           </Suspense>
         )}
 
-        {/* DISCOVERY — stacked shelves, one after another */}
-        <Shelf title={`${cap(seasonal.season)} ${seasonal.year}`} sub="This season's most popular anime"
-          moreHref="/search?type=anime&sort=popular" items={seasonal.results} />
-        <Shelf title="Latest updated" sub="Currently airing — new episodes & seasons"
-          moreHref="/search?type=anime&sort=popular" items={latestUpdated} />
-        <Shelf title="Trending" sub="What people are watching most"
-          moreHref="/search?type=anime&sort=popular" items={trending.results} />
-        <Shelf title="New manga" sub="Recently added to the catalog"
-          moreHref="/search?type=manga&sort=newest" items={newMangaItems} />
-        <Shelf title="Underrated gems" sub="Highly rated, under the radar"
-          moreHref="/search?type=anime&sort=rated" items={gems} />
-
-        {/* RECOMMENDATIONS */}
-        {recs.results.length > 0 && (
-          <Shelf
-            title={
-              <>
-                Because you added{" "}
-                <em style={{ color: "var(--accent)", fontStyle: "normal" }}>
-                  {recs.seedTitle ?? recs.seedGenre}
-                </em>
-              </>
-            }
-            sub={recs.seedGenre ? `More ${recs.seedGenre} · matched to your lists` : undefined}
-            moreHref={`/search?genre=${encodeURIComponent(recs.seedGenre ?? "")}&sort=rated`}
-            items={recs.results}
-          />
-        )}
-
-        {/* BROWSE BY GENRE — each tile backed by that genre's most popular anime */}
-        <section className="section" aria-label="Browse by genre">
-          <SectionHead title="Browse by genre" sub="Jump into a vibe" moreLabel="All genres →" moreHref="/search?type=anime&sort=popular" />
-          <div className="genre-grid">
-            {genreTiles.map(({ genre, cover }) => (
-              <Link
-                key={genre}
-                className="genre-tile"
-                href={`/search?genre=${encodeURIComponent(genre)}&sort=rated`}
-              >
-                {cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="genre-tile__bg" src={cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
-                ) : (
-                  <span className="genre-tile__bg genre-tile__bg--gen" style={heroPoster(genre)} aria-hidden="true" />
-                )}
-                <span className="genre-tile__name">{genre}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
+        {/* DISCOVERY + RECOMMENDATIONS — stacked shelves, ordered by the user's
+            onboarding focus (picked shelves lead; un-picked are desktop-only) */}
+        {shelfOrder.map((k) => shelfNodes[k])}
 
         {/* SPOTLIGHTS — editable from /editorial (moderators) */}
         {(picks.length > 0 || isMod) && (
@@ -265,7 +288,7 @@ async function HomeContent({
               moreHref={isMod ? "/editorial" : undefined}
             />
             <div className="editorial">
-              {picks.map((e) => {
+              {picks.slice(0, 3).map((e) => {
                 const body = (
                   <>
                     <div className="editorial__art" aria-hidden="true">
@@ -300,6 +323,29 @@ async function HomeContent({
             </div>
           </section>
         )}
+
+        {/* BROWSE BY GENRE — each tile backed by that genre's most popular anime */}
+        <section className="section" aria-label="Browse by genre">
+          <SectionHead title="Browse by genre" sub="Jump into a vibe" moreLabel="All genres →" moreHref="/search?type=anime&sort=popular" />
+          <div className="genre-grid">
+            {genreTiles.map(({ genre, cover }) => (
+              <Link
+                key={genre}
+                className="genre-tile"
+                href={`/search?genre=${encodeURIComponent(genre)}&sort=rated`}
+              >
+                {cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="genre-tile__bg" src={cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+                ) : (
+                  <span className="genre-tile__bg genre-tile__bg--gen" style={heroPoster(genre)} aria-hidden="true" />
+                )}
+                <span className="genre-tile__name">{genre}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
           </div>
 
           <HomeRail upcoming={upcoming} lists={lists} tracked={tracked} topAnime={topAnime.results.slice(0, 6)} topManga={topMangaItems.slice(0, 6)} />

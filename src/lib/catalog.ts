@@ -250,6 +250,25 @@ export function getRecommendations(userId: string, limit = 12): Promise<Recs> {
   )();
 }
 
+/** The users top genres from their library, most-tracked first. Drives the
+ *  personalised Browse-by-genre tiles on Home. Empty for a new/empty library. */
+export async function getUserTopGenres(userId: string, limit = 6): Promise<string[]> {
+  try {
+    const res = await db.execute(sql`
+      select g as genre, count(*)::int as c from (
+        select unnest(t.genres) as g
+        from watchlist_entries e
+        join watchlists w on e.watchlist_id = w.id
+        join titles t on t.id = e.title_id
+        where w.user_id = ${userId}
+      ) s where g is not null group by g order by c desc limit ${limit}
+    `);
+    return (res as unknown as { genre: string }[]).map((r) => r.genre).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function computeRecommendations(userId: string, limit = 12): Promise<Recs> {
   const topGenreRes = await db.execute(sql`
     select g as genre, count(*)::int as c from (

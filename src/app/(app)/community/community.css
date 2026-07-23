@@ -535,3 +535,39 @@ a.cpost__name:hover { color: var(--accent); }
 .act-empty-cta { color: var(--ink-faint); font-size: 13.5px; margin-top: 4px; }
 .act-empty-cta a { color: var(--accent); text-decoration: none; }
 .act-empty-cta a:hover { text-decoration: underline; }
+
+/* ============================================================
+   MOBILE (phones ≤520px) — feed + trending already stack at 1040px. On a phone:
+   full-width segmented section tabs, a horizontally-scrolling filter strip
+   (chips never wrap/overflow), and tighter post cards. (See mobile wireframe.)
+   ============================================================ */
+@media (max-width: 520px) {
+  /* segmented section tabs span the width like a real mobile control */
+  .subtabs { width: 100%; margin-bottom: 18px; }
+  .subtabs__tab { flex: 1; justify-content: center; padding: 8px 10px; }
+
+  .community { gap: 20px; }
+
+  /* controls: filter chips scroll sideways, sort control sits below them */
+  .cfeed__controls { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 14px; }
+  .cfeed__filters {
+    flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .cfeed__filters::-webkit-scrollbar { height: 0; }
+  .cfilter { flex: none; }
+  .cseg-sort { align-self: flex-start; }
+
+  /* post cards: tighter, and a smaller review cover so the text keeps its width */
+  .post { padding: 15px; margin-bottom: 13px; }
+  .post--discussion .post__thread-title { font-size: 16px; }
+  .review { grid-template-columns: 66px 1fr; gap: 12px; padding: 11px; }
+  .review__cover { height: 96px; }
+  .post__foot { gap: 16px; }
+
+  /* composer: episode field goes full width instead of a fixed 150px */
+  .ccomposer__ep { width: 100%; }
+
+  /* trending rail sits under the feed — give it a little air */
+  .craillet { margin-top: 4px; }
+}

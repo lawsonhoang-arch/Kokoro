@@ -453,6 +453,25 @@ export async function getGenreTiles(genres: string[]): Promise<{ genre: string; 
 /** For each genre, the cover of a specific hand-picked title (matched by name),
  *  backing the Home browse tiles. Best name match (anime, with art) wins; null
  *  if nothing matches. */
+/** A cover tile per genre, using that genres single most popular anime — for
+ *  personalised Browse-by-genre where the genres are chosen at runtime (the
+ *  users top genres) rather than a hand-picked query per tile. */
+export async function getGenreTilesByPopularity(
+  genres: string[],
+): Promise<{ genre: string; cover: string | null }[]> {
+  const rows = await getIndex();
+  return genres.map((genre) => {
+    let best: IndexRow | null = null;
+    let bestPop = -1;
+    for (const r of rows) {
+      if (!r || r.kind !== "anime" || r.nsfw || !r.cover) continue;
+      if (!r.genres.includes(genre)) continue;
+      if ((r.popularity ?? 0) > bestPop) { best = r; bestPop = r.popularity ?? 0; }
+    }
+    return { genre, cover: best?.cover ?? null };
+  });
+}
+
 export async function getGenreFeatureTiles(
   features: { genre: string; query: string }[],
 ): Promise<{ genre: string; cover: string | null }[]> {

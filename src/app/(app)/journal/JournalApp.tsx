@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
+import { BackButton } from "@/components/BackButton";
 import { Glyph } from "@/features/watchlist/Glyph";
 import { FEELINGS as WL_FEELINGS, GRADE_LETTERS, MOOD_EMOJI } from "@/features/watchlist/data";
 import type { Feeling } from "@/features/watchlist/types";
@@ -288,12 +289,7 @@ function Composer({
   };
 
   const todayWd = WD[new Date().getDay()];
-  const stamp = (
-    <div className="compose__avatar">
-      today<br />
-      <span style={{ color: "var(--ink-faint)" }}>— {todayWd}</span>
-    </div>
-  );
+  const stamp = <div className="compose__avatar">today · {todayWd}</div>;
 
   if (!open) {
     return (
@@ -490,15 +486,24 @@ function nth(n: number): string {
 }
 
 // ---- a woven-in diary event (marked watched / favourited / rewatched) --------
-function ActivityRow({ ev, now }: { ev: DiaryEvent; now: number }) {
+function ActivityRow({ ev, now, onPick }: { ev: DiaryEvent; now: number; onPick: (key: string) => void }) {
   const label =
     ev.kind === "completed"
       ? "✓ Marked watched"
       : ev.kind === "favorited"
         ? "♥ Added to favourites"
         : `↻ Rewatched${ev.ordinal ? ` · ${nth(ev.ordinal)} time` : ""}`;
+  // Clicking a woven-in event focuses that title's diary (and opens the composer
+  // for it) rather than leaving the journal for the title's detail page — the
+  // detail page is still one click away via "View title →" once focused.
   return (
-    <article className="entry entry--act">
+    <article
+      className="entry entry--act entry--pick"
+      role="button"
+      tabIndex={0}
+      onClick={() => onPick(ev.titleId)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(ev.titleId); } }}
+    >
       <div className="entry__rail">
         <span className={"entry__dot entry__dot--" + ev.kind} aria-hidden="true" />
         <div className="entry__date">
@@ -507,15 +512,15 @@ function ActivityRow({ ev, now }: { ev: DiaryEvent; now: number }) {
         </div>
       </div>
       <div className="entry__body entry__body--act">
-        <Link href={`/anime/${encodeURIComponent(ev.titleId)}`} className="entry__actcover" aria-hidden="true">
+        <span className="entry__actcover" aria-hidden="true">
           {ev.cover ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={ev.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
           ) : null}
-        </Link>
+        </span>
         <div className="entry__actmain">
           <span className={"entry__actverb entry__actverb--" + ev.kind}>{label}</span>
-          <Link href={`/anime/${encodeURIComponent(ev.titleId)}`} className="entry__acttitle">{ev.title}</Link>
+          <span className="entry__acttitle">{ev.title}</span>
         </div>
         <span className="entry__time">{relative(ev.at, now)}</span>
       </div>
@@ -535,7 +540,6 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
   const [selected, setSelected] = useState<string>("all");
   const [composerOpen, setComposerOpen] = useState(false);
   // filters (applied to the selected group's notes)
-  const [fQuery, setFQuery] = useState("");
   const [fDate, setFDate] = useState("all"); // all | today | 7d | 30d
   const [fRate, setFRate] = useState("any"); // any | glyphs | axes | symbols
   const [fSort, setFSort] = useState("new"); // new | old
@@ -606,15 +610,12 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
   const timeline = useMemo<TLItem[]>(() => {
     const scopedNotes = effSelected === "all" ? entries : entries.filter((e) => (e.titleId ?? FREE_KEY) === effSelected);
     const scopedActs = effSelected === "all" ? activity : activity.filter((a) => a.titleId === effSelected);
-    const q = fQuery.trim().toLowerCase();
+    const q = railQuery.trim().toLowerCase(); // "search titles" — narrows the history by title
     const day = 86400000;
     const cutoff = fDate === "today" ? now - day : fDate === "7d" ? now - 7 * day : fDate === "30d" ? now - 30 * day : 0;
     const items: TLItem[] = [];
     for (const e of scopedNotes) {
-      if (q) {
-        const hay = `${headings.get(e.id) ?? ""} ${e.title ?? ""} ${e.episode} ${e.body} ${e.quote}`.toLowerCase();
-        if (!hay.includes(q)) continue;
-      }
+      if (q && !(e.title ?? "").toLowerCase().includes(q)) continue;
       if (cutoff && new Date(e.createdAt).getTime() < cutoff) continue;
       if (fRate !== "any" && (e.rateMode || "glyphs") !== fRate) continue;
       items.push({ at: e.createdAt, note: e });
@@ -629,12 +630,8 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
     }
     items.sort((x, y) => (fSort === "old" ? x.at.localeCompare(y.at) : y.at.localeCompare(x.at)));
     return items;
-  }, [entries, activity, effSelected, fQuery, fDate, fRate, fSort, headings, now]);
-  const filtersActive = fQuery.trim() !== "" || fDate !== "all" || fRate !== "any";
-
-  const railGroups = railQuery.trim()
-    ? groups.filter((g) => g.title.toLowerCase().includes(railQuery.trim().toLowerCase()))
-    : groups;
+  }, [entries, activity, effSelected, railQuery, fDate, fRate, fSort, now]);
+  const filtersActive = railQuery.trim() !== "" || fDate !== "all" || fRate !== "any";
 
   const defaultTarget: Target | null = selGroup
     ? { id: selGroup.titleId, title: selGroup.title, episodes: selGroup.episodes }
@@ -652,68 +649,24 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
 
   const totalItems = entries.length + activity.length; // whole diary (notes + events)
 
+  // The searchable history sits BELOW the reading area, so picking a title from
+  // it scrolls back to the top where that title's diary is now shown. Picking a
+  // specific title also opens the composer targeted to it — so the top switches
+  // from "All entries" into making an entry for that title (the Composer seeds
+  // its target from the selected group). "All entries" just returns to browsing.
+  const pickScope = (key: string) => {
+    setSelected(key);
+    setComposerOpen(key !== "all");
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="journal">
-      <aside className="rail" aria-label="Your journaled titles">
-        <div className="rail__head">
-          <div className="rail__search">
-            <Icon name="search" size={13} />
-            <input
-              type="text"
-              placeholder="Search your titles…"
-              value={railQuery}
-              onChange={(e) => setRailQuery(e.target.value)}
-            />
-          </div>
-          <button
-            className="rail__new"
-            title="Write a new note"
-            onClick={() => { setSelected("all"); setComposerOpen(true); }}
-          >
-            <Icon name="plus" size={14} />
-          </button>
-        </div>
-        <ul className="rail__list" role="list">
-          <li
-            className={"anime-row jrail-all" + (effSelected === "all" ? " on" : "")}
-            onClick={() => setSelected("all")}
-          >
-            <span className="anime-row__thumb jrail-all__thumb" aria-hidden="true" />
-            <div>
-              <div className="anime-row__title">All entries</div>
-              <div className="anime-row__sub">{totalItems} entr{totalItems === 1 ? "y" : "ies"}</div>
-            </div>
-            <span className="anime-row__count">{totalItems}</span>
-          </li>
-          {railGroups.map((g, i) => (
-            <li
-              key={g.key}
-              className={`anime-row anime-row--h${(i % 6) + 1}` + (effSelected === g.key ? " on" : "")}
-              onClick={() => setSelected(g.key)}
-            >
-              <span className="anime-row__thumb" aria-hidden="true">
-                {g.cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={g.cover} alt="" referrerPolicy="no-referrer" />
-                ) : null}
-              </span>
-              <div>
-                <div className="anime-row__title">{g.title}</div>
-                <div className="anime-row__sub">last activity {relative(g.last, now)}</div>
-              </div>
-              <span className="anime-row__count">{g.count}</span>
-            </li>
-          ))}
-          {groups.length === 0 && (
-            <li className="rail__empty">No titles yet — start a note with ＋.</li>
-          )}
-        </ul>
-        <div className="rail__footer">
-          <span>{groups.length} title{groups.length === 1 ? "" : "s"} · {totalItems} entr{totalItems === 1 ? "y" : "ies"}</span>
-        </div>
-      </aside>
-
+      {/* MAIN — the diary for the current scope (All entries by default). */}
       <section className="timeline" aria-labelledby="tl-title">
+        {/* keyed on the scope so switching titles remounts this block and
+            replays the smooth fade-in (see .timeline__view in journal.css) */}
+        <div className="timeline__view" key={effSelected}>
         <header className="timeline__head">
           <div className="timeline__cover" aria-hidden="true">
             {selGroup?.cover ? (
@@ -737,11 +690,14 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
               )}
             </div>
           </div>
-          {selGroup?.titleId ? (
+          {selGroup ? (
             <div className="actions">
-              <Link className="btn" href={`/anime/${encodeURIComponent(selGroup.titleId)}`}>
-                View title →
-              </Link>
+              <BackButton label="Back" onBack={() => pickScope("all")} className="backbtn--inline" />
+              {selGroup.titleId ? (
+                <Link className="btn" href={`/anime/${encodeURIComponent(selGroup.titleId)}`}>
+                  View title →
+                </Link>
+              ) : null}
             </div>
           ) : null}
         </header>
@@ -750,14 +706,6 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
 
         {scopeHasItems && (
           <div className="jfilters">
-            <div className="jfilters__search">
-              <Icon name="search" size={13} />
-              <input
-                placeholder="Search your diary…"
-                value={fQuery}
-                onChange={(e) => setFQuery(e.target.value)}
-              />
-            </div>
             <select className="jfilters__sel" value={fDate} onChange={(e) => setFDate(e.target.value)} aria-label="Date range">
               <option value="all">Any time</option>
               <option value="today">Today</option>
@@ -777,6 +725,20 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
           </div>
         )}
 
+        {/* Search titles — narrows the diary history below. Shown when browsing
+            all entries (a focused title is already a single title). */}
+        {effSelected === "all" && totalItems > 0 && (
+          <div className="jsearch">
+            <Icon name="search" size={14} />
+            <input
+              type="text"
+              placeholder="Search titles…"
+              value={railQuery}
+              onChange={(e) => setRailQuery(e.target.value)}
+            />
+          </div>
+        )}
+
         {timeline.length === 0 ? (
           <p className="journal-empty">
             {totalItems === 0
@@ -790,10 +752,11 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
             it.note ? (
               <EntryView key={it.note.id} entry={it.note} heading={headings.get(it.note.id) ?? ""} now={now} allEntries={entries} onUpdate={onUpdate} onDelete={onDelete} />
             ) : (
-              <ActivityRow key={it.act!.id} ev={it.act!} now={now} />
+              <ActivityRow key={it.act!.id} ev={it.act!} now={now} onPick={pickScope} />
             ),
           )
         )}
+        </div>
       </section>
     </div>
   );

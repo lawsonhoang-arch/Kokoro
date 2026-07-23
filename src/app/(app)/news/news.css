@@ -2,23 +2,24 @@
    News — daily anime/industry briefing
    ============================================================ */
 
-/* sub-tabs (self-contained; mirrors the community section bar) */
+/* category selector — each tab is its own individual pill (separate rounded
+   chip), NOT one large pill containing them all */
 .subtabs {
-  display: flex; gap: 6px; flex-wrap: wrap;
+  display: flex; gap: 9px; flex-wrap: wrap;
   margin: 4px 0 18px;
 }
 .subtabs__tab {
-  padding: 7px 14px; border-radius: 100px;
+  padding: 8px 16px; border-radius: 100px;
   font-family: var(--font-ui); font-weight: 600; font-size: 13px;
-  color: var(--ink-faint); background: transparent;
+  color: var(--ink-soft); background: var(--surface-2);
   border: 1px solid var(--line); cursor: pointer;
   transition: color .15s, background .15s, border-color .15s;
 }
-.subtabs__tab:hover { color: var(--ink-soft); background: var(--surface-2); }
+.subtabs__tab:hover { color: var(--ink); border-color: var(--line-strong); }
 .subtabs__tab.on {
-  color: var(--ink);
-  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
-  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  color: var(--accent-ink); font-weight: 700;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* two-column shell */
@@ -167,4 +168,34 @@ a.news-lead, a.news-card { text-decoration: none; color: inherit; }
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--ink-faint); padding: 2px 7px; border-radius: 100px;
   border: 1px solid var(--line); white-space: nowrap;
+}
+
+/* ============================================================
+   MOBILE (phones ≤520px) — feed + rail already stack at 1080px. On a phone:
+   category tabs scroll in one row (not a wrapped stack), and articles become
+   tighter full-width stacked cards (image · tag · headline · source).
+   ============================================================ */
+@media (max-width: 520px) {
+  /* category chips scroll sideways instead of wrapping into several rows */
+  .subtabs {
+    flex-wrap: nowrap; overflow-x: auto; margin: 2px -16px 14px; padding: 0 16px 2px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .subtabs::-webkit-scrollbar { height: 0; }
+  .subtabs__tab { flex: none; white-space: nowrap; }
+
+  .news { gap: 20px; }
+
+  /* the lead story: a phone-friendly 16/9 banner (the 24/9 desktop ratio is a
+     sliver on a narrow screen) with a tighter body */
+  .news-lead__art { aspect-ratio: 16 / 9; }
+  .news-lead__body { padding: 16px 16px 18px; gap: 10px; }
+  .news-lead__title { font-size: 19px; }
+  .news-lead__excerpt { font-size: 14px; }
+
+  .news-grid { gap: 14px; margin-top: 14px; }
+  .news-card__body { padding: 14px; gap: 8px; }
+  .news-card__title { font-size: 15.5px; }
+
+  .news-list { margin-top: 16px; }
 }

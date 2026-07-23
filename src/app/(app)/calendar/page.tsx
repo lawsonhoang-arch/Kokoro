@@ -54,9 +54,7 @@ export default async function CalendarPage() {
   return (
     <Page width="wide">
       <PageHead
-        eyebrow="Calendar"
-        title="Release calendar"
-        lede="Major anime events, premieres of anticipated titles, and the weekly releases of every show you're tracking."
+        title="Calendar"
         actions={
           isMod ? (
             <Link className="btn btn--primary" href="/calendar/admin">

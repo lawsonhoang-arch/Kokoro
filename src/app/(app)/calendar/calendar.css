@@ -170,3 +170,52 @@ a.cal-item__title:hover { color: var(--accent); }
   .cal-cell:not(.cal-cell--sel) .cal-cell__chips .cal-chip:nth-child(n+3) { display: none; }
   .cal-dow { font-size: 9px; }
 }
+
+/* ============================================================
+   MOBILE (phones ≤520px) — a month grid is unreadable on a phone, so it becomes
+   a WEEK STRIP + AGENDA: a swipeable row of days with colour pips, and the
+   selected day's events listed below (see mobile wireframe).
+   ============================================================ */
+.cal-weekstrip { display: none; } /* desktop uses the month grid */
+@media (max-width: 520px) {
+  .cal-grid { display: none; }
+
+  .cal-weekstrip {
+    display: flex; gap: 7px; overflow-x: auto;
+    margin: 0 -16px 2px; padding: 2px 16px 12px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .cal-weekstrip::-webkit-scrollbar { height: 0; }
+  .cal-wday {
+    flex: none; width: 46px; padding: 8px 0 7px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--ink); cursor: pointer; transition: border-color .14s, background .14s;
+  }
+  .cal-wday__dow { font-family: var(--font-mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
+  .cal-wday__num { font-family: var(--font-title); font-weight: 800; font-size: 16px; line-height: 1; }
+  .cal-wday__pips { display: flex; gap: 2px; height: 5px; margin-top: 2px; }
+  .cal-pip { width: 4px; height: 4px; border-radius: 50%; }
+  .cal-pip--event { background: var(--cal-event); }
+  .cal-pip--premiere { background: var(--cal-premiere); }
+  .cal-pip--release { background: var(--cal-release); }
+  .cal-wday--today { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+  .cal-wday--today .cal-wday__num { color: var(--accent); }
+  .cal-wday--sel { background: color-mix(in oklab, var(--accent) 18%, var(--surface-2)); border-color: var(--accent); }
+  .cal-wday--sel .cal-wday__dow { color: color-mix(in oklab, var(--accent) 70%, var(--ink)); }
+
+  /* agenda: the selected day's events fill the width below the strip */
+  .cal-layout { display: block; }
+  .cal-day { padding: 2px 0 0; border: none; background: transparent; }
+  .cal-toolbar { margin-bottom: 12px; }
+  .cal-legend { gap: 12px 14px; margin-bottom: 14px; }
+}
+
+/* ============================================================
+   PAST DAYS — dates before today recede (dimmed / lower saturation) so today
+   and upcoming days stand out. Applies to both the month grid (.cal-cell) and
+   the mobile week strip (.cal-wday). A selected or today cell stays full even
+   if it's in the past, so the highlighted day is always clear.
+   ============================================================ */
+.cal-cell--past, .cal-wday--past { opacity: 0.42; }
+.cal-cell--today, .cal-cell--sel, .cal-wday--today, .cal-wday--sel { opacity: 1; }

@@ -506,7 +506,11 @@
    is not made to scroll past every discovery shelf to reach their lists.
    ============================================================ */
 @media (max-width: 640px) {
-  .home-grid { display: flex; flex-direction: column; gap: 0; }
+  /* align-items:stretch is essential here: the desktop base sets align-items:start
+     (for the 2-col grid), which in a flex column would size every flattened child
+     to its CONTENT width instead of the screen width — leaving genre tiles, rail
+     cards, and editorial cards narrow with dead space on the right. */
+  .home-grid { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
   .home-main, .home-rail { display: contents; }
   /* every flattened child must be allowed to shrink to the column width, or a
      wide one (the hero banner, a shelf) forces the whole page sideways —
@@ -522,6 +526,10 @@
   /* trim the big inter-section gaps so the page isn't one long scroll of air */
   .section { margin-top: 26px; }
   .home-rail__lead { margin-top: 14px; } /* library sits right under the hero */
+
+  /* shelves the user didn't pick as a focus area are hidden on the phone, so
+     mobile home is just the rows they said they care about (desktop keeps all) */
+  .section--deskonly { display: none; }
 
   /* HERO — explicit bounded height, no aspect-ratio (which is unreliable inside
      the flex + translateX track). The TRACK sets a hard height; slide and hero
@@ -550,11 +558,27 @@
   .hero-nav { display: none; } /* swipe, don't tap arrows, on a phone */
   .hero-dots { bottom: 8px; }
 
-  /* Browse by genre: compact two-up tiles instead of one wide bar per row. */
-  .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .genre-tile { height: 58px; }
-  .genre-tile__name { font-size: 14px; padding: 0 14px; }
+  /* Browse by genre: big, tappable two-up tiles that fill the screen (the small
+     bars read as an afterthought on a phone). Desktop shows every genre; a phone
+     shows just the first few (the user's top genres) so it isn't a long grid. */
+  .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .genre-tile { height: 118px; border-radius: 16px; }
+  .genre-tile__name { font-size: 18px; padding: 0 16px; }
+  .genre-grid .genre-tile:nth-child(n+5) { display: none; }
+
+  /* Drop the catalogue discovery rail (Top rated anime/manga + Upcoming) on a
+     phone — a returning user's own library + the discovery shelves are enough;
+     these trailed at the very bottom and just made the page longer. */
+  .home-rail__rest { display: none; }
 
   /* rail library cards read as a tidy stack, not desktop panels */
   .hrail-card { padding: 13px 14px 5px; border-radius: 14px; }
+
+  /* discovery rails: narrower cards, and the row is CONTAINED within the page
+     gutter so the first poster lines up exactly with the section heading and all
+     other content — no edge bleed (which read as mis-aligned on a phone). The
+     row still scrolls; a partial card at the right edge signals there's more.
+     Scoped under .home-grid so it reliably beats the global .shelf base. */
+  .home-grid .shelf { gap: 11px; padding: 2px 0 14px; margin: 0; }
+  .home-grid .shelf > * { flex: 0 0 128px; }
 }
