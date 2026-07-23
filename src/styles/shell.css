@@ -306,11 +306,6 @@
   .mnav__tab.on { color: var(--accent); }
   .mnav__ico { display: inline-flex; }
   .mnav__label { font-size: 9.5px; font-weight: 700; letter-spacing: .01em; line-height: 1; }
-  /* tighter gutters on phones, and clear the fixed bar at the bottom */
-  .page { padding: 22px 14px calc(78px + env(safe-area-inset-bottom, 0px)); }
-  .page__head { gap: 14px; margin-bottom: 22px; }
-  .page__head > div { min-width: 0; }
-  .page__head > .actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
 }
 
 /* ============================================================
@@ -659,3 +654,24 @@
 .usercard__match--mid { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); background: color-mix(in oklab, var(--accent) 12%, transparent); }
 .usercard__match--lo { color: oklch(0.68 0.15 25); border-color: color-mix(in oklab, oklch(0.68 0.15 25) 40%, var(--line)); background: color-mix(in oklab, oklch(0.68 0.15 25) 12%, transparent); }
 .usercard__follow { flex: 0 0 auto; }
+
+/* ============================================================
+   MOBILE PAGE OVERRIDES — placed at the END so they win on source order over
+   the desktop .page rules above (equal specificity → later wins). The earlier
+   @media block sat before those rules and was silently overridden, which is
+   why phones rendered desktop padding and a 36px title.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* nothing pushes the page sideways; inner carousels keep their own scroll */
+  html, body { overflow-x: clip; }
+}
+@media (max-width: 520px) {
+  .page { padding: 20px 16px calc(78px + env(safe-area-inset-bottom, 0px)); }
+  .page__head { gap: 12px; margin-bottom: 20px; align-items: flex-start; }
+  .page__head > div { min-width: 0; flex: 1 1 100%; }
+  .page__head > .actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  /* the desktop 36px title + 60ch lede ate most of the first screen on a phone */
+  .page__eyebrow { font-size: 10px; margin-bottom: 7px; }
+  .page__title { font-size: clamp(24px, 7vw, 30px); line-height: 1.12; margin: 0 0 6px; }
+  .page__lede { font-size: 13.5px; line-height: 1.5; max-width: none; }
+}
