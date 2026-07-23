@@ -173,7 +173,8 @@ export function NavSearch({ open, setOpen }: { open: boolean; setOpen: (b: boole
         type="text"
         value={q}
         placeholder="Search or jump to…"
-        tabIndex={open ? 0 : -1}
+        tabIndex={0}
+        onFocus={() => setOpen(true)}
         onChange={(e) => { setQ(e.target.value); setActive(0); }}
         onKeyDown={onKeyDown}
       />

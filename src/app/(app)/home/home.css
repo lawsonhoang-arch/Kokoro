@@ -508,25 +508,49 @@
 @media (max-width: 640px) {
   .home-grid { display: flex; flex-direction: column; gap: 0; }
   .home-main, .home-rail { display: contents; }
+  /* every flattened child must be allowed to shrink to the column width, or a
+     wide one (the hero banner, a shelf) forces the whole page sideways —
+     flexbox min-width defaults to auto (content width) otherwise */
+  .home-grid > * { min-width: 0; max-width: 100%; }
+
   .hero-carousel { order: -2; }
   .home-rail__lead { order: -1; }
   .home-rail__rest { order: 1; }
-  /* space the lifted groups like a section, and undo the tablet row layout */
-  .home-rail__lead, .home-rail__rest { flex: 0 0 auto; margin-top: 44px; }
+  /* the lifted groups sit as tighter sections than the desktop 44px */
+  .home-rail__lead, .home-rail__rest { flex: 0 0 auto; margin-top: 26px; gap: 12px; }
 
-  /* Hero: min-height:440 was a desktop banner value; on a ~360px screen it made
-     the hero taller than wide (portrait) with crammed text. Scale it down to a
-     mobile-appropriate banner and shrink the type to match. */
-  .hero { min-height: 300px; }
-  .hero__title { font-size: 25px; line-height: 1.12; }
-  .hero__body { padding: 24px 18px; gap: 12px; }
-  .hero__desc { font-size: 13.5px; }
-  .hero__eyebrow { font-size: 10px; }
-  .hero-carousel { border-radius: 18px; }
+  /* trim the big inter-section gaps so the page isn't one long scroll of air */
+  .section { margin-top: 26px; }
+  .home-rail__lead { margin-top: 14px; } /* library sits right under the hero */
 
-  /* Browse by genre: compact two-up tiles instead of one wide bar per row, so
-     twelve genres take six short rows rather than twelve tall ones. */
+  /* HERO — a proper mobile banner: fixed, sensible aspect, full width, text and
+     CTA anchored to the bottom-left instead of a tall centered block. The
+     aspect-ratio goes on the CAROUSEL (the sized element) and the track/slide/
+     hero fill it — put it on the inner .hero and it has no width driver in the
+     flex/transform stack and collapses. */
+  .hero-carousel { order: -2; border-radius: 16px; margin-bottom: 0; width: 100%; aspect-ratio: 16 / 11; }
+  .hero-track, .hero-slide { height: 100%; }
+  .hero { min-height: 0; height: 100%; }
+  .hero__body {
+    max-width: none; align-items: flex-start; text-align: left;
+    padding: 18px 16px; gap: 8px;
+    justify-content: flex-end; height: 100%;
+    background: linear-gradient(0deg, color-mix(in oklab, #000 55%, transparent) 0%, transparent 62%);
+  }
+  .hero__eyebrow { font-size: 9.5px; }
+  .hero__title { font-size: clamp(20px, 6vw, 26px); line-height: 1.1; }
+  .hero__desc { display: none; } /* the synopsis is noise at this size */
+  .hero__meta { font-size: 11px; gap: 8px; }
+  .hero__actions { margin-top: 4px; width: 100%; }
+  .hero__actions .btn { flex: 1 1 auto; justify-content: center; }
+  .hero-nav { display: none; } /* swipe, don't tap arrows, on a phone */
+  .hero-dots { bottom: 8px; }
+
+  /* Browse by genre: compact two-up tiles instead of one wide bar per row. */
   .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .genre-tile { height: 58px; }
   .genre-tile__name { font-size: 14px; padding: 0 14px; }
+
+  /* rail library cards read as a tidy stack, not desktop panels */
+  .hrail-card { padding: 13px 14px 5px; border-radius: 14px; }
 }

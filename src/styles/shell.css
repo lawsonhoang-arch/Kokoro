@@ -281,7 +281,16 @@
   .site-nav__tabs,
   .site-nav__review { display: none; }
   .site-nav__side { min-width: 0; }
-  .navsrch--open .navsrch__input { width: clamp(120px, 52vw, 300px); }
+  /* The search is the only thing in the middle, so make it a persistent full
+     bar instead of a circle that has to be tapped open — nothing to make room
+     for now that the tabs are gone. */
+  .site-nav__center { flex: 1 1 auto; }
+  .navsrch {
+    flex: 1 1 auto; width: 100%;
+    background: var(--surface-2); border-color: var(--line); padding-right: 6px;
+  }
+  .navsrch__icon { border-color: transparent; background: transparent; color: var(--ink-faint); }
+  .navsrch__input { width: 100% !important; opacity: 1 !important; padding: 0 6px 0 2px; }
   /* anchor the dropdown to the viewport edges so it never overflows the screen */
   .navsrch__drop { position: fixed; left: 8px; right: 8px; top: calc(var(--nav-h) + 4px); width: auto; }
 }
