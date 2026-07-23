@@ -523,19 +523,23 @@
   .section { margin-top: 26px; }
   .home-rail__lead { margin-top: 14px; } /* library sits right under the hero */
 
-  /* HERO — a proper mobile banner: fixed, sensible aspect, full width, text and
-     CTA anchored to the bottom-left instead of a tall centered block. The
-     aspect-ratio goes on the CAROUSEL (the sized element) and the track/slide/
-     hero fill it — put it on the inner .hero and it has no width driver in the
-     flex/transform stack and collapses. */
-  .hero-carousel { order: -2; border-radius: 16px; margin-bottom: 0; width: 100%; aspect-ratio: 16 / 11; }
-  .hero-track, .hero-slide { height: 100%; }
-  .hero { min-height: 0; height: 100%; }
+  /* HERO — explicit bounded height, no aspect-ratio (which is unreliable inside
+     the flex + translateX track). The TRACK sets a hard height; slide and hero
+     just fill it, so the hero can never balloon to its content height. The body
+     is ABSOLUTELY pinned to the bottom, so its text/CTA never drives the
+     height either. Width is hard-capped so it can't push the page sideways. */
+  .hero-carousel {
+    order: -2; margin: 0 0 2px; border-radius: 16px;
+    width: 100%; max-width: 100%; overflow: hidden;
+  }
+  .hero-track { height: min(58vw, 280px); }
+  .hero-slide, .hero { height: 100%; min-height: 0; max-width: 100%; }
+  .hero__art { position: absolute; inset: 0; }
   .hero__body {
+    position: absolute; left: 0; right: 0; bottom: 0; height: auto; width: auto;
     max-width: none; align-items: flex-start; text-align: left;
-    padding: 18px 16px; gap: 8px;
-    justify-content: flex-end; height: 100%;
-    background: linear-gradient(0deg, color-mix(in oklab, #000 55%, transparent) 0%, transparent 62%);
+    padding: 16px; gap: 6px; justify-content: flex-end;
+    background: linear-gradient(0deg, color-mix(in oklab, #000 62%, transparent) 0%, color-mix(in oklab, #000 20%, transparent) 45%, transparent 75%);
   }
   .hero__eyebrow { font-size: 9.5px; }
   .hero__title { font-size: clamp(20px, 6vw, 26px); line-height: 1.1; }
