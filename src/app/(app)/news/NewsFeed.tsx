@@ -58,8 +58,13 @@ const ReadCta = ({ href }: { href: string | null }) =>
 export function NewsFeed({ stories, curated, trending, releases }: Props) {
   const [active, setActive] = useState("For you");
   const forYou = active === "For you";
+  // "For you" leads with personalised matches, then fills with the rest of the
+  // feed so it's never empty — new/logged-out users (no tracked titles yet) still
+  // get a full page of stories instead of a blank tab.
+  const curatedIds = new Set(curated.map((s) => s.id));
+  const forYouList = [...curated, ...stories.filter((s) => !curatedIds.has(s.id))];
   const list = forYou
-    ? curated
+    ? forYouList
     : active === "Top stories"
       ? stories
       : stories.filter((s) => s.category === active);
@@ -104,11 +109,8 @@ export function NewsFeed({ stories, curated, trending, releases }: Props) {
       <div className="news">
         <section aria-label="Stories">
           {list.length === 0 ? (
-            forYou ? (
-              <p className="news-empty">
-                No personalised stories yet — favourite or track some anime and we&apos;ll
-                surface news about them and the genres you love here.
-              </p>
+            forYou || active === "Top stories" ? (
+              <p className="news-empty">Fresh stories are on their way — check back shortly.</p>
             ) : (
               <p className="news-empty">No stories in this section yet.</p>
             )

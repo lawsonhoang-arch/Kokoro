@@ -227,13 +227,24 @@ export async function resolveWave(): Promise<WaveState> {
     return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
   }
 
-  // first run ever: publish the current pull immediately (nothing to replace)
+  // first run ever: publish the current pull immediately (nothing to replace).
+  // But if the feeds happened to be down on this first load, don't lock an empty
+  // wave in — show nothing this time and try again next request.
   if (!row) {
-    await writeWave({ liveItems: pull, pendingSince: null });
+    if (pull.length > 0) await writeWave({ liveItems: pull, pendingSince: null });
     return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
   }
 
   const liveItems = (row.liveItems as StoredWaveItem[]).map(fromStored);
+
+  // Recovery: if the live wave is empty (e.g. it was seeded during a feed outage)
+  // but we now have stories, publish them immediately instead of parking them in
+  // the 2-day pending queue — otherwise every reader keeps seeing an empty tab.
+  if (liveItems.length === 0 && pull.length > 0) {
+    await writeWave({ liveItems: pull, pendingSince: null });
+    return { live: pull, pending: [], autoReleaseAt: null, liveAt: new Date() };
+  }
+
   const liveIds = new Set(liveItems.map((i) => i.id));
   const hasNew = pull.some((p) => !liveIds.has(p.id));
 
