@@ -298,23 +298,30 @@
 /* ---- mobile bottom tab bar (phones only) ---- */
 .mnav { display: none; }
 @media (max-width: 520px) {
+  /* Stop the page rubber-banding past the top (and pulling the search bar out
+     of view) on a phone. */
+  html, body { overscroll-behavior-y: none; }
+
   .mnav {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
     align-items: stretch; justify-content: space-around;
-    background: color-mix(in oklab, var(--surface) 92%, transparent);
+    background: color-mix(in oklab, var(--surface) 97%, transparent);
     backdrop-filter: saturate(140%) blur(16px); -webkit-backdrop-filter: saturate(140%) blur(16px);
     border-top: 1px solid var(--line);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* always keep a little breathing room, even on phones with no home
+       indicator (where the safe-area inset resolves to 0 and the bar looked
+       cramped against the screen edge) */
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 6px);
   }
   .mnav__tab {
-    flex: 1 1 0; min-width: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    padding: 8px 2px 7px; color: var(--ink-faint); text-decoration: none;
+    flex: 1 1 0; min-width: 0; min-height: 52px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    padding: 10px 2px; color: var(--ink-faint); text-decoration: none;
     font-family: var(--font-ui); transition: color .15s;
   }
   .mnav__tab.on { color: var(--accent); }
   .mnav__ico { display: inline-flex; }
-  .mnav__label { font-size: 9.5px; font-weight: 700; letter-spacing: .01em; line-height: 1; }
+  .mnav__label { font-size: 11px; font-weight: 700; letter-spacing: .01em; line-height: 1; }
 }
 
 /* ============================================================
@@ -688,7 +695,8 @@
   html, body { overflow-x: clip; }
 }
 @media (max-width: 520px) {
-  .page { padding: 20px 16px calc(78px + env(safe-area-inset-bottom, 0px)); }
+  /* bottom clearance must exceed the (now taller) fixed tab bar */
+  .page { padding: 20px 16px calc(94px + env(safe-area-inset-bottom, 0px)); }
   .page__head { gap: 12px; margin-bottom: 20px; align-items: flex-start; }
   .page__head > div { min-width: 0; flex: 1 1 100%; }
   .page__head > .actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }

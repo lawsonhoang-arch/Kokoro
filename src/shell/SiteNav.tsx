@@ -288,7 +288,7 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
             aria-current={on ? "page" : "false"}
           >
             <span className="mnav__ico" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                 {TAB_ICONS[t.id]}
               </svg>
             </span>

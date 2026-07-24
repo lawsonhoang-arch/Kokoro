@@ -10,7 +10,13 @@ body {
   font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.5;
+  /* 100vh on mobile is the LARGE viewport (as if the URL bar were hidden), so
+     the body ends up taller than what's actually visible — that dead space
+     below the fold is what made the fixed bottom nav look like it wasn't
+     stuck to the bottom. dvh tracks the visible viewport; vh stays as the
+     fallback for browsers without dvh. */
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
