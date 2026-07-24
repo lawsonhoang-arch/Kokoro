@@ -10,6 +10,9 @@ import postgres from "postgres";
  * READ-ONLY by default: prints every account with its activity signals so you
  * can eyeball which ones are bots BEFORE anything is removed.
  *
+ *   npm run db:bots -- --shapes                      # START HERE: every handle
+ *                                                    # family + counts, so no
+ *                                                    # bot pattern is missed
  *   npm run db:bots                                  # report, newest first
  *   npm run db:bots -- --auto-handles                # the signup-bot handle pattern
  *   npm run db:bots -- --auto-handles --delete --yes # remove them (IRREVERSIBLE)
@@ -49,9 +52,14 @@ const ids = idsCsv ? idsCsv.split(",").map((s) => s.trim()).filter(Boolean) : nu
  * ml178127116640, pm178123373500. Real handles don't look like that.
  * `--auto-handles` selects exactly those; `--pattern=<regex>` overrides it.
  */
-const AUTO_HANDLE_RE = /^[a-z]{2}\d{12}$/;
+const AUTO_HANDLE_RE = /^[a-z]{1,4}\d{8,}$/;
 const patternRaw = valOf("--pattern");
 const pattern = patternRaw ? new RegExp(patternRaw) : has("--auto-handles") ? AUTO_HANDLE_RE : null;
+const showShapes = has("--shapes");
+
+/** Collapse a handle to its shape: letters → a, digits → #. Makes generated
+ *  families obvious (e.g. every bot below is "aa############"). */
+const shapeOf = (s: string) => s.replace(/[a-z]/gi, "a").replace(/\d/g, "#");
 
 type Row = {
   id: string;
@@ -88,6 +96,28 @@ async function main() {
     from users u
     order by u.created_at desc
   `) as unknown as Row[];
+
+  // Discovery mode: group every handle by its shape so all generated families
+  // show up at once (then target them with --pattern / --auto-handles).
+  if (showShapes) {
+    const byShape = new Map<string, Row[]>();
+    for (const r of rows) {
+      const k = shapeOf(r.username);
+      (byShape.get(k) ?? byShape.set(k, []).get(k)!).push(r);
+    }
+    const sorted = [...byShape.entries()].sort((a, b) => b[1].length - a[1].length);
+    console.log(`\n${rows.length} account(s) · ${sorted.length} distinct handle shape(s)\n`);
+    console.log(["count", "zero-activity", "shape", "examples"].join("\t"));
+    for (const [shape, list] of sorted) {
+      const dead = list.filter((r) => activityOf(r) === 0).length;
+      console.log(
+        [list.length, dead, shape, list.slice(0, 3).map((r) => r.username).join(", ")].join("\t"),
+      );
+    }
+    console.log("\npick a family with:  --pattern='^[a-z]{2}\\d{12}$'   (or --auto-handles)\n");
+    await sql.end();
+    return;
+  }
 
   let picked = rows;
   if (ids) picked = picked.filter((r) => ids.includes(r.id));
