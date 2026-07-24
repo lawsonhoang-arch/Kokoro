@@ -276,7 +276,23 @@
 @media (max-width: 520px) {
   /* phones: the top tab strip drops out; primary nav moves to a bottom tab bar
      (.mnav below). The top bar becomes logo + search + bell + avatar. */
-  .site-nav { gap: 10px; padding: 0 12px; }
+  /* Fold the top safe-area inset into --nav-h so the top bar's total height and
+     everything measured from it stay in sync (60px = the base token value). On
+     a normal mobile browser the inset is 0, so this is a no-op there. */
+  :root { --nav-h: calc(60px + env(safe-area-inset-top, 0px)); }
+
+  /* In standalone PWA (viewport-fit=cover) the bar draws under the status bar /
+     notch. --nav-h is widened by the top inset just below, so the bar grows to
+     fill the status-bar strip; padding-top pushes its content (search/avatar)
+     below the inset so it clears the time, signal and battery. Widening --nav-h
+     (rather than only this bar) also keeps every element anchored at
+     top:var(--nav-h) — home/journal/stats sticky headers, list overlays —
+     correctly below the taller bar. */
+  .site-nav {
+    gap: 10px;
+    padding: 0 12px;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
   .site-nav__name { display: none; } /* keep the logo mark, drop the wordmark */
   .site-nav__tabs,
   .site-nav__review { display: none; }
