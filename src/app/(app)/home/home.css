@@ -249,13 +249,13 @@
 }
 .genre-tile:hover .genre-tile__bg { transform: scale(1.05); }
 .genre-tile__bg--gen { display: block; }
-/* darken left→right so the genre label stays readable over any art */
+/* Readability scrim over the WHOLE tile. This used to be a left→right gradient
+   that only darkened the label end, so the right side of the art stayed bright
+   and the tiles read unevenly. A flat, full-coverage wash keeps the label
+   legible over any cover while the art still shows through. */
 .genre-tile::after {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(90deg,
-    color-mix(in oklab, var(--surface) 88%, transparent) 0%,
-    color-mix(in oklab, var(--surface) 55%, transparent) 45%,
-    color-mix(in oklab, var(--surface) 20%, transparent) 100%);
+  background: color-mix(in oklab, var(--surface) 66%, transparent);
 }
 .genre-tile__name {
   padding: 0 20px;
