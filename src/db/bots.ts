@@ -10,9 +10,11 @@ import postgres from "postgres";
  * READ-ONLY by default: prints every account with its activity signals so you
  * can eyeball which ones are bots BEFORE anything is removed.
  *
- *   npm run db:bots -- --shapes                      # START HERE: every handle
- *                                                    # family + counts, so no
- *                                                    # bot pattern is missed
+ *   npm run db:bots -- --domains                     # START HERE: accounts per
+ *                                                    # email domain
+ *   npm run db:bots -- --domain=example.com          # the test-account sweep
+ *   npm run db:bots -- --domain=example.com --delete --yes
+ *   npm run db:bots -- --shapes                      # handle families + counts
  *   npm run db:bots                                  # report, newest first
  *   npm run db:bots -- --auto-handles                # the signup-bot handle pattern
  *   npm run db:bots -- --auto-handles --delete --yes # remove them (IRREVERSIBLE)
@@ -52,6 +54,14 @@ const ids = idsCsv ? idsCsv.split(",").map((s) => s.trim()).filter(Boolean) : nu
  * ml178127116640, pm178123373500. Real handles don't look like that.
  * `--auto-handles` selects exactly those; `--pattern=<regex>` overrides it.
  */
+/**
+ * The reliable signal turned out to be the EMAIL DOMAIN, not the handle: the
+ * clutter is leftover automated-test accounts, and every one of them was
+ * created on `example.com` (IANA-reserved for testing — a real user can never
+ * have it). `--domain=example.com` is the safe, exact sweep.
+ */
+const domain = valOf("--domain");
+
 const AUTO_HANDLE_RE = /^[a-z]{1,4}\d{8,}$/;
 const patternRaw = valOf("--pattern");
 const pattern = patternRaw ? new RegExp(patternRaw) : has("--auto-handles") ? AUTO_HANDLE_RE : null;
@@ -97,6 +107,26 @@ async function main() {
     order by u.created_at desc
   `) as unknown as Row[];
 
+  // Discovery mode: accounts per email domain — the clearest way to separate
+  // real sign-ups from test fixtures (which all live on example.com).
+  if (has("--domains")) {
+    const byDomain = new Map<string, Row[]>();
+    for (const r of rows) {
+      const d = (r.email.split("@")[1] ?? "?").toLowerCase();
+      (byDomain.get(d) ?? byDomain.set(d, []).get(d)!).push(r);
+    }
+    const sorted = [...byDomain.entries()].sort((a, b) => b[1].length - a[1].length);
+    console.log(`\n${rows.length} account(s) across ${sorted.length} domain(s)\n`);
+    console.log(["count", "zero-activity", "domain", "examples"].join("\t"));
+    for (const [d, list] of sorted) {
+      const dead = list.filter((r) => activityOf(r) === 0).length;
+      console.log([list.length, dead, d, list.slice(0, 3).map((r) => r.username).join(", ")].join("\t"));
+    }
+    console.log("\nsweep one with:  --domain=example.com  (add --delete --yes to remove)\n");
+    await sql.end();
+    return;
+  }
+
   // Discovery mode: group every handle by its shape so all generated families
   // show up at once (then target them with --pattern / --auto-handles).
   if (showShapes) {
@@ -121,6 +151,7 @@ async function main() {
 
   let picked = rows;
   if (ids) picked = picked.filter((r) => ids.includes(r.id));
+  if (domain) picked = picked.filter((r) => r.email.toLowerCase().endsWith("@" + domain.toLowerCase()));
   if (pattern) picked = picked.filter((r) => pattern.test(r.username));
   if (onlyEmpty) picked = picked.filter((r) => activityOf(r) === 0);
   if (since) picked = picked.filter((r) => r.created_at >= new Date(since));

@@ -103,6 +103,20 @@ export async function getSuggestedPeople(userId: string, limit = 12): Promise<Su
       from users u
       where u.id <> ${userId}
         and u.id not in (select following_id from follows where follower_id = ${userId})
+        -- Only surface accounts with a real footprint. This row is literally
+        -- "active members worth a follow", and it used to fall back to newest
+        -- sign-ups, which meant a flood of empty signup-bot accounts filled it.
+        -- An account has to have actually done something to be suggested.
+        and (
+          exists (select 1 from follows f2 where f2.following_id = u.id)
+          or exists (
+            select 1 from watchlist_entries e
+            join watchlists w on w.id = e.watchlist_id
+            where w.user_id = u.id
+          )
+          or exists (select 1 from journal_entries j where j.user_id = u.id)
+          or exists (select 1 from community_posts p where p.user_id = u.id)
+        )
       order by followers desc, u.created_at desc
       limit ${limit}
     `);
