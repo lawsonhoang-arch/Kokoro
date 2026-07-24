@@ -1,7 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 
-import { getDbDirect } from "@/db";
+import { db, getDbDirect } from "@/db";
 import { hiResCover } from "@/lib/cover";
 import type { SearchResult } from "@/features/search/types";
 import type { CatalogFilters } from "@/features/search/constants";
@@ -39,10 +39,15 @@ export type IndexRow = {
 let cache: IndexRow[] | null = null;
 let loadedAt = 0;
 let loading: Promise<IndexRow[]> | null = null;
-// The 43k-row load is heavy (and brutal on a struggling DB), while the catalog
-// barely changes mid-session — so refresh sparingly. Stale-while-revalidate
-// means reads stay instant regardless; this just cuts how often we re-query.
-const TTL = 15 * 60 * 1000; // refresh at most every 15 minutes
+// The 43k-row load is heavy (~8MB over the wire) and is BY FAR the largest
+// source of Supabase egress: every instance that renders home/search/genres
+// pulls the whole catalogue. At the old 15-minute TTL a single warm instance
+// re-pulled it ~96x/day (~770MB/day) — enough on its own to blow the egress
+// quota. The catalogue only changes when the sync job runs, so a long TTL costs
+// nothing in freshness. Stale-while-revalidate keeps reads instant regardless.
+// Override with SEARCH_INDEX_TTL_MIN (minutes) without redeploying code.
+const TTL_MIN = Number(process.env.SEARCH_INDEX_TTL_MIN ?? 720); // default 12h
+const TTL = (Number.isFinite(TTL_MIN) && TTL_MIN > 0 ? TTL_MIN : 720) * 60 * 1000;
 
 type Raw = {
   id: string; kind: string; title: string; english_title: string | null; native: string | null;
@@ -288,6 +293,37 @@ const byPopularity = (a: IndexRow, b: IndexRow) =>
   (b.popularity ?? 0) - (a.popularity ?? 0) || (b.score ?? 0) - (a.score ?? 0) || (a.id < b.id ? -1 : 1);
 
 /** The current anime season + year (Winter=Jan–Mar, Spring=Apr–Jun, Summer=Jul–Sep, Fall=Oct–Dec). */
+/* ===== discovery shelves: bounded SQL, NOT the in-memory index ==============
+   These only ever need a dozen rows, but scanning the index forced a ~43k-row
+   (~8MB) catalogue pull on every instance that rendered Home — the single
+   biggest source of Supabase egress. Running them as small LIMITed queries
+   means Home never loads the index at all; only search does. Each degrades to
+   an empty shelf on error, matching the old stale-index behaviour. */
+
+type SqlRow = {
+  id: string; kind: string; title: string; english: string | null; native: string | null;
+  year: number | null; episodes: number | null; format: string | null;
+  genres: string[] | null; cover: string | null; status: string | null;
+};
+
+const SHELF_COLS = sql`id, kind, title, english_title as english, native_title as native,
+  year, episodes, format, genres, cover, status`;
+/** anime, safe, and actually showable (has art) */
+const SHELF_BASE = sql`kind = 'anime' and nsfw is not true and cover is not null`;
+
+const sqlToResult = (r: SqlRow): SearchResult => ({
+  id: r.id,
+  kind: r.kind === "manga" ? "manga" : "anime",
+  title: r.english || r.title,
+  native: r.native,
+  format: r.format,
+  episodes: r.episodes && r.episodes > 0 ? r.episodes : null,
+  year: r.year && r.year > 0 ? r.year : null,
+  genres: r.genres ?? [],
+  cover: hiResCover(r.cover),
+  status: r.status ?? null,
+});
+
 export function currentSeason(): { season: string; year: number } {
   const d = new Date();
   const m = d.getMonth(); // 0–11
@@ -298,23 +334,32 @@ export function currentSeason(): { season: string; year: number } {
 /** The current season's most popular anime. */
 export async function getSeasonal(limit: number): Promise<{ season: string; year: number; results: SearchResult[] }> {
   const { season, year } = currentSeason();
-  const rows = await getIndex();
-  const results = rows
-    .filter((r) => r.kind === "anime" && !r.nsfw && r.cover && r.season === season && r.year === year)
-    .sort(byPopularity)
-    .slice(0, limit)
-    .map(toResult);
-  return { season, year, results };
+  try {
+    const res = await db.execute(sql`
+      select ${SHELF_COLS} from titles
+      where ${SHELF_BASE} and season = ${season} and year = ${year}
+      order by popularity desc nulls last
+      limit ${limit}
+    `);
+    return { season, year, results: (res as unknown as SqlRow[]).filter(Boolean).map(sqlToResult) };
+  } catch {
+    return { season, year, results: [] };
+  }
 }
 
 /** Anime currently airing (getting new episodes / a new season), most popular first. */
 export async function getLatestUpdated(limit: number): Promise<SearchResult[]> {
-  const rows = await getIndex();
-  return rows
-    .filter((r) => r.kind === "anime" && !r.nsfw && r.cover && r.status === "ongoing")
-    .sort(byPopularity)
-    .slice(0, limit)
-    .map(toResult);
+  try {
+    const res = await db.execute(sql`
+      select ${SHELF_COLS} from titles
+      where ${SHELF_BASE} and status = 'ongoing'
+      order by popularity desc nulls last
+      limit ${limit}
+    `);
+    return (res as unknown as SqlRow[]).filter(Boolean).map(sqlToResult);
+  } catch {
+    return [];
+  }
 }
 
 // title markers that indicate a sequel / continuation (so we can exclude them
@@ -346,36 +391,40 @@ export async function getNewNotable(limit: number): Promise<SearchResult[]> {
 /** Upcoming anime — announced but not yet aired, by anticipation (popularity).
  *  Sequels are kept (the most-awaited upcoming titles are often new seasons). */
 export async function getUpcoming(limit: number): Promise<SearchResult[]> {
-  const rows = await getIndex();
-  return rows
-    .filter(
-      (r) =>
-        r.kind === "anime" &&
-        !r.nsfw &&
-        r.cover &&
-        r.status === "upcoming",
-    )
-    .sort(byPopularity)
-    .slice(0, limit)
-    .map(toResult);
+  try {
+    const res = await db.execute(sql`
+      select ${SHELF_COLS} from titles
+      where ${SHELF_BASE} and status = 'upcoming'
+      order by popularity desc nulls last
+      limit ${limit}
+    `);
+    return (res as unknown as SqlRow[]).filter(Boolean).map(sqlToResult);
+  } catch {
+    return [];
+  }
 }
 
-/** Underrated gems — highly rated but below-median audience (and not sequels). */
+/** Underrated gems — highly rated but below-median audience (and not sequels).
+ *  SQL does the score/popularity band + ordering; the sequel regex is applied in
+ *  JS over a small over-fetch (Postgres ARE doesn't take the JS `\b` syntax). */
 export async function getUnderratedGems(limit: number): Promise<SearchResult[]> {
-  const rows = await getIndex();
-  return rows
-    .filter(
-      (r) =>
-        r.kind === "anime" &&
-        !r.nsfw &&
-        r.cover &&
-        r.score != null && r.score >= 780 && // ≥ 7.8, well reviewed
-        r.popularity != null && r.popularity >= 15000 && r.popularity <= 140000 && // known but under the radar
-        !SEQUEL_RE.test(r.title),
-    )
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (a.popularity ?? 0) - (b.popularity ?? 0))
-    .slice(0, limit)
-    .map(toResult);
+  try {
+    const res = await db.execute(sql`
+      select ${SHELF_COLS} from titles
+      where ${SHELF_BASE}
+        and score >= 780
+        and popularity between 15000 and 140000
+      order by score desc nulls last, popularity asc
+      limit ${limit * 5}
+    `);
+    return (res as unknown as SqlRow[])
+      .filter(Boolean)
+      .filter((r) => !SEQUEL_RE.test(r.title))
+      .slice(0, limit)
+      .map(sqlToResult);
+  } catch {
+    return [];
+  }
 }
 
 /** Acclaimed titles within the given genres, best-scored first, skipping ids the
@@ -475,22 +524,25 @@ export async function getGenreTilesByPopularity(
 export async function getGenreFeatureTiles(
   features: { genre: string; query: string }[],
 ): Promise<{ genre: string; cover: string | null }[]> {
-  const rows = await getIndex();
-  return features.map(({ genre, query }) => {
-    const q = query.trim().toLowerCase();
-    let best: IndexRow | null = null;
-    let bestScore = -1;
-    for (const r of rows) {
-      if (r.kind !== "anime" || r.nsfw || !r.cover) continue;
-      const s = relevance(r, q);
-      if (s <= 0) continue;
-      if (s > bestScore || (s === bestScore && (r.popularity ?? 0) > (best?.popularity ?? 0))) {
-        best = r;
-        bestScore = s;
+  // One tiny LIMIT 1 lookup per tile instead of scanning the whole index — a
+  // dozen sub-kilobyte queries beats an 8MB catalogue pull just to draw covers.
+  return Promise.all(
+    features.map(async ({ genre, query }) => {
+      const like = `%${query.trim()}%`;
+      try {
+        const res = await db.execute(sql`
+          select cover from titles
+          where ${SHELF_BASE} and (english_title ilike ${like} or title ilike ${like})
+          order by popularity desc nulls last
+          limit 1
+        `);
+        const row = (res as unknown as { cover: string | null }[])[0];
+        return { genre, cover: hiResCover(row?.cover ?? null) };
+      } catch {
+        return { genre, cover: null };
       }
-    }
-    return { genre, cover: best?.cover ?? null };
-  });
+    }),
+  );
 }
 
 /* ===== fuzzy matching (typo-tolerant) — for the notes-import matcher ========

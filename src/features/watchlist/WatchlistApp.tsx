@@ -25,6 +25,8 @@ import {
   removeCustomAxisAction,
   reorderEntriesAction,
   syncGroupsAction,
+  syncRulesAction,
+  syncTabsAction,
 } from "@/app/(app)/watchlist/actions";
 import { hueValue, type HueKey } from "@/lib/palette";
 
@@ -117,6 +119,9 @@ export default function WatchlistApp({
   initialEntries,
   initialCustomAxes,
   initialGroups,
+  initialGlobals,
+  initialTabOrder,
+  initialBoardName,
 }: {
   id: string;
   title: string;
@@ -124,6 +129,11 @@ export default function WatchlistApp({
   initialEntries: Entry[];
   initialCustomAxes: string[];
   initialGroups: Group[];
+  /** rules + bookmarked tabs come from the server so they follow the user
+   *  between mobile and desktop (card sizing/layout stay per-device). */
+  initialGlobals: Rules;
+  initialTabOrder: string[] | null;
+  initialBoardName: string | null;
 }) {
   // Title + accent come from the owning list record (fetched server-side).
   const accent = hueValue(hue);
@@ -174,32 +184,30 @@ export default function WatchlistApp({
   const [showScore] = useState(false);
   const [query, setQuery] = useState("");
   // The rail is an ordered list of tab keys, "all" (the everything view) plus the
-  // pinned collections ("g:<id>"). Order + the "All" tab's custom name persist in
-  // localStorage so tabs can be freely reordered/renamed. All is a tab like any
-  // other — movable, renamable — and at least one tab is always kept.
-  const TABORDER_KEY = "kokoro_taborder_" + id;
-  const ALLNAME_KEY = "kokoro_allname_" + id;
+  // bookmarked collections ("g:<id>"). Order + the Board tab's name are stored
+  // SERVER-side so bookmarks follow you between mobile and desktop. All is a tab
+  // like any other — movable, renamable — and at least one tab is always kept.
   const [tabbed, setTabbed] = useState<string[]>(() => {
     const pinned = initialGroups.filter((g) => !g.parentId).map((g) => "g:" + g.id);
-    let saved: unknown = null;
-    try { saved = JSON.parse(localStorage.getItem(TABORDER_KEY) || "null"); } catch {}
-    if (Array.isArray(saved)) {
-      // the saved list is authoritative for which collections are pinned — do NOT
-      // re-add unlisted ones, or unpinning (bookmark off) would never survive a
-      // reload. Collections that aren't pinned still show as boxes on the board.
-      const valid = (saved as string[]).filter((k) => k === "all" || pinned.includes(k));
+    if (Array.isArray(initialTabOrder)) {
+      // the saved list is authoritative for which collections are bookmarked — do
+      // NOT re-add unlisted ones, or unpinning would never survive a reload.
+      // Collections that aren't bookmarked still show as boxes on the board.
+      const valid = initialTabOrder.filter((k) => k === "all" || pinned.includes(k));
       if (!valid.includes("all")) valid.unshift("all");
       return valid.length ? valid : ["all"];
     }
     return ["all", ...pinned];
   });
-  const [allName, setAllName] = useState<string>(() => {
-    // the "All" tab is the home overview — the board itself, not a peer tab
-    try { return localStorage.getItem(ALLNAME_KEY) || "Board"; } catch { return "Board"; }
-  });
+  const [allName, setAllName] = useState<string>(initialBoardName || "Board");
+  // mirror the bookmarked strip back to the server (debounced; skips the first
+  // run, which is just the server-loaded state)
+  const tabsHydrated = useRef(false);
   useEffect(() => {
-    try { localStorage.setItem(TABORDER_KEY, JSON.stringify(tabbed)); } catch {}
-  }, [tabbed, TABORDER_KEY]);
+    if (!tabsHydrated.current) { tabsHydrated.current = true; return; }
+    const t = setTimeout(() => { void syncTabsAction(id, tabbed, allName).catch(() => {}); }, 500);
+    return () => clearTimeout(t);
+  }, [tabbed, allName, id]);
 
   const [activeTab, setActiveTab] = useState<string>("list");
   // the soft highlight that glides under the active collection in the rail
@@ -263,9 +271,8 @@ export default function WatchlistApp({
     window.addEventListener("pointerup", tabTouchUp);
   };
   const renameAll = (name: string) => {
-    const clean = name.trim().slice(0, 40) || "Board";
-    setAllName(clean);
-    try { localStorage.setItem(ALLNAME_KEY, clean); } catch {}
+    // persisted by the tab-sync effect above (server-side, so it travels)
+    setAllName(name.trim().slice(0, 40) || "Board");
   };
   // remove a tab from the rail — always keeping at least one
   const deleteTabKey = (key: string) => {
@@ -296,28 +303,10 @@ export default function WatchlistApp({
   };
 
 
-  // Rules were pure client state, so they vanished on reload — not just across
-  // devices, but on the same one. Persisted here per list. This is deliberately
-  // localStorage and therefore per-device: syncing rules across mobile and
-  // desktop needs a schema change to store them alongside the groups.
-  const RULES_KEY = "kokoro_rules_" + id;
-  const [globals, setGlobals] = useState<Rules>(emptyRules);
-  const rulesHydrated = useRef(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(RULES_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setGlobals({ ...emptyRules(), ...(JSON.parse(raw) as Rules) });
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-  // Skip the FIRST run: on mount this fires with the empty initial state and
-  // would overwrite whatever hydration just read back. Same guard the groups
-  // sync uses, and for the same reason.
-  useEffect(() => {
-    if (!rulesHydrated.current) { rulesHydrated.current = true; return; }
-    try { localStorage.setItem(RULES_KEY, JSON.stringify(globals)); } catch {}
-  }, [globals, RULES_KEY]);
+  // Rules live server-side (the `rules` table) so they follow you between
+  // mobile and desktop, and survive a reload on either. Seeded from the server
+  // and mirrored back on change (debounced, below, alongside the scoped rules).
+  const [globals, setGlobals] = useState<Rules>(() => ({ ...emptyRules(), ...initialGlobals }));
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [paintOver, setPaintOver] = useState<Record<string, { color?: string; tags: string[] }>>({});
   const [paint, setPaint] = useState<PaintState>(null);
@@ -730,10 +719,24 @@ export default function WatchlistApp({
     else if (isGroupKey(key)) renameGroup(key.slice(2), name);
   };
 
+  // Persist rules — global + each collection's scoped rules — server-side, so
+  // they survive a reload AND follow the user between mobile and desktop.
+  // Debounced, and runs after the groups sync below so a brand-new collection
+  // exists before its scoped rules reference it.
+  const rulesHydrated = useRef(false);
+  useEffect(() => {
+    if (!rulesHydrated.current) { rulesHydrated.current = true; return; }
+    const scoped: Record<string, Rules> = {};
+    for (const g of groups) scoped[g.id] = g.scoped;
+    const t = setTimeout(() => {
+      void syncRulesAction(id, globals, scoped).catch(() => {});
+    }, 800);
+    return () => clearTimeout(t);
+  }, [globals, groups, id]);
+
   // Persist collections + their membership whenever they change. Local state is
   // the source of truth; this debounced sync mirrors it to the DB (skipping the
-  // first run, which is just the server-loaded state). Scoped rules are not
-  // persisted — they stay client-only like the global rules.
+  // first run, which is just the server-loaded state).
   const groupsHydrated = useRef(false);
   useEffect(() => {
     if (!groupsHydrated.current) {

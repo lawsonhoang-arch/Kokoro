@@ -31,6 +31,8 @@
     "db:setup-notifications": "tsx src/db/setup-notifications.ts",
     "db:setup-onboarding": "tsx src/db/setup-onboarding.ts",
     "db:setup-home-prefs": "tsx src/db/setup-home-prefs.ts",
+    "db:bots": "tsx src/db/bots.ts",
+    "db:setup-list-sync": "tsx src/db/setup-list-sync.ts",
     "db:setup-entity-follows": "tsx src/db/setup-entity-follows.ts",
     "db:setup-title-mal-index": "tsx src/db/setup-title-mal-index.ts",
     "db:setup-calendar": "tsx src/db/setup-calendar.ts",

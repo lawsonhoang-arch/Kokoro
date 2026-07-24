@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getWatchlist } from "@/lib/watchlists";
 import { getWatchlistEntries } from "@/lib/entries";
 import { getGroups } from "@/lib/groups";
+import { getRules, getTabs } from "@/lib/list-sync";
 import { WatchlistAppLoader } from "@/features/watchlist/WatchlistAppLoader";
 
 // Server Component: auth-gates, verifies the signed-in user owns this list,
@@ -23,10 +24,19 @@ export default async function WatchlistDetailPage({
   const list = await getWatchlist(session.user.id, id);
   if (!list) notFound();
 
-  const [entries, initialGroups] = await Promise.all([
+  const [entries, loadedGroups, savedRules, savedTabs] = await Promise.all([
     getWatchlistEntries(session.user.id, list.id),
     getGroups(session.user.id, list.id),
+    getRules(session.user.id, list.id),
+    getTabs(session.user.id, list.id),
   ]);
+
+  // fold each collection's saved scoped rules back onto it (getGroups returns
+  // them empty — rules live in their own table so they can sync per-device)
+  const initialGroups = loadedGroups.map((g) => ({
+    ...g,
+    scoped: savedRules.scoped[g.id] ?? g.scoped,
+  }));
 
   return (
     <WatchlistAppLoader
@@ -36,6 +46,9 @@ export default async function WatchlistDetailPage({
       initialEntries={entries}
       initialCustomAxes={list.customAxes}
       initialGroups={initialGroups}
+      initialGlobals={savedRules.globals}
+      initialTabOrder={savedTabs.tabOrder}
+      initialBoardName={savedTabs.boardName}
     />
   );
 }

@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import * as wl from "@/lib/watchlists";
 import { addEntry, updateEntry, removeEntry, reorderEntries, type EntryPatch } from "@/lib/entries";
 import { syncGroups, type GroupInput } from "@/lib/groups";
+import { syncRules, syncTabs, type Rules } from "@/lib/list-sync";
 import { importKokoroExport, type KokoroImportResult } from "@/lib/importKokoro";
 import { fetchAniList, parseMalExport, applyImport, type ImportSummary } from "@/lib/importList";
 import type { Watchlist } from "@/lib/storage";
@@ -62,6 +63,27 @@ export async function reorderEntriesAction(watchlistId: string, orderedIds: stri
 export async function syncGroupsAction(watchlistId: string, groups: GroupInput[]): Promise<void> {
   const userId = await requireUserId();
   await syncGroups(userId, watchlistId, groups);
+}
+
+/** Persist the list's rules — global + per-collection. Server-side so they
+ *  follow the user between mobile and desktop. */
+export async function syncRulesAction(
+  watchlistId: string,
+  globals: Rules,
+  scoped: Record<string, Rules>,
+): Promise<void> {
+  const userId = await requireUserId();
+  await syncRules(userId, watchlistId, globals, scoped);
+}
+
+/** Persist the bookmarked tab strip (ordered keys) + the Board tab's label. */
+export async function syncTabsAction(
+  watchlistId: string,
+  tabOrder: string[],
+  boardName: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  await syncTabs(userId, watchlistId, tabOrder, boardName);
 }
 
 /** Add a shared custom rating axis to a list. Returns the resulting axis list

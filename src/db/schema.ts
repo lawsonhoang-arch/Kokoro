@@ -157,6 +157,12 @@ export const watchlists = pgTable(
     // extra rating axes shared by every title in this list (beyond the fixed
     // story/art/music/pacing) — an array of axis names
     customAxes: jsonb("custom_axes").notNull().default([]),
+    // Bookmarked tab strip — the ordered tab keys ("all", "g:<uuid>", …). Stored
+    // server-side so bookmarks follow you between mobile and desktop. null =
+    // fall back to the default (Board + every top-level collection).
+    tabOrder: text("tab_order").array(),
+    // the Board tab's label (was localStorage-only, so it didn't travel)
+    boardName: text("board_name"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastEditedAt: timestamp("last_edited_at").notNull().defaultNow(),
   },

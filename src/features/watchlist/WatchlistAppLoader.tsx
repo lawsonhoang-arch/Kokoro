@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { setLastList } from "@/lib/lastList";
 import type { HueKey } from "@/lib/palette";
-import type { Entry, Group } from "./types";
+import type { Entry, Group, Rules } from "./types";
 
 // Render the watchlist app client-only: its view/layout prefs and pointer/
 // startViewTransition interactions are all client concerns, so SSR adds nothing
@@ -21,6 +21,9 @@ export function WatchlistAppLoader({
   initialEntries,
   initialCustomAxes,
   initialGroups,
+  initialGlobals,
+  initialTabOrder,
+  initialBoardName,
 }: {
   id: string;
   title: string;
@@ -28,6 +31,9 @@ export function WatchlistAppLoader({
   initialEntries: Entry[];
   initialCustomAxes: string[];
   initialGroups: Group[];
+  initialGlobals: Rules;
+  initialTabOrder: string[] | null;
+  initialBoardName: string | null;
 }) {
   // Remember this as the last-opened list so the Lists tab returns here.
   useEffect(() => {
@@ -42,6 +48,9 @@ export function WatchlistAppLoader({
       initialEntries={initialEntries}
       initialCustomAxes={initialCustomAxes}
       initialGroups={initialGroups}
+      initialGlobals={initialGlobals}
+      initialTabOrder={initialTabOrder}
+      initialBoardName={initialBoardName}
     />
   );
 }
