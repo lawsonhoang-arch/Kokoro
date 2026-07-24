@@ -39,14 +39,27 @@ const NEWS_FEEDS: { source: string; url: string }[] = [
 
 function decodeEntities(s: string): string {
   let t = s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
-  t = t.replace(/<[^>]+>/g, " "); // strip any stray HTML tags
+  // Decode entities FIRST, then strip tags. Feeds often escape their own markup
+  // (e.g. "&lt;cite&gt;Title&lt;/cite&gt;"); decoding first turns those back into
+  // real tags so the strip below removes them — otherwise they'd survive as
+  // literal "<cite>" text in the card. (&amp; is decoded last so a double-encoded
+  // "&amp;lt;" isn't over-decoded into "<".)
   t = t.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
   t = t.replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
   t = t
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&");
-  return t.replace(/\s+/g, " ").trim();
+  t = t.replace(/<[^>]+>/g, " "); // strip HTML tags (real, or freshly decoded)
+  return t.replace(/\s+/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+}
+
+// Defensive display-time cleanup: strips any HTML tags left in stored text so
+// items pulled before the decode fix (with literal "<cite>…</cite>" in them)
+// render clean without waiting for the wave to refresh. No-op on clean text.
+function stripTags(s: string): string {
+  return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
 }
 
 function tagText(block: string, name: string): string {
@@ -132,7 +145,7 @@ async function getRealNews(): Promise<NewsFeedItem[]> {
 export async function getNewsFeed(): Promise<NewsFeedItem[]> {
   const [dbRows, wave, overrides] = await Promise.all([getPublishedNews(), resolveWave(), getNewsOverrides()]);
   const dbItems: NewsFeedItem[] = dbRows.map((r) => ({
-    id: r.id, category: r.category, title: r.title, excerpt: r.excerpt,
+    id: r.id, category: r.category, title: stripTags(r.title), excerpt: stripTags(r.excerpt),
     source: r.source, href: r.href, cover: r.cover, hue: r.hue, publishedAt: r.publishedAt,
     onHome: r.onHome, layout: asLayout(r.layout),
   }));
@@ -144,7 +157,7 @@ export async function getNewsFeed(): Promise<NewsFeedItem[]> {
     .map((w) => {
       const o = overrides.get(w.id);
       return {
-        id: w.id, category: w.category, title: w.title, excerpt: w.excerpt,
+        id: w.id, category: w.category, title: stripTags(w.title), excerpt: stripTags(w.excerpt),
         source: w.source, href: w.href, hue: w.hue, publishedAt: w.publishedAt,
         cover: o?.cover ?? w.cover,
         onHome: o?.onHome ?? true,
