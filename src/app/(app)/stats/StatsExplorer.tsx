@@ -149,6 +149,11 @@ export function StatsExplorer({ data }: { data: StatsData }) {
   const genreRadar = (g: (typeof data.genres)[number]) => (aspectMode ? g.axes : g.fingerprint);
   const feelTotal = data.feelings.reduce((s, f) => s + f.n, 0) || 1;
   const decMax = Math.max(1, ...data.decades.map((d) => d.n));
+  // the user's "home decade" — most titles — stays highlighted in the Eras lens
+  const eraPeak = data.decades.length
+    ? data.decades.reduce((bi, d, i, a) => (d.n > a[bi].n ? i : bi), 0)
+    : -1;
+  const hasEraPeak = eraPeak >= 0 && data.decades[eraPeak].n > 0;
 
   useEffect(() => {
     // the colour-morph lives in the Genres lens; other lenses stay on-brand
@@ -278,15 +283,18 @@ export function StatsExplorer({ data }: { data: StatsData }) {
           <div className="sx-card glow">
             <div className="sx-cardhead"><h2>Across the eras</h2><p>tap a decade to see its genre mix</p></div>
             <div className="sx-era sx-era--big">
-              {data.decades.map((d, i) => (
-                <div className={"sx-era__col sx-era__col--tall" + (eraSel === i ? " on" : "")} key={d.label}>
-                  <span className="sx-era__v">{d.n || ""}</span>
+              {data.decades.map((d, i) => {
+                const isPeak = hasEraPeak && i === eraPeak;
+                return (
+                <div className={"sx-era__col sx-era__col--tall" + (eraSel === i ? " on" : "") + (isPeak ? " sx-era__col--peak" : "")} key={d.label}>
+                  <span className="sx-era__v">{isPeak && <span className="sx-era__star" aria-hidden="true">★</span>}{d.n || ""}</span>
                   <span className="sx-era__track">
-                    <button className={"sx-era__bar sx-era__bar--btn" + (eraSel === i ? " hot" : "")} style={{ height: `${(d.n / decMax) * 100}%`, animationDelay: `${i * 55}ms` }} onClick={() => setEraSel(eraSel === i ? null : i)} aria-label={`${d.label}: ${d.n}`} />
+                    <button className={"sx-era__bar sx-era__bar--btn" + (eraSel === i ? " hot" : "") + (isPeak ? " sx-era__bar--peak" : "")} style={{ height: `${(d.n / decMax) * 100}%`, animationDelay: `${i * 55}ms` }} onClick={() => setEraSel(eraSel === i ? null : i)} aria-label={`${d.label}: ${d.n}${isPeak ? " (your peak decade)" : ""}`} />
                   </span>
                   <span className="sx-era__l">{d.label}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="sx-eraread" key={eraSel ?? -1}>
               {eraSel != null ? (

@@ -95,6 +95,12 @@
 .sx-era__bar--btn { cursor: pointer; }
 .sx-era__bar--btn:hover { transform: scaleY(1.04); box-shadow: 0 12px 24px -10px color-mix(in oklab, var(--focus) 55%, transparent), inset 0 2px 4px color-mix(in oklab, #fff 16%, transparent); background: color-mix(in oklab, var(--focus) 22%, var(--surface-2)); }
 .sx-era__bar.hot, .sx-era__bar--btn.hot:hover { background: linear-gradient(180deg, var(--focus), color-mix(in oklab, var(--focus) 55%, transparent)); box-shadow: 0 12px 26px -8px color-mix(in oklab, var(--focus) 72%, transparent), inset 0 2px 4px color-mix(in oklab, #fff 22%, transparent); }
+/* the "home decade" (most titles) stays coloured + ringed even when unselected,
+   so the peak reads at a glance; a full selection (.hot) still overrides it */
+.sx-era__bar--peak:not(.hot) { background: linear-gradient(180deg, color-mix(in oklab, var(--focus) 82%, transparent), color-mix(in oklab, var(--focus) 42%, transparent)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--focus) 60%, transparent), 0 12px 24px -10px color-mix(in oklab, var(--focus) 60%, transparent), inset 0 2px 4px color-mix(in oklab, #fff 20%, transparent); }
+.sx-era__col--peak .sx-era__v { color: var(--focus); }
+.sx-era__col--peak .sx-era__l { color: var(--focus); font-weight: 800; }
+.sx-era__star { color: var(--focus); font-size: 9.5px; margin-right: 2px; vertical-align: 1px; filter: drop-shadow(0 1px 3px color-mix(in oklab, var(--focus) 60%, transparent)); }
 .sx-era__l { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); font-weight: 600; }
 .sx-era__col--tall.on .sx-era__l, .sx-era__col--tall:hover .sx-era__l { color: var(--ink-soft); }
 

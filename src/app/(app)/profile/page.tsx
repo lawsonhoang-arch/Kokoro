@@ -105,14 +105,6 @@ export default async function ProfilePage() {
         </Link>
       )}
 
-      {s.tracked > 0 && (
-        <Link className="pf-wrapped" href="/wrapped">
-          <span className="pf-wrapped__spark" aria-hidden="true">✦</span>
-          <span className="pf-wrapped__txt"><b>Kokoro Wrapped</b> — your hours, genres, moods and defining titles, in one look.</span>
-          <span className="pf-wrapped__cta">View →</span>
-        </Link>
-      )}
-
       <FollowedEntities items={entities} />
 
       <ProfileTabs user={user} summary={summary} reviews={reviews} favorites={favorites} stats={statsData} />
