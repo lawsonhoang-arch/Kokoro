@@ -420,7 +420,14 @@
 }
 
 /* reposition mode: the whole banner is grab-to-pan */
-.pf-banner--moving { cursor: grab; box-shadow: inset 0 0 0 2px var(--accent); }
+.pf-banner--moving {
+  cursor: grab;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  /* dragging to pan must not select page text or scroll the page on touch */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
 .pf-banner--moving:active { cursor: grabbing; }
 .pf-banner__movehint {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;

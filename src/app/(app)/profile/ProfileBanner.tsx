@@ -48,11 +48,16 @@ export function ProfileBanner({
   useEffect(() => {
     if (!open) return;
     const h = (e: PointerEvent) => {
-      if (controlsRef.current && !controlsRef.current.contains(e.target as Node)) closeMenu();
+      const t = e.target as HTMLElement | null;
+      if (controlsRef.current?.contains(t as Node)) return;
+      // the banner picker is portaled to <body>, so its clicks look "outside"
+      // the controls — don't let interacting with it collapse the menu (which
+      // would unmount the picker mid-search).
+      if (t?.closest?.(".pfbp")) return;
+      closeMenu();
     };
     document.addEventListener("pointerdown", h);
     return () => document.removeEventListener("pointerdown", h);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
@@ -63,6 +68,7 @@ export function ProfileBanner({
 
   const onDown = (e: React.PointerEvent) => {
     if (!moving) return;
+    e.preventDefault(); // don't start a text selection while dragging the art
     const [px, py] = parse(curPos);
     drag.current = { x: e.clientX, y: e.clientY, px, py };
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
