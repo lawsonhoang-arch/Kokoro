@@ -539,16 +539,17 @@
   .hero__art { position: absolute; inset: 0; }
   .hero__body {
     position: absolute; left: 0; right: 0; bottom: 0; height: auto; width: auto;
-    max-width: none; align-items: flex-start; text-align: left;
-    padding: 16px; gap: 6px; justify-content: flex-end;
+    max-width: none; align-items: stretch; text-align: left;
+    /* extra bottom room so the buttons clear the carousel dots */
+    padding: 18px 16px 30px; gap: 9px; justify-content: flex-end;
     /* no own gradient — the full-banner scrim (.hero__art::after) covers it */
   }
-  .hero__eyebrow { font-size: 9.5px; }
-  .hero__title { font-size: clamp(20px, 6vw, 26px); line-height: 1.1; }
+  .hero__eyebrow { font-size: 9.5px; margin-bottom: 1px; }
+  .hero__title { font-size: clamp(20px, 6vw, 26px); line-height: 1.14; }
   .hero__desc { display: none; } /* the synopsis is noise at this size */
-  .hero__meta { font-size: 11px; gap: 8px; }
-  .hero__actions { margin-top: 4px; width: 100%; }
-  .hero__actions .btn { flex: 1 1 auto; justify-content: center; }
+  .hero__meta { font-size: 11px; gap: 6px 10px; justify-content: flex-start; margin-top: 1px; }
+  .hero__actions { margin-top: 6px; width: 100%; gap: 10px; justify-content: flex-start; }
+  .hero__actions .btn { flex: 1 1 0; justify-content: center; min-width: 0; padding-left: 8px; padding-right: 8px; }
   .hero-nav { display: none; } /* swipe, don't tap arrows, on a phone */
   .hero-dots { bottom: 8px; }
 
