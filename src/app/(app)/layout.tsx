@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 // Shared design system, imported in this route group's ROOT layout (Next 16
 // recommends global CSS only at the root). The (marketing) group is a separate
@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { FontLinks } from "@/components/FontLinks";
 import { SiteNav } from "@/shell/SiteNav";
+import { PwaInstall } from "@/shell/PwaInstall";
 import { getUserAvatar } from "@/lib/profile";
 import { getUnreadCount } from "@/lib/notifications";
 import { needsOnboarding } from "@/lib/onboarding";
@@ -23,6 +24,16 @@ export const metadata: Metadata = {
   },
   description:
     "A warm-dark anime & manga tracker + community app. Rate by feeling, sculpt your lists with rule tokens, and keep a private journal.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Kokoro",
+  appleWebApp: { capable: true, title: "Kokoro", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#17110e",
+  // fill the notch/safe areas so the standalone app can go edge-to-edge
+  viewportFit: "cover",
 };
 
 export default async function AppLayout({
@@ -50,6 +61,8 @@ export default async function AppLayout({
             anchored and never re-animates across navigations. */}
         <SiteNav user={{ ...session.user, image: avatar }} unread={unread} />
         {children}
+        {/* registers the service worker + offers the install prompt */}
+        <PwaInstall />
       </body>
     </html>
   );
