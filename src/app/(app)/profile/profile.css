@@ -731,3 +731,40 @@
   transition: color .14s, border-color .14s, background .14s;
 }
 .pf-share:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); background: color-mix(in oklab, var(--accent) 8%, var(--surface-2)); }
+
+/* ============================================================
+   MOBILE (phones ≤640px) — the header is a rigid 3-col grid on desktop
+   (avatar | meta | actions); on a phone that squeezes the middle column, so
+   the bio wrapped a word per line, the follow counts clipped, and the name
+   floated over the banner. Stack it into one clean column.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* banner: match the 16px phone gutter (the -28px bleed overflowed the
+     viewport) and stand a little shorter */
+  .pf-banner { height: 150px; margin: -20px -16px 0; }
+
+  .pf-head {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: start;
+    margin-top: -44px; /* avatar overlaps the banner edge; name sits below it */
+    padding-bottom: 20px;
+  }
+  .pf-head .avatar { width: 104px; height: 104px; }
+  .pf-name { font-size: 25px; }
+  .pf-handle { font-size: 11.5px; }
+  .pf-bio { margin-top: 8px; font-size: 13.5px; max-width: none; }
+  .pf-follow { margin-top: 12px; gap: 12px; }
+  .pf-follow__counts { gap: 16px; }
+
+  /* actions become a full-width row of two equal buttons */
+  .pf-head__actions { justify-content: flex-start; align-items: stretch; width: 100%; padding-bottom: 0; }
+  .pf-head__actions > * { flex: 1 1 0; justify-content: center; }
+
+  /* the Overview/Stats/Reviews/Settings sub-nav spans the width */
+  .pf-subtabs { width: 100%; margin-bottom: 22px; }
+  .pf-subtabs button { flex: 1 1 0; padding: 8px 6px; text-align: center; }
+
+  /* wrapped / import call-outs: a touch tighter on a phone */
+  .pf-wrapped, .pf-import { padding: 14px 16px; }
+}
