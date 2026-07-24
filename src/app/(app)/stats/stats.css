@@ -28,7 +28,7 @@
 /* Genres lens: sized taste card (fills with a big radar) + flexible chips card (more genres/row) */
 .sx-grid--genres { grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); }
 .sx-card--taste { display: flex; flex-direction: column; }
-.sx-card--taste .sx-radar { max-width: 320px; }
+.sx-card--taste .sx-radar { max-width: 450px; }
 .sx-tastebody { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 
 .sx-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 26px; padding: 26px 28px; position: relative; overflow: hidden; box-shadow: 0 24px 50px -32px color-mix(in oklab, var(--focus) 40%, #000); }
@@ -58,7 +58,7 @@
 @keyframes sxinsight { from { opacity: 0; transform: translateX(-7px); } to { opacity: 1; transform: none; } }
 
 /* radar */
-.sx-radar { width: 100%; max-width: 248px; height: auto; display: block; margin: 2px auto 0; overflow: visible; filter: drop-shadow(0 12px 26px color-mix(in oklab, var(--focus) 40%, transparent)); transform-origin: 50% 50%; animation: sxradar .75s var(--spring) both; }
+.sx-radar { width: 100%; max-width: 350px; height: auto; display: block; margin: 2px auto 0; overflow: visible; filter: drop-shadow(0 12px 26px color-mix(in oklab, var(--focus) 40%, transparent)); transform-origin: 50% 50%; animation: sxradar .75s var(--spring) both; }
 @keyframes sxradar { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
 .sx-radar__ring { fill: none; stroke: var(--line); } .sx-radar__ring.o { stroke: var(--line-strong, var(--line)); }
 .sx-radar__spoke { stroke: var(--line); }
@@ -171,7 +171,7 @@
   .sx-grid--genres .sx-card--taste {
     position: sticky; top: calc(var(--nav-h, 60px) + 8px); z-index: 3;
   }
-  .sx-grid--genres .sx-card--taste .sx-radar { max-width: 190px; }
+  .sx-grid--genres .sx-card--taste .sx-radar { max-width: 250px; }
   .sx-grid--genres .sx-card--taste .sx-tastebody { gap: 6px; }
 }
 

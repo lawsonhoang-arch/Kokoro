@@ -50,7 +50,7 @@ function Radar({ names, values, base = 2 }: { names: string[]; values: number[];
 
   const ring = (f: number) => Array.from({ length: N }, (_, i) => ptF(i, N, f).join(",")).join(" ");
   return (
-    <svg className="sx-radar" viewBox="0 0 220 220" role="img" aria-label="Taste-shape axes">
+    <svg className="sx-radar" viewBox="-46 0 312 220" role="img" aria-label="Taste-shape axes">
       {[0.25, 0.5, 0.75, 1].map((f) => <polygon key={f} className={"sx-radar__ring" + (f === 1 ? " o" : "")} points={ring(f)} />)}
       {names.map((_, i) => { const e = ptF(i, N, 1); return <line key={i} className="sx-radar__spoke" x1={C} y1={C} x2={e[0]} y2={e[1]} />; })}
       <polygon ref={poly} className="sx-radar__data" points={values.map((v, i) => ptV(i, N, v, base).join(",")).join(" ")} />
