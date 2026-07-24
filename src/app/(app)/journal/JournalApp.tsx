@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { BackButton } from "@/components/BackButton";
@@ -486,16 +486,48 @@ function nth(n: number): string {
 }
 
 // ---- a woven-in diary event (marked watched / favourited / rewatched) --------
-function ActivityRow({ ev, now, onPick }: { ev: DiaryEvent; now: number; onPick: (key: string) => void }) {
+function ActivityRow({ ev, now, onPick }: { ev: DiaryEvent; now: number; onPick?: (key: string) => void }) {
   const label =
     ev.kind === "completed"
       ? "✓ Marked watched"
       : ev.kind === "favorited"
         ? "♥ Added to favourites"
         : `↻ Rewatched${ev.ordinal ? ` · ${nth(ev.ordinal)} time` : ""}`;
-  // Clicking a woven-in event focuses that title's diary (and opens the composer
-  // for it) rather than leaving the journal for the title's detail page — the
-  // detail page is still one click away via "View title →" once focused.
+  const href = `/anime/${encodeURIComponent(ev.titleId)}`;
+  const cover = ev.cover ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={ev.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
+  ) : null;
+  const rail = (
+    <div className="entry__rail">
+      <span className={"entry__dot entry__dot--" + ev.kind} aria-hidden="true" />
+      <div className="entry__date">
+        <span className="entry__date-day">{fmtDay(ev.at)}</span>
+        <span>{fmtTime(ev.at)}</span>
+      </div>
+    </div>
+  );
+
+  // Desktop (original): the event links out to the title's detail page.
+  if (!onPick) {
+    return (
+      <article className="entry entry--act">
+        {rail}
+        <div className="entry__body entry__body--act">
+          <Link href={href} className="entry__actcover" aria-hidden="true">{cover}</Link>
+          <div className="entry__actmain">
+            <span className={"entry__actverb entry__actverb--" + ev.kind}>{label}</span>
+            <Link href={href} className="entry__acttitle">{ev.title}</Link>
+          </div>
+          <span className="entry__time">{relative(ev.at, now)}</span>
+        </div>
+      </article>
+    );
+  }
+
+  // Mobile: clicking focuses that title's diary (and opens the composer for it)
+  // rather than leaving the journal — the detail page is a tap away via
+  // "View title →" once focused.
   return (
     <article
       className="entry entry--act entry--pick"
@@ -504,20 +536,9 @@ function ActivityRow({ ev, now, onPick }: { ev: DiaryEvent; now: number; onPick:
       onClick={() => onPick(ev.titleId)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(ev.titleId); } }}
     >
-      <div className="entry__rail">
-        <span className={"entry__dot entry__dot--" + ev.kind} aria-hidden="true" />
-        <div className="entry__date">
-          <span className="entry__date-day">{fmtDay(ev.at)}</span>
-          <span>{fmtTime(ev.at)}</span>
-        </div>
-      </div>
+      {rail}
       <div className="entry__body entry__body--act">
-        <span className="entry__actcover" aria-hidden="true">
-          {ev.cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={ev.cover} alt="" referrerPolicy="no-referrer" loading="lazy" />
-          ) : null}
-        </span>
+        <span className="entry__actcover" aria-hidden="true">{cover}</span>
         <div className="entry__actmain">
           <span className={"entry__actverb entry__actverb--" + ev.kind}>{label}</span>
           <span className="entry__acttitle">{ev.title}</span>
@@ -539,7 +560,21 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
   // together); the rail narrows to a single title on demand
   const [selected, setSelected] = useState<string>("all");
   const [composerOpen, setComposerOpen] = useState(false);
+  // Phones get the redesigned single-column journal; everything wider keeps the
+  // original two-column rail + timeline. This component is client-only
+  // (JournalAppLoader uses ssr:false), so reading matchMedia up front is safe —
+  // the first render already knows the viewport, so there's no layout flash.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 520px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 520px)");
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   // filters (applied to the selected group's notes)
+  const [fQuery, setFQuery] = useState(""); // desktop: free-text search of the diary
   const [fDate, setFDate] = useState("all"); // all | today | 7d | 30d
   const [fRate, setFRate] = useState("any"); // any | glyphs | axes | symbols
   const [fSort, setFSort] = useState("new"); // new | old
@@ -610,12 +645,21 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
   const timeline = useMemo<TLItem[]>(() => {
     const scopedNotes = effSelected === "all" ? entries : entries.filter((e) => (e.titleId ?? FREE_KEY) === effSelected);
     const scopedActs = effSelected === "all" ? activity : activity.filter((a) => a.titleId === effSelected);
-    const q = railQuery.trim().toLowerCase(); // "search titles" — narrows the history by title
+    // Mobile has one search bar and it narrows the history by TITLE. Desktop
+    // keeps the original free-text search of the diary in its filter row.
+    const q = (isMobile ? railQuery : fQuery).trim().toLowerCase();
+    const noteMatches = (e: JournalEntry) =>
+      !q ||
+      (isMobile
+        ? (e.title ?? "").toLowerCase().includes(q)
+        : `${headings.get(e.id) ?? ""} ${e.title ?? ""} ${e.episode} ${e.body} ${e.quote}`
+            .toLowerCase()
+            .includes(q));
     const day = 86400000;
     const cutoff = fDate === "today" ? now - day : fDate === "7d" ? now - 7 * day : fDate === "30d" ? now - 30 * day : 0;
     const items: TLItem[] = [];
     for (const e of scopedNotes) {
-      if (q && !(e.title ?? "").toLowerCase().includes(q)) continue;
+      if (!noteMatches(e)) continue;
       if (cutoff && new Date(e.createdAt).getTime() < cutoff) continue;
       if (fRate !== "any" && (e.rateMode || "glyphs") !== fRate) continue;
       items.push({ at: e.createdAt, note: e });
@@ -630,8 +674,13 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
     }
     items.sort((x, y) => (fSort === "old" ? x.at.localeCompare(y.at) : y.at.localeCompare(x.at)));
     return items;
-  }, [entries, activity, effSelected, railQuery, fDate, fRate, fSort, now]);
-  const filtersActive = railQuery.trim() !== "" || fDate !== "all" || fRate !== "any";
+  }, [entries, activity, effSelected, isMobile, railQuery, fQuery, headings, fDate, fRate, fSort, now]);
+  const filtersActive = (isMobile ? railQuery : fQuery).trim() !== "" || fDate !== "all" || fRate !== "any";
+
+  // the rail's own title filter (desktop)
+  const railGroups = railQuery.trim()
+    ? groups.filter((g) => g.title.toLowerCase().includes(railQuery.trim().toLowerCase()))
+    : groups;
 
   const defaultTarget: Target | null = selGroup
     ? { id: selGroup.titleId, title: selGroup.title, episodes: selGroup.episodes }
@@ -660,103 +709,213 @@ export function JournalApp({ entries: initial, activity, now }: { entries: Journ
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ---- pieces shared by both layouts --------------------------------------
+  const composer = (
+    <Composer key={effSelected} open={composerOpen} setOpen={setComposerOpen} defaultTarget={defaultTarget} onCreate={onCreate} allEntries={entries} />
+  );
+
+  const filterRow = scopeHasItems ? (
+    <div className="jfilters">
+      {/* desktop keeps the original free-text diary search in the filter row; on
+          a phone the single "Search titles…" bar below covers searching */}
+      {!isMobile && (
+        <div className="jfilters__search">
+          <Icon name="search" size={13} />
+          <input
+            placeholder="Search your diary…"
+            value={fQuery}
+            onChange={(e) => setFQuery(e.target.value)}
+          />
+        </div>
+      )}
+      <select className="jfilters__sel" value={fDate} onChange={(e) => setFDate(e.target.value)} aria-label="Date range">
+        <option value="all">Any time</option>
+        <option value="today">Today</option>
+        <option value="7d">Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+      </select>
+      <select className="jfilters__sel" value={fRate} onChange={(e) => setFRate(e.target.value)} aria-label="Rating system">
+        <option value="any">Any rating</option>
+        <option value="glyphs">Glyphs</option>
+        <option value="axes">Axes</option>
+        <option value="symbols">Symbols</option>
+      </select>
+      <select className="jfilters__sel jfilters__sort" value={fSort} onChange={(e) => setFSort(e.target.value)} aria-label="Sort order">
+        <option value="new">Newest first</option>
+        <option value="old">Oldest first</option>
+      </select>
+    </div>
+  ) : null;
+
+  const entryList = timeline.length === 0 ? (
+    <p className="journal-empty">
+      {totalItems === 0
+        ? "Your diary is empty. Write a note above, or mark titles watched and rate them — it all shows up here."
+        : filtersActive
+          ? "Nothing matches your filters."
+          : "Nothing here yet."}
+    </p>
+  ) : (
+    timeline.map((it) =>
+      it.note ? (
+        <EntryView key={it.note.id} entry={it.note} heading={headings.get(it.note.id) ?? ""} now={now} allEntries={entries} onUpdate={onUpdate} onDelete={onDelete} />
+      ) : (
+        // mobile focuses that title in place; desktop links out to it (original)
+        <ActivityRow key={it.act!.id} ev={it.act!} now={now} onPick={isMobile ? pickScope : undefined} />
+      ),
+    )
+  );
+
+  const scopeCover = (
+    <div className="timeline__cover" aria-hidden="true">
+      {selGroup?.cover ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="jcover" src={selGroup.cover} alt="" referrerPolicy="no-referrer" />
+      ) : null}
+    </div>
+  );
+
+  const scopeMeta = selGroup ? (
+    <>
+      {selGroup.year ? (<><span>{selGroup.year}</span><span className="sep" /></>) : null}
+      {selGroup.episodes ? (<><span>{selGroup.episodes} episodes</span><span className="sep" /></>) : null}
+      <span>{selGroup.count} entr{selGroup.count === 1 ? "y" : "ies"}</span>
+    </>
+  ) : (
+    <span>{totalItems} entr{totalItems === 1 ? "y" : "ies"} across {groups.length} title{groups.length === 1 ? "" : "s"}</span>
+  );
+
+  const scopeTitle = (
+    <div>
+      <h2 className="timeline__title" id="tl-title">{selGroup ? selGroup.title : "All entries"}</h2>
+      <div className="timeline__meta">{scopeMeta}</div>
+    </div>
+  );
+
+  // ---- MOBILE (≤520px): the redesigned single-column journal ---------------
+  if (isMobile) {
+    return (
+      <div className="journal journal--mobile">
+        <section className="timeline" aria-labelledby="tl-title">
+          {/* keyed on the scope so switching titles remounts this block and
+              replays the smooth fade-in (see .timeline__view in journal.css) */}
+          <div className="timeline__view" key={effSelected}>
+            <header className="timeline__head">
+              {scopeCover}
+              {scopeTitle}
+              {selGroup ? (
+                <div className="actions">
+                  <BackButton label="Back" onBack={() => pickScope("all")} className="backbtn--inline" />
+                  {selGroup.titleId ? (
+                    <Link className="btn" href={`/anime/${encodeURIComponent(selGroup.titleId)}`}>
+                      View title →
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+            </header>
+
+            {composer}
+            {filterRow}
+
+            {/* one search bar — narrows the diary history below by title */}
+            {effSelected === "all" && totalItems > 0 && (
+              <div className="jsearch">
+                <Icon name="search" size={14} />
+                <input
+                  type="text"
+                  placeholder="Search titles…"
+                  value={railQuery}
+                  onChange={(e) => setRailQuery(e.target.value)}
+                />
+              </div>
+            )}
+
+            {entryList}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ---- DESKTOP: the original rail + timeline -------------------------------
   return (
     <div className="journal">
-      {/* MAIN — the diary for the current scope (All entries by default). */}
-      <section className="timeline" aria-labelledby="tl-title">
-        {/* keyed on the scope so switching titles remounts this block and
-            replays the smooth fade-in (see .timeline__view in journal.css) */}
-        <div className="timeline__view" key={effSelected}>
-        <header className="timeline__head">
-          <div className="timeline__cover" aria-hidden="true">
-            {selGroup?.cover ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className="jcover" src={selGroup.cover} alt="" referrerPolicy="no-referrer" />
-            ) : null}
-          </div>
-          <div>
-            <h2 className="timeline__title" id="tl-title">
-              {selGroup ? selGroup.title : "All entries"}
-            </h2>
-            <div className="timeline__meta">
-              {selGroup ? (
-                <>
-                  {selGroup.year ? (<><span>{selGroup.year}</span><span className="sep" /></>) : null}
-                  {selGroup.episodes ? (<><span>{selGroup.episodes} episodes</span><span className="sep" /></>) : null}
-                  <span>{selGroup.count} entr{selGroup.count === 1 ? "y" : "ies"}</span>
-                </>
-              ) : (
-                <span>{totalItems} entr{totalItems === 1 ? "y" : "ies"} across {groups.length} title{groups.length === 1 ? "" : "s"}</span>
-              )}
-            </div>
-          </div>
-          {selGroup ? (
-            <div className="actions">
-              <BackButton label="Back" onBack={() => pickScope("all")} className="backbtn--inline" />
-              {selGroup.titleId ? (
-                <Link className="btn" href={`/anime/${encodeURIComponent(selGroup.titleId)}`}>
-                  View title →
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
-        </header>
-
-        <Composer key={effSelected} open={composerOpen} setOpen={setComposerOpen} defaultTarget={defaultTarget} onCreate={onCreate} allEntries={entries} />
-
-        {scopeHasItems && (
-          <div className="jfilters">
-            <select className="jfilters__sel" value={fDate} onChange={(e) => setFDate(e.target.value)} aria-label="Date range">
-              <option value="all">Any time</option>
-              <option value="today">Today</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-            </select>
-            <select className="jfilters__sel" value={fRate} onChange={(e) => setFRate(e.target.value)} aria-label="Rating system">
-              <option value="any">Any rating</option>
-              <option value="glyphs">Glyphs</option>
-              <option value="axes">Axes</option>
-              <option value="symbols">Symbols</option>
-            </select>
-            <select className="jfilters__sel jfilters__sort" value={fSort} onChange={(e) => setFSort(e.target.value)} aria-label="Sort order">
-              <option value="new">Newest first</option>
-              <option value="old">Oldest first</option>
-            </select>
-          </div>
-        )}
-
-        {/* Search titles — narrows the diary history below. Shown when browsing
-            all entries (a focused title is already a single title). */}
-        {effSelected === "all" && totalItems > 0 && (
-          <div className="jsearch">
-            <Icon name="search" size={14} />
+      <aside className="rail" aria-label="Your journaled titles">
+        <div className="rail__head">
+          <div className="rail__search">
+            <Icon name="search" size={13} />
             <input
               type="text"
-              placeholder="Search titles…"
+              placeholder="Search your titles…"
               value={railQuery}
               onChange={(e) => setRailQuery(e.target.value)}
             />
           </div>
-        )}
-
-        {timeline.length === 0 ? (
-          <p className="journal-empty">
-            {totalItems === 0
-              ? "Your diary is empty. Write a note above, or mark titles watched and rate them — it all shows up here."
-              : filtersActive
-                ? "Nothing matches your filters."
-                : "Nothing here yet."}
-          </p>
-        ) : (
-          timeline.map((it) =>
-            it.note ? (
-              <EntryView key={it.note.id} entry={it.note} heading={headings.get(it.note.id) ?? ""} now={now} allEntries={entries} onUpdate={onUpdate} onDelete={onDelete} />
-            ) : (
-              <ActivityRow key={it.act!.id} ev={it.act!} now={now} onPick={pickScope} />
-            ),
-          )
-        )}
+          <button
+            className="rail__new"
+            title="Write a new note"
+            onClick={() => { setSelected("all"); setComposerOpen(true); }}
+          >
+            <Icon name="plus" size={14} />
+          </button>
         </div>
+        <ul className="rail__list" role="list">
+          <li
+            className={"anime-row jrail-all" + (effSelected === "all" ? " on" : "")}
+            onClick={() => setSelected("all")}
+          >
+            <span className="anime-row__thumb jrail-all__thumb" aria-hidden="true" />
+            <div>
+              <div className="anime-row__title">All entries</div>
+              <div className="anime-row__sub">{totalItems} entr{totalItems === 1 ? "y" : "ies"}</div>
+            </div>
+            <span className="anime-row__count">{totalItems}</span>
+          </li>
+          {railGroups.map((g, i) => (
+            <li
+              key={g.key}
+              className={`anime-row anime-row--h${(i % 6) + 1}` + (effSelected === g.key ? " on" : "")}
+              onClick={() => setSelected(g.key)}
+            >
+              <span className="anime-row__thumb" aria-hidden="true">
+                {g.cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={g.cover} alt="" referrerPolicy="no-referrer" />
+                ) : null}
+              </span>
+              <div>
+                <div className="anime-row__title">{g.title}</div>
+                <div className="anime-row__sub">last activity {relative(g.last, now)}</div>
+              </div>
+              <span className="anime-row__count">{g.count}</span>
+            </li>
+          ))}
+          {groups.length === 0 && (
+            <li className="rail__empty">No titles yet — start a note with ＋.</li>
+          )}
+        </ul>
+        <div className="rail__footer">
+          <span>{groups.length} title{groups.length === 1 ? "" : "s"} · {totalItems} entr{totalItems === 1 ? "y" : "ies"}</span>
+        </div>
+      </aside>
+
+      <section className="timeline" aria-labelledby="tl-title">
+        <header className="timeline__head">
+          {scopeCover}
+          {scopeTitle}
+          {selGroup?.titleId ? (
+            <div className="actions">
+              <Link className="btn" href={`/anime/${encodeURIComponent(selGroup.titleId)}`}>
+                View title →
+              </Link>
+            </div>
+          ) : null}
+        </header>
+
+        {composer}
+        {filterRow}
+        {entryList}
       </section>
     </div>
   );
