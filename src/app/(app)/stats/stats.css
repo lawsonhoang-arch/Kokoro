@@ -111,7 +111,9 @@
 .sx-curve { display: block; width: 100%; height: 100%; overflow: visible; }
 .sx-curve__area { opacity: 0; animation: sxfade .8s ease .3s forwards; }
 @keyframes sxfade { to { opacity: 1; } }
-.sx-curve__ln { stroke: var(--focus); stroke-width: 3.5px; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: sxdraw 1.15s var(--spring) forwards; }
+/* Draw the line in with a smooth ease-out, NOT the spring — a spring overshoots
+   past the end (dashoffset < 0), which made the stroke over-extend and jitter. */
+.sx-curve__ln { stroke: var(--focus); stroke-width: 3.5px; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: sxdraw 1s cubic-bezier(.4, 0, .2, 1) forwards; }
 @keyframes sxdraw { to { stroke-dashoffset: 0; } }
 .sx-curve__mean { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed color-mix(in oklab, var(--ink) 30%, transparent); pointer-events: none; }
 .sx-curve__pill { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; color: var(--accent-ink, #241206); background: var(--focus); padding: 3px 9px; border-radius: 100px; box-shadow: 0 6px 14px -4px color-mix(in oklab, var(--focus) 70%, transparent); }
@@ -161,6 +163,16 @@
   .sx-grid, .sx-grid--genres { grid-template-columns: 1fr; }
   .sx-split { grid-template-columns: 1fr; gap: 20px; }
   .sx-metric { min-width: 45%; }
+
+  /* Genres: once stacked, the radar sits above the chips. Pin it below the nav
+     so it stays on screen while you scroll to and tap a genre — the taste shape
+     re-tweens in view instead of forcing a scroll back up. A smaller radar keeps
+     the pinned card compact so chips are still visible below it. */
+  .sx-grid--genres .sx-card--taste {
+    position: sticky; top: calc(var(--nav-h, 60px) + 8px); z-index: 3;
+  }
+  .sx-grid--genres .sx-card--taste .sx-radar { max-width: 190px; }
+  .sx-grid--genres .sx-card--taste .sx-tastebody { gap: 6px; }
 }
 
 /* back link + empty */

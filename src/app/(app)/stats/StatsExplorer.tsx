@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { StatsData } from "@/lib/stats";
 
 const s1 = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, "");
@@ -124,8 +125,8 @@ function ScoreCurve({ dist, mean }: { dist: { label: string; n: number }[]; mean
 }
 
 const FEEL_COLOR: Record<string, string> = { Loved: "#e86a94", Liked: "#7cc97f", Mixed: "#f2b134", Dropped: "#8a7f78" };
-const LENSES = ["overview", "genres", "ratings", "eras", "records"] as const;
-const LENS_LABEL: Record<string, string> = { overview: "Overview", genres: "Genres", ratings: "Ratings", eras: "Eras", records: "Records" };
+const LENSES = ["overview", "genres", "ratings", "eras"] as const;
+const LENS_LABEL: Record<string, string> = { overview: "Overview", genres: "Genres", ratings: "Ratings", eras: "Eras" };
 
 export function StatsExplorer({ data }: { data: StatsData }) {
   const [lens, setLens] = useState<string>("overview");
@@ -298,38 +299,16 @@ export function StatsExplorer({ data }: { data: StatsData }) {
           </div>
         </div>
       )}
-
-      {lens === "records" && (
-        <div className="sx-lens" key="records">
-          <div className="sx-cardhead" style={{ marginBottom: 14 }}><h2>Your records</h2><p>the titles that define your library</p></div>
-          {data.superlatives.length === 0 ? (
-            <div className="sx-card"><p style={{ color: "var(--ink-faint)", margin: 0 }}>Rate a few titles and your records will show up here.</p></div>
-          ) : (
-            <div className="sx-records">
-              {data.superlatives.map((s) => (
-                <div className="sx-rec" key={s.key}>
-                  <div className="sx-rec__art" style={s.cover ? { backgroundImage: `url(${s.cover})` } : undefined} />
-                  <div className="sx-rec__body">
-                    <div className="sx-rec__lbl">{s.label}</div>
-                    <div className="sx-rec__title">{s.title}</div>
-                    <div className="sx-rec__val">{s.value}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 export function StatsEmpty() {
   return (
-    <a className="sx-empty" href="/watchlist?import=1">
+    <Link className="sx-empty" href="/watchlist?import=1">
       <span className="sx-empty__spark" aria-hidden="true">✦</span>
       <span><b>Nothing to chart yet.</b> Import a list from AniList or MyAnimeList — your scores come along and your stats light up instantly.</span>
       <span className="sx-empty__cta">Import →</span>
-    </a>
+    </Link>
   );
 }
