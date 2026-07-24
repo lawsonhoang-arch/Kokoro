@@ -51,7 +51,14 @@ export async function CommunityCarousel({ userId }: { userId: string | undefined
               </span>
               <span className="comm-card__body">
                 <span className="comm-card__top">
-                  <span className={`avatar avatar--h${p.author.avatarHue} comm-card__avatar`} aria-hidden="true">{initials(p.author.name)}</span>
+                  <span className={`avatar avatar--h${p.author.avatarHue} comm-card__avatar`} aria-hidden="true">
+                    {p.author.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="avatar__img" src={p.author.image} alt="" referrerPolicy="no-referrer" loading="lazy" />
+                    ) : (
+                      initials(p.author.name)
+                    )}
+                  </span>
                   <span className="comm-card__author">{p.author.name}</span>
                   <span className="comm-card__time">{timeAgo(p.createdAt)}</span>
                 </span>

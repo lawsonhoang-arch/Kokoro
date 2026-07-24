@@ -13,7 +13,7 @@ const AGG_TTL = 60; // seconds
 
 export type PostKind = "discussion" | "review";
 
-export type Author = { id: string; name: string; username: string; avatarHue: number };
+export type Author = { id: string; name: string; username: string; avatarHue: number; image: string | null };
 
 export type SymbolRating = { style: string; value: number };
 export type Rating = {
@@ -95,6 +95,7 @@ const POST_COLS = {
   authorId: users.id,
   authorName: users.name,
   authorUsername: users.username,
+  authorImage: users.image,
   titleId: titles.id,
   titleName: titles.title,
   titleEnglish: titles.englishTitle,
@@ -118,6 +119,7 @@ type PostRow = {
   authorId: string;
   authorName: string | null;
   authorUsername: string;
+  authorImage: string | null;
   titleId: string | null;
   titleName: string | null;
   titleEnglish: string | null;
@@ -149,6 +151,7 @@ function toPost(r: PostRow, viewerId?: string): CommunityPost {
       name: r.authorName || "@" + r.authorUsername,
       username: r.authorUsername,
       avatarHue: hueOf(r.authorId),
+      image: r.authorImage,
     },
     title: r.titleId
       ? { id: r.titleId, name: r.titleEnglish || r.titleName || "Untitled", cover: hiResCover(r.cover) }
@@ -533,6 +536,7 @@ export async function getReplies(postId: string, viewerId?: string): Promise<Com
       authorId: users.id,
       authorName: users.name,
       authorUsername: users.username,
+      authorImage: users.image,
     })
     .from(communityReplies)
     .innerJoin(users, eq(communityReplies.userId, users.id))
@@ -542,7 +546,7 @@ export async function getReplies(postId: string, viewerId?: string): Promise<Com
     id: r.id,
     body: r.body,
     createdAt: r.createdAt.toISOString(),
-    author: { id: r.authorId, name: r.authorName || "@" + r.authorUsername, username: r.authorUsername, avatarHue: hueOf(r.authorId) },
+    author: { id: r.authorId, name: r.authorName || "@" + r.authorUsername, username: r.authorUsername, avatarHue: hueOf(r.authorId), image: r.authorImage },
     mine: !!viewerId && r.authorId === viewerId,
   }));
 }
@@ -557,7 +561,7 @@ export async function addReply(userId: string, postId: string, body: string): Pr
     .set({ replyCount: sql`${communityPosts.replyCount} + 1` })
     .where(eq(communityPosts.id, postId));
   const [u] = await db
-    .select({ id: users.id, name: users.name, username: users.username })
+    .select({ id: users.id, name: users.name, username: users.username, image: users.image })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -565,7 +569,7 @@ export async function addReply(userId: string, postId: string, body: string): Pr
     id: row.id,
     body,
     createdAt: row.createdAt.toISOString(),
-    author: { id: u.id, name: u.name || "@" + u.username, username: u.username, avatarHue: hueOf(u.id) },
+    author: { id: u.id, name: u.name || "@" + u.username, username: u.username, avatarHue: hueOf(u.id), image: u.image },
     mine: true,
   };
 }

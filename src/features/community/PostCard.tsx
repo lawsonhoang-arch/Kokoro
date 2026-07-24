@@ -129,7 +129,12 @@ export function PostCard({
     <article className={"cpost" + (post.kind === "review" ? " cpost--review" : "")}>
       <header className="cpost__head">
         <span className={`avatar avatar--h${post.author.avatarHue} cpost__avatar`} aria-hidden="true">
-          {initials(post.author.name)}
+          {post.author.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="avatar__img" src={post.author.image} alt="" referrerPolicy="no-referrer" />
+          ) : (
+            initials(post.author.name)
+          )}
         </span>
         <div className="cpost__who">
           <Link className="cpost__name" href={`/u/${encodeURIComponent(post.author.username)}`}>{post.author.name}</Link>
@@ -197,7 +202,12 @@ export function PostCard({
             replies.map((r) => (
               <div key={r.id} className="creply">
                 <span className={`avatar avatar--h${r.author.avatarHue} creply__avatar`} aria-hidden="true">
-                  {initials(r.author.name)}
+                  {r.author.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="avatar__img" src={r.author.image} alt="" referrerPolicy="no-referrer" />
+                  ) : (
+                    initials(r.author.name)
+                  )}
                 </span>
                 <div className="creply__body">
                   <span className="creply__who">
