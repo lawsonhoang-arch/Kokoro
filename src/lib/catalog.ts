@@ -11,11 +11,28 @@ import { indexSearch, indexQuery, indexBrowseManga, indexGetTitle, getNewNotable
 // Period keys used to rotate cached carousels: the hero refreshes daily, the
 // recommendations weekly. Including the key in the cache key means a new
 // day/week is a fresh entry (recompute); within it, the pick stays stable.
-const dayKey = () => new Date().toISOString().slice(0, 10); // UTC YYYY-MM-DD
-function weekKey(): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // back up to Monday
-  return d.toISOString().slice(0, 10);
+// A key that changes once every 2 days — used to freeze the shuffled home
+// selections (hero + "because you added") so the titles rotate every 2 days
+// rather than on every load or daily/weekly.
+const TWO_DAYS = 2 * 86400;
+const twoDayKey = () => String(Math.floor(Date.now() / (TWO_DAYS * 1000)));
+
+/** Titles the signed-in user has already WATCHED/READ — a completion (the
+ *  Mark-watched button) or a list entry marked completed. Excluded from the
+ *  hero and recommendations so finished titles aren't surfaced back. */
+async function watchedTitleIds(userId: string): Promise<Set<string>> {
+  try {
+    const r = await db.execute(sql`
+      select e.title_id as id from watchlist_entries e
+        join watchlists w on w.id = e.watchlist_id
+        where w.user_id = ${userId} and e.status = 'completed'
+      union
+      select title_id as id from completions where user_id = ${userId}
+    `);
+    return new Set((r as unknown as { id: string }[]).map((x) => x.id));
+  } catch {
+    return new Set<string>();
+  }
 }
 
 const DIM_KEYS = ["story", "art", "music", "pacing"] as const;
@@ -145,19 +162,20 @@ export type HeroSlide = SearchResult & {
 export function getHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
   return unstable_cache(
     () => computeHeroSlides(userId, limit),
-    ["hero-slides", userId ?? "anon", String(limit), dayKey()],
-    { revalidate: 86400 },
+    ["hero-slides", userId ?? "anon", String(limit), twoDayKey()],
+    { revalidate: TWO_DAYS },
   )();
 }
 
 async function computeHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
-  const [topRated, trending, newNotable, recs] = await Promise.all([
+  const [topRated, trending, newNotable, recs, watched] = await Promise.all([
     searchCatalogFull("", { type: "anime", sort: "rated" }, 1, 30, undefined, true),
     searchCatalogFull("", { sort: "popular" }, 1, 30, undefined, true),
     getNewNotable(30),
     userId
       ? getRecommendations(userId, 30)
       : Promise.resolve({ seedGenre: null, seedTitle: null, results: [] as SearchResult[] }),
+    userId ? watchedTitleIds(userId) : Promise.resolve(new Set<string>()),
   ]);
 
   const rand = (a: SearchResult[]) => (a.length ? a[Math.floor(Math.random() * a.length)] : null);
@@ -168,7 +186,8 @@ async function computeHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[
   const seen = new Set<string>();
   const chosen: Cand[] = [];
   const add = (item: SearchResult | null, eyebrow: string) => {
-    if (!item || seen.has(item.id) || chosen.length >= limit) return;
+    // skip anything already watched/read — the hero shouldn't feature finished titles
+    if (!item || seen.has(item.id) || watched.has(item.id) || chosen.length >= limit) return;
     seen.add(item.id);
     chosen.push({ item, eyebrow });
   };
@@ -240,13 +259,13 @@ export async function getContinueWatching(userId: string, limit = 12): Promise<H
 /** Genre-matched recommendations from the user's library (excludes owned titles). */
 type Recs = { seedGenre: string | null; seedTitle: string | null; results: SearchResult[] };
 
-/** Suggestions for the "Because you added …" shelf. Rotated weekly (a fresh
- *  shuffle of the top matches each week), frozen in between via the week key. */
+/** Suggestions for the "Because you added …" shelf. Rotated every 2 days (a
+ *  fresh shuffle of the top matches), frozen in between via the 2-day key. */
 export function getRecommendations(userId: string, limit = 12): Promise<Recs> {
   return unstable_cache(
     () => computeRecommendations(userId, limit),
-    ["recommendations", userId, String(limit), weekKey()],
-    { revalidate: 604800 },
+    ["recommendations", userId, String(limit), twoDayKey()],
+    { revalidate: TWO_DAYS },
   )();
 }
 
@@ -302,6 +321,8 @@ async function computeRecommendations(userId: string, limit = 12): Promise<Recs>
         select e.title_id from watchlist_entries e
         join watchlists w on e.watchlist_id = w.id
         where w.user_id = ${userId}
+        union
+        select title_id from completions where user_id = ${userId}
       )
     order by score desc nulls last, popularity desc nulls last, year desc nulls last
     limit ${limit * 3}

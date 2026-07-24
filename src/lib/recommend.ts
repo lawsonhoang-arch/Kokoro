@@ -55,6 +55,13 @@ async function computeMatched(userId: string, limit: number): Promise<{ recs: Re
     if (mine.size < MIN_RATED) return { recs: [], neighbors: 0 };
     const myIds = [...mine.keys()];
 
+    // titles you've already watched/read — never recommend them back
+    const watchedRows = await db.execute(sql`
+      select we.title_id as id from watchlist_entries we join watchlists w on w.id = we.watchlist_id
+        where w.user_id = ${userId} and we.status = 'completed'
+      union select title_id as id from completions where user_id = ${userId}`);
+    const watched = new Set((watchedRows as unknown as { id: string }[]).map((r) => r.id));
+
     // candidate neighbours — users who've rated ≥3 of the same titles
     const cand = await db
       .select({ uid: watchlists.userId })
@@ -85,7 +92,7 @@ async function computeMatched(userId: string, limit: number): Promise<{ recs: Re
     const acc = new Map<string, { score: number; raters: number; top: number }>();
     const seen = new Set<string>();
     for (const r of rows) {
-      if (mine.has(r.titleId)) continue;
+      if (mine.has(r.titleId) || watched.has(r.titleId)) continue;
       const key = r.uid + ":" + r.titleId;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -121,7 +128,7 @@ async function computeMatched(userId: string, limit: number): Promise<{ recs: Re
 }
 
 const getMatched = (userId: string, limit: number) =>
-  unstable_cache(() => computeMatched(userId, limit), ["taste-recs", userId, String(limit)], { revalidate: DAY })();
+  unstable_cache(() => computeMatched(userId, limit), ["taste-recs", userId, String(limit)], { revalidate: 2 * DAY })();
 
 // ============================================================
 // CONTENT-BASED — acclaimed titles in your favourite genres, unseen
@@ -153,7 +160,7 @@ async function computeBlindSpots(userId: string, limit: number): Promise<RecTitl
 }
 
 const getBlindSpots = (userId: string, limit: number) =>
-  unstable_cache(() => computeBlindSpots(userId, limit), ["blind-spots", userId, String(limit)], { revalidate: DAY })();
+  unstable_cache(() => computeBlindSpots(userId, limit), ["blind-spots", userId, String(limit)], { revalidate: 2 * DAY })();
 
 // ============================================================
 // The Home "For you" section: matched recs if we can, else blind spots.
