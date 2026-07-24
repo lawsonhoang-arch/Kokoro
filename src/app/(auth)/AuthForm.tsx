@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import type { AuthState } from "@/lib/auth-actions";
+import { BrandMark } from "@/shell/BrandMark";
 
 type Props = {
   mode: "login" | "signup";
@@ -16,7 +17,7 @@ export function AuthForm({ mode, action }: Props) {
   return (
     <div className="auth__card">
       <Link href="/" className="auth__brand" title="Kokoro">
-        <span className="auth__mark" aria-hidden="true" />
+        <BrandMark className="auth__mark" />
         <span className="auth__name">kokoro</span>
       </Link>
       <h1 className="auth__title">{isSignup ? "Create your account" : "Welcome back"}</h1>

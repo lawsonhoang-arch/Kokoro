@@ -21,18 +21,12 @@
   margin-bottom: 22px;
 }
 .auth__mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  background: radial-gradient(
-    circle at 30% 28%,
-    color-mix(in oklab, var(--accent) 96%, white) 0%,
-    var(--accent) 60%,
-    color-mix(in oklab, var(--accent) 80%, black) 100%
-  );
-  box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, var(--accent-ink)),
-    0 0 18px color-mix(in oklab, var(--accent) 30%, transparent);
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: block;
+  color: var(--accent); /* the orb draws in currentColor */
+  filter: drop-shadow(0 0 16px color-mix(in oklab, var(--accent) 30%, transparent));
 }
 .auth__name {
   font-family: var(--font-title);

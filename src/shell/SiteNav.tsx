@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { getLastList } from "@/lib/lastList";
 import { NavSearch } from "./NavSearch";
 import { NavBell } from "./NavBell";
+import { BrandMark } from "./BrandMark";
 
 type NavUser = {
   name?: string | null;
@@ -161,7 +162,7 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
       {/* left section — equal width to the right section keeps the tabs centered */}
       <div className="site-nav__side site-nav__side--left">
         <Link ref={brandRef} className="site-nav__brand" href="/home" title="Kokoro home">
-          <span className="site-nav__mark" aria-hidden="true" />
+          <BrandMark className="site-nav__mark" />
           <span className="site-nav__name">kokoro</span>
         </Link>
       </div>
