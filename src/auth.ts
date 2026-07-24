@@ -24,8 +24,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(creds?.password ?? "");
         if (!email || !password) return null;
 
+        // Select ONLY the columns login needs — never `select()` the whole row.
+        // A full-row select would break sign-in whenever the schema declares a
+        // column the prod DB doesn't have yet (e.g. a migration not run), which
+        // is exactly what took auth down.
         const [user] = await db
-          .select()
+          .select({
+            id: users.id,
+            email: users.email,
+            name: users.name,
+            image: users.image,
+            username: users.username,
+            role: users.role,
+            passwordHash: users.passwordHash,
+          })
           .from(users)
           .where(eq(users.email, email))
           .limit(1);
