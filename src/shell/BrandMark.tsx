@@ -1,9 +1,22 @@
+"use client";
+
+import { useId } from "react";
+
 // The Kokoro logo mark: a "rating orb" — a circle filled past half with a
 // smiling waterline and a glint, echoing the app's fill-from-bottom rating
 // glyphs. Draws in currentColor, so callers set the hue (the brand accent).
-// The fill is one path (lower disc + meniscus top), so no clip-path / id is
-// needed and it's safe to render anywhere, at any size.
+//
+// At rest it's the still smooth meniscus. On hover the surface becomes real
+// moving waves: two sine-wave layers (wider than the orb, clipped to it) scroll
+// across in opposite directions so the liquid visibly sloshes like it's being
+// shaken. One period of the wave is 45 user units, so translating by exactly 45
+// loops seamlessly.
+const WAVE =
+  "M-40 50 Q-28.75 36 -17.5 50 T5 50 T27.5 50 T50 50 T72.5 50 T95 50 T117.5 50 T140 50 L140 100 L-40 100 Z";
+
 export function BrandMark({ className, title }: { className?: string; title?: string }) {
+  const uid = useId();
+  const clip = "bmw-" + uid.replace(/[^a-zA-Z0-9]/g, "");
   return (
     <svg
       className={"brandmark" + (className ? " " + className : "")}
@@ -12,12 +25,19 @@ export function BrandMark({ className, title }: { className?: string; title?: st
       aria-label={title}
       aria-hidden={title ? undefined : true}
     >
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="50" cy="50" r="41" />
+        </clipPath>
+      </defs>
       {/* faint full disc — the unfilled "glass" above the waterline */}
       <circle cx="50" cy="50" r="41" fill="currentColor" opacity="0.15" />
-      {/* the liquid: bottom of the disc, capped by the smiling meniscus. Its own
-          <g> so it can slosh (rotate about the circle centre) on hover. */}
-      <g className="brandmark__liquid">
-        <path d="M9 50 Q50 62 91 50 A41 41 0 0 1 9 50 Z" fill="currentColor" />
+      {/* resting liquid: the still smooth meniscus (keeps the mark unchanged at rest) */}
+      <path className="brandmark__still" d="M9 50 Q50 62 91 50 A41 41 0 0 1 9 50 Z" fill="currentColor" />
+      {/* animated wave surface, clipped to the orb, revealed on hover */}
+      <g className="brandmark__waves" clipPath={`url(#${clip})`}>
+        <path className="brandmark__wave brandmark__wave--back" d={WAVE} fill="currentColor" opacity="0.5" />
+        <path className="brandmark__wave brandmark__wave--front" d={WAVE} fill="currentColor" />
       </g>
       {/* the rim */}
       <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="9" />

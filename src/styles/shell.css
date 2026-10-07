@@ -57,20 +57,25 @@
   filter: drop-shadow(0 0 10px color-mix(in oklab, var(--accent) 28%, transparent));
 }
 
-/* Logo "liquid slosh": hovering the orb rocks the fill about the circle centre,
-   so its curved surface tips side to side like gently-shaken liquid. */
-.brandmark__liquid { transform-box: view-box; transform-origin: 50% 50%; }
-.brandmark:hover .brandmark__liquid { animation: bm-slosh 1.25s ease-in-out infinite; }
-@keyframes bm-slosh {
-  0%   { transform: rotate(0deg); }
-  22%  { transform: rotate(7deg); }
-  48%  { transform: rotate(-2deg); }
-  63%  { transform: rotate(-6deg); }
-  83%  { transform: rotate(2.5deg); }
-  100% { transform: rotate(0deg); }
+/* Logo liquid waves: at rest the still meniscus shows; on hover it crossfades to
+   two wave layers that scroll across the orb (opposite directions/speeds) so the
+   surface visibly ripples and sloshes like shaken liquid. */
+.brandmark__still,
+.brandmark__waves { transition: opacity .22s ease; }
+.brandmark__waves { opacity: 0; }
+.brandmark__wave { transform-box: view-box; will-change: transform; }
+.brandmark:hover .brandmark__still { opacity: 0; }
+.brandmark:hover .brandmark__waves { opacity: 1; }
+.brandmark:hover .brandmark__wave--front { animation: bm-wave 0.85s linear infinite; }
+.brandmark:hover .brandmark__wave--back  { animation: bm-wave 1.45s linear infinite reverse; }
+/* one wave period = 45 user units, so a 45-unit shift loops seamlessly */
+@keyframes bm-wave {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-45px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .brandmark:hover .brandmark__liquid { animation: none; }
+  .brandmark:hover .brandmark__wave--front,
+  .brandmark:hover .brandmark__wave--back { animation: none; }
 }
 .site-nav__name {
   font-family: var(--font-title); font-weight: 800;
