@@ -214,10 +214,19 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     "Open it for details, or add it to one of your lists to start tracking."}
                 </p>
                 <div className="hero__meta">
-                  {s.score ? <span className="hero__pill hero__pill--score">★ {(s.score / 100).toFixed(1)}</span> : null}
-                  {s.year ? <span className="hero__pill">{s.year}</span> : null}
+                  {s.score ? (
+                    <span className="hero__pill hero__pill--score"><span className="hero__star" aria-hidden="true">★</span>{(s.score / 100).toFixed(1)}</span>
+                  ) : null}
+                  {s.year ? (
+                    <span className="hero__pill">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3" y="4.5" width="18" height="16" rx="2" /><path d="M3 9h18M8 2.5v4M16 2.5v4" />
+                      </svg>
+                      {s.year}
+                    </span>
+                  ) : null}
                   {s.episodes ? (
-                    <span className="hero__pill">{s.episodes} {s.kind === "manga" ? "chapters" : "episodes"}</span>
+                    <span className="hero__pill">{s.episodes} {s.kind === "manga" ? "Chapters" : "Episodes"}</span>
                   ) : null}
                   {s.genres.slice(0, 3).map((g) => (
                     <span key={g} className="hero__pill hero__pill--genre">{g}</span>

@@ -27,9 +27,7 @@ function genPoster(seed: string): CSSProperties {
 // outgoing snapshot, and the detail hero (same name) morphs in from it.
 export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: string; rank?: number }) {
   const artRef = useRef<HTMLDivElement>(null);
-  const unit = item.episodes ? `${item.episodes} ${item.kind === "manga" ? "ch" : "ep"}` : null;
   const genre = item.genres?.[0] ?? null;
-  const meta = sub ?? [item.year || null, unit].filter(Boolean).join(" · ");
   const score = item.score != null && item.score > 0 ? (item.score / 100).toFixed(1) : null;
   return (
     <div className="h-card-wrap">
@@ -54,13 +52,27 @@ export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: strin
         <span className="h-card__scrim" aria-hidden="true" />
         <div className="h-card__info">
           <div className="h-card__title">{item.title}</div>
-          {(genre || meta || score) && (
+          {sub ? (
+            <div className="h-card__sub"><span className="h-card__len">{sub}</span></div>
+          ) : (genre || item.episodes || score) ? (
             <div className="h-card__sub">
-              {genre && <span className="h-card__chip">{genre}</span>}
-              {meta && <span className="h-card__len">{meta}</span>}
-              {score && <span className="h-card__score">★ {score}</span>}
+              {genre && <span className="h-card__genre">{genre}</span>}
+              {item.episodes ? (
+                <span className="h-card__stat">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="2.5" y="4.5" width="19" height="13" rx="2" />
+                    <path d="M8 20.5h8" />
+                  </svg>
+                  {item.episodes}
+                </span>
+              ) : null}
+              {score && (
+                <span className="h-card__score">
+                  <span className="h-card__star" aria-hidden="true">★</span>{score}
+                </span>
+              )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </Link>
