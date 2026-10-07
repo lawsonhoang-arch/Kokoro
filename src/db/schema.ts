@@ -119,6 +119,9 @@ export const titles = pgTable("titles", {
   // wide hero/banner art (AniList bannerImage). '' = checked, none available;
   // null = not yet enriched. Falls back to `cover` when absent.
   banner: text("banner"),
+  // transparent title-logo PNG (Fanart.tv clearlogo/hdtvlogo), shown as the hero
+  // title instead of text. '' = checked, none available; null = not yet enriched.
+  logo: text("logo"),
   description: text("description"),
   format: text("format"),
   score: integer("score"), // catalog score ×100 (MAL), for ranking/filtering

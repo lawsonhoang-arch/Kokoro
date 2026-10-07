@@ -18,6 +18,8 @@
     "db:import-season": "tsx src/db/import-season.ts",
     "db:setup-editorial": "tsx src/db/setup-editorial.ts",
     "db:setup-banners": "tsx src/db/setup-banners.ts",
+    "db:setup-logos": "tsx src/db/setup-logos.ts",
+    "db:enrich-logos": "tsx src/db/enrich-logos.ts",
     "db:setup-news": "tsx src/db/setup-news.ts",
     "db:setup-community": "tsx src/db/setup-community.ts",
     "db:setup-profile": "tsx src/db/setup-profile.ts",

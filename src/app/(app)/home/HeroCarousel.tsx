@@ -207,7 +207,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               </div>
               <div className="hero__body">
                 <span className="hero__eyebrow">{s.eyebrow}</span>
-                <h2 className="hero__title">{s.title}</h2>
+                {s.logo ? (
+                  // transparent title-logo art stands in for the title text
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="hero__logo" src={s.logo} alt={s.title} referrerPolicy="no-referrer" />
+                ) : (
+                  <h2 className="hero__title">{s.title}</h2>
+                )}
                 <p className="hero__desc">
                   {s.description ||
                     "Open it for details, or add it to one of your lists to start tracking."}

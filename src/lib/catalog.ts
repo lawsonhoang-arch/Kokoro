@@ -148,6 +148,7 @@ export type HeroSlide = SearchResult & {
   score: number | null;
   eyebrow: string; // category label shown on the slide
   banner: string | null; // wide hero art (AniList); falls back to cover when null
+  logo: string | null; // transparent title-logo PNG (Fanart.tv); null → show text
 };
 
 /**
@@ -208,12 +209,16 @@ async function computeHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[
 
   if (chosen.length === 0) return [];
   const idList = sql.join(chosen.map((c) => sql`${c.item.id}`), sql`, `);
-  const r = await db.execute(sql`select id, description, score, banner from titles where id in (${idList})`);
-  const meta = new Map(
-    (r as unknown as { id: string; description: string | null; score: number | null; banner: string | null }[]).map(
-      (m) => [m.id, m],
-    ),
-  );
+  // Select `logo` defensively: before db:setup-logos has added the column, fall
+  // back to the pre-logo query so the hero never breaks on a deploy-before-migrate.
+  type Meta = { id: string; description: string | null; score: number | null; banner: string | null; logo?: string | null };
+  let rows: Meta[];
+  try {
+    rows = (await db.execute(sql`select id, description, score, banner, logo from titles where id in (${idList})`)) as unknown as Meta[];
+  } catch {
+    rows = (await db.execute(sql`select id, description, score, banner from titles where id in (${idList})`)) as unknown as Meta[];
+  }
+  const meta = new Map(rows.map((m) => [m.id, m]));
   return chosen.map((c) => ({
     ...c.item,
     eyebrow: c.eyebrow,
@@ -221,6 +226,8 @@ async function computeHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[
     score: meta.get(c.item.id)?.score ?? null,
     // wide AniList banner art; '' means "checked, none" → fall back to the cover
     banner: meta.get(c.item.id)?.banner || null,
+    // transparent title-logo (Fanart.tv); '' means "checked, none" → show text
+    logo: meta.get(c.item.id)?.logo || null,
   }));
 }
 
