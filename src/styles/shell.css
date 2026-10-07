@@ -62,40 +62,32 @@
   filter: drop-shadow(0 0 10px color-mix(in oklab, var(--accent) 28%, transparent));
 }
 
-/* Logo liquid waves — a ONE-SHOT slosh (triggered by .brandmark--slosh from JS):
-   the still meniscus crossfades to moving waves that roll fast, decelerate with a
-   little residual back-slosh (inertia), then settle back to the still meniscus.
-   Not a loop — it plays once and the class is removed when done. */
-.brandmark__waves { opacity: 0; }
-.brandmark__wave { transform-box: view-box; will-change: transform; }
-.brandmark--slosh .brandmark__waves { animation: bm-waves-vis 2.2s ease forwards; }
+/* Logo liquid slosh — a ONE-SHOT ripple (triggered by .brandmark--slosh from JS):
+   the still meniscus crossfades to a wave whose waterline SHAPE ripples and damps
+   down (amplitude decays, phase flipping = residual slosh / inertia), flattening
+   back to the still smooth meniscus. The waves don't scroll off to the side — they
+   settle in place. Plays once; the class is removed when done. */
+.brandmark__wave { opacity: 0; }
 .brandmark--slosh .brandmark__still { animation: bm-still-vis 2.2s ease forwards; }
-.brandmark--slosh .brandmark__wave--front { animation: bm-roll-a 2.2s linear forwards; }
-.brandmark--slosh .brandmark__wave--back  { animation: bm-roll-b 2.2s linear forwards; }
-/* reveal the waves for the slosh, fade back to the still meniscus at the end */
-@keyframes bm-waves-vis { 0% { opacity: 0; } 6% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes bm-still-vis { 0% { opacity: 1; } 6% { opacity: 0; } 80% { opacity: 0; } 100% { opacity: 1; } }
-/* linear timing; the keyframe spacing does the easing — big early jumps (fast),
-   small late ones (slow), then a brief reverse = residual slosh before settling */
-@keyframes bm-roll-a {
-  0% { transform: translateX(0); }
-  50% { transform: translateX(-126px); }
-  78% { transform: translateX(-174px); }
-  90% { transform: translateX(-165px); }
-  100% { transform: translateX(-170px); }
+.brandmark--slosh .brandmark__wave {
+  animation: bm-wave-vis 2.2s ease forwards, bm-ripple 2.2s linear forwards;
 }
-@keyframes bm-roll-b {
-  0% { transform: translateX(0); }
-  50% { transform: translateX(94px); }
-  78% { transform: translateX(130px); }
-  90% { transform: translateX(123px); }
-  100% { transform: translateX(127px); }
+/* reveal the wave for the slosh, fade back to the still meniscus at the end */
+@keyframes bm-wave-vis { 0% { opacity: 0; } 6% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes bm-still-vis { 0% { opacity: 1; } 6% { opacity: 0; } 88% { opacity: 0; } 100% { opacity: 1; } }
+/* damped standing wave: amplitude 8→6→4→2.7→1.4→0, phase flips each step */
+@keyframes bm-ripple {
+  0% { d: path("M9 50 Q19.25 50 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  10% { d: path("M9 50 Q19.25 42 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  26% { d: path("M9 50 Q19.25 56 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  44% { d: path("M9 50 Q19.25 45.8 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  62% { d: path("M9 50 Q19.25 52.7 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  80% { d: path("M9 50 Q19.25 48.6 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
+  100% { d: path("M9 50 Q19.25 50 29.5 50 T50 50 T70.5 50 T91 50 A41 41 0 0 1 9 50 Z"); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .brandmark--slosh .brandmark__waves,
   .brandmark--slosh .brandmark__still,
-  .brandmark--slosh .brandmark__wave--front,
-  .brandmark--slosh .brandmark__wave--back { animation: none; }
+  .brandmark--slosh .brandmark__wave { animation: none; }
 }
 .site-nav__name {
   font-family: var(--font-title); font-weight: 800;
