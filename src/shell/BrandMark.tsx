@@ -6,7 +6,7 @@
 export function BrandMark({ className, title }: { className?: string; title?: string }) {
   return (
     <svg
-      className={className}
+      className={"brandmark" + (className ? " " + className : "")}
       viewBox="0 0 100 100"
       role={title ? "img" : undefined}
       aria-label={title}
@@ -14,8 +14,11 @@ export function BrandMark({ className, title }: { className?: string; title?: st
     >
       {/* faint full disc — the unfilled "glass" above the waterline */}
       <circle cx="50" cy="50" r="41" fill="currentColor" opacity="0.15" />
-      {/* the liquid: bottom of the disc, capped by the smiling meniscus */}
-      <path d="M9 50 Q50 62 91 50 A41 41 0 0 1 9 50 Z" fill="currentColor" />
+      {/* the liquid: bottom of the disc, capped by the smiling meniscus. Its own
+          <g> so it can slosh (rotate about the circle centre) on hover. */}
+      <g className="brandmark__liquid">
+        <path d="M9 50 Q50 62 91 50 A41 41 0 0 1 9 50 Z" fill="currentColor" />
+      </g>
       {/* the rim */}
       <circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" strokeWidth="9" />
       {/* glossy glint */}

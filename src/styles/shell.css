@@ -48,6 +48,22 @@
   color: var(--accent); /* the orb draws in currentColor */
   filter: drop-shadow(0 0 10px color-mix(in oklab, var(--accent) 28%, transparent));
 }
+
+/* Logo "liquid slosh": hovering the orb rocks the fill about the circle centre,
+   so its curved surface tips side to side like gently-shaken liquid. */
+.brandmark__liquid { transform-box: view-box; transform-origin: 50% 50%; }
+.brandmark:hover .brandmark__liquid { animation: bm-slosh 1.25s ease-in-out infinite; }
+@keyframes bm-slosh {
+  0%   { transform: rotate(0deg); }
+  22%  { transform: rotate(7deg); }
+  48%  { transform: rotate(-2deg); }
+  63%  { transform: rotate(-6deg); }
+  83%  { transform: rotate(2.5deg); }
+  100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brandmark:hover .brandmark__liquid { animation: none; }
+}
 .site-nav__name {
   font-family: var(--font-title); font-weight: 800;
   font-size: 18px; letter-spacing: -0.02em; color: var(--ink);
