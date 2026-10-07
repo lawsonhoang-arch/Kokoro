@@ -252,11 +252,11 @@ async function HomeContent({
             on the right that leads with the user's own library (up next + their
             lists) and continues into news + popular community posts. The whole
             grid stacks on narrow screens. */}
+        {/* HERO — full-bleed, spanning the full content width above the two-column body */}
+        <HeroCarousel slides={heroSlides} />
+
         <div className="home-grid">
           <div className="home-main">
-
-        {/* HERO — a sliding carousel of the catalog's top-rated titles */}
-        <HeroCarousel slides={heroSlides} />
 
         {/* NEWS + COMMUNITY — headline carousels, streamed so they never block
             the main page (news is live RSS; community is a DB feed) */}

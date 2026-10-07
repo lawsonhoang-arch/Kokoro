@@ -13,4 +13,7 @@ export type SearchResult = {
   cover: string | null;
   // airing/publishing lifecycle: finished | ongoing | upcoming | null (unknown)
   status: string | null;
+  // catalog score (0–1000; display as score/100). Optional — not every result
+  // source populates it. Backs the score badge on cards.
+  score?: number | null;
 };

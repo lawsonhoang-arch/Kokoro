@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { SearchResult } from "@/features/search/types";
 import { StatusTag } from "@/components/StatusTag";
 import { coverVT } from "@/lib/vt";
+import { QuickAdd } from "./QuickAdd";
 
 function genPoster(seed: string): CSSProperties {
   let h = 0;
@@ -29,7 +30,9 @@ export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: strin
   const unit = item.episodes ? `${item.episodes} ${item.kind === "manga" ? "ch" : "ep"}` : null;
   const genre = item.genres?.[0] ?? null;
   const meta = sub ?? [item.year || null, unit].filter(Boolean).join(" · ");
+  const score = item.score != null && item.score > 0 ? (item.score / 100).toFixed(1) : null;
   return (
+    <div className="h-card-wrap">
     <Link
       className="h-card"
       href={`/anime/${encodeURIComponent(item.id)}`}
@@ -51,14 +54,17 @@ export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: strin
         <span className="h-card__scrim" aria-hidden="true" />
         <div className="h-card__info">
           <div className="h-card__title">{item.title}</div>
-          {(genre || meta) && (
+          {(genre || meta || score) && (
             <div className="h-card__sub">
               {genre && <span className="h-card__chip">{genre}</span>}
               {meta && <span className="h-card__len">{meta}</span>}
+              {score && <span className="h-card__score">★ {score}</span>}
             </div>
           )}
         </div>
       </div>
     </Link>
+      <QuickAdd titleId={item.id} />
+    </div>
   );
 }

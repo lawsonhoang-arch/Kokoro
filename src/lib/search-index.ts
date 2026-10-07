@@ -157,6 +157,7 @@ export function toResult(r: IndexRow): SearchResult {
     genres: r.genres,
     cover: r.cover,
     status: r.status,
+    score: r.score,
   };
 }
 
@@ -303,11 +304,11 @@ const byPopularity = (a: IndexRow, b: IndexRow) =>
 type SqlRow = {
   id: string; kind: string; title: string; english: string | null; native: string | null;
   year: number | null; episodes: number | null; format: string | null;
-  genres: string[] | null; cover: string | null; status: string | null;
+  genres: string[] | null; cover: string | null; status: string | null; score: number | null;
 };
 
 const SHELF_COLS = sql`id, kind, title, english_title as english, native_title as native,
-  year, episodes, format, genres, cover, status`;
+  year, episodes, format, genres, cover, status, score`;
 /** anime, safe, and actually showable (has art) */
 const SHELF_BASE = sql`kind = 'anime' and nsfw is not true and cover is not null`;
 
@@ -322,6 +323,7 @@ const sqlToResult = (r: SqlRow): SearchResult => ({
   genres: r.genres ?? [],
   cover: hiResCover(r.cover),
   status: r.status ?? null,
+  score: r.score,
 });
 
 export function currentSeason(): { season: string; year: number } {

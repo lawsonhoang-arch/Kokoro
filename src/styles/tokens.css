@@ -3,10 +3,13 @@
    Ported near-verbatim from the design handoff (site.css).
    ============================================================ */
 :root {
-  --page:     oklch(0.185 0.012 56);
-  --surface:  oklch(0.225 0.014 54);
-  --surface-2:oklch(0.27 0.016 52);
-  --surface-3:oklch(0.31 0.018 50);
+  /* UI refresh: deeper, more cinematic ground (text tokens unchanged, so
+     contrast holds); raised surfaces keep their lightness for more separation.
+     Scoped overrides in watchlist.css / landing.css are intentionally untouched. */
+  --page:     oklch(0.16 0.012 56);
+  --surface:  oklch(0.205 0.014 54);
+  --surface-2:oklch(0.255 0.016 52);
+  --surface-3:oklch(0.30 0.018 50);
   --ink:      oklch(0.94 0.014 76);
   --ink-soft: oklch(0.78 0.018 70);
   --ink-faint:oklch(0.62 0.016 64);
