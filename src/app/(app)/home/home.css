@@ -31,12 +31,14 @@
      edges (≤ the 2040px page cap), and pull up under the sticky (glassy) nav —
      -38px cancels .page's top padding, -nav-h clears the nav. Negative margins
      (not 100vw) so the scrollbar never forces a horizontal scroll. */
-  margin: calc(-1 * (var(--nav-h) + 38px)) -28px 40px;
+  /* negative bottom margin pulls the first row up into the hero's fully-faded
+     (solid --page) bottom, so content sits in the blend like the reference */
+  margin: calc(-1 * (var(--nav-h) + 38px)) -28px -56px;
   border-radius: 0;
   overflow: hidden;
   border: none;
   box-shadow: none;
-  background: var(--surface);
+  background: var(--page);
 }
 .hero-track {
   display: flex;
@@ -81,7 +83,7 @@
 
 /* slide dots */
 .hero-dots {
-  position: absolute; left: auto; right: 40px; bottom: 30px; z-index: 3;
+  position: absolute; left: auto; right: 40px; bottom: 82px; z-index: 3;
   display: flex; gap: 9px; justify-content: flex-end;
 }
 .hero-dot {
@@ -117,9 +119,13 @@
   background:
     linear-gradient(90deg, color-mix(in oklab, var(--page) 80%, transparent) 0%,
       color-mix(in oklab, var(--page) 40%, transparent) 34%, transparent 64%),
+    /* AGGRESSIVE bottom fade: the lower ~half of the hero melts fully into the
+       page background (solid --page), so the art blends away all the way across */
     linear-gradient(0deg, var(--page) 0%,
-      color-mix(in oklab, var(--page) 55%, transparent) 24%,
-      color-mix(in oklab, var(--page) 18%, transparent) 44%, transparent 62%);
+      var(--page) 18%,
+      color-mix(in oklab, var(--page) 70%, transparent) 40%,
+      color-mix(in oklab, var(--page) 34%, transparent) 62%,
+      color-mix(in oklab, var(--page) 12%, transparent) 80%, transparent 94%);
 }
 .hero__cover {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
@@ -610,8 +616,9 @@
     max-width: none; align-items: stretch; text-align: left;
     /* lift the content up toward the middle (leaving the faded area below) */
     padding: 18px 16px clamp(44px, 11vh, 96px); gap: 9px; justify-content: flex-end;
-    /* no own gradient — the full-banner scrim (.hero__art::after) covers it */
   }
+  /* no row-overlap on mobile, so the dots sit low again */
+  .hero-dots { bottom: 16px; right: 16px; }
   .hero__eyebrow { font-size: 9.5px; margin-bottom: 1px; }
   .hero__title { font-size: clamp(20px, 6vw, 26px); line-height: 1.14; }
   .hero__desc { display: none; } /* the synopsis is noise at this size */

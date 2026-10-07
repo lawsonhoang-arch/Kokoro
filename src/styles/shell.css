@@ -29,16 +29,16 @@
    tint AND the blur), so it reads as a soft gradient, never a concrete rectangle.
    Opacity is driven by scroll progress. */
 .site-nav::after {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 155%; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 220%; z-index: -1; pointer-events: none;
   background: linear-gradient(180deg,
     color-mix(in oklab, var(--page) 86%, transparent) 0%,
-    color-mix(in oklab, var(--page) 58%, transparent) 48%,
-    color-mix(in oklab, var(--page) 24%, transparent) 78%,
+    color-mix(in oklab, var(--page) 60%, transparent) 42%,
+    color-mix(in oklab, var(--page) 28%, transparent) 72%,
     transparent 100%);
   backdrop-filter: saturate(150%) blur(14px);
   -webkit-backdrop-filter: saturate(150%) blur(14px);
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 40%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 48%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 48%, transparent 100%);
   opacity: var(--nav-solid);
   transition: opacity .12s linear;
 }
