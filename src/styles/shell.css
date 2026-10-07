@@ -10,12 +10,25 @@
   display: flex; align-items: center; gap: 18px;
   height: var(--nav-h);
   padding: 0 28px;
-  /* UI refresh: deeper, glassier chrome with a hairline edge */
-  background: color-mix(in oklab, var(--page) 70%, transparent);
+  /* Seamless: transparent over the hero at the top, glassy once scrolled. */
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background .25s ease, border-color .25s ease, backdrop-filter .25s ease;
+}
+/* soft top scrim keeps the logo/tabs legible over bright hero art while
+   the bar is transparent; fades out once the glassy bar takes over */
+.site-nav::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 190%; z-index: -1;
+  pointer-events: none; transition: opacity .25s ease;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.14) 55%, transparent);
+}
+.site-nav--scrolled {
+  background: color-mix(in oklab, var(--page) 72%, transparent);
   backdrop-filter: saturate(160%) blur(18px);
   -webkit-backdrop-filter: saturate(160%) blur(18px);
-  border-bottom: 1px solid var(--hair);
+  border-bottom-color: var(--hair);
 }
+.site-nav--scrolled::before { opacity: 0; }
 /* The tab group is centered within the space *between* the logo and the right
    controls: the center fills the gap and centers its contents, while the sides
    take only their natural width. (Truly centering across the whole bar would

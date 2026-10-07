@@ -86,6 +86,9 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
   // when the expanded bar wouldn't otherwise fit — measured, not assumed.
   const [searchOpen, setSearchOpen] = useState(false);
   const [cramped, setCramped] = useState(false);
+  // Transparent over the hero at the top of the page; gains its glassy background
+  // once scrolled, so the bar reads over content without breaking the immersive top.
+  const [scrolled, setScrolled] = useState(false);
   const isMod = user && (user.role === "moderator" || user.role === "admin");
 
   const navRef = useRef<HTMLElement>(null);
@@ -138,6 +141,14 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
     recompute();
   }, [searchOpen, recompute]);
 
+  // Toggle the solid/glassy bar once the page scrolls off the very top.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Re-evaluate on viewport changes (and once after mount/fonts settle).
   useEffect(() => {
     const ro = new ResizeObserver(() => recompute());
@@ -156,7 +167,7 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
     <>
     <nav
       ref={navRef}
-      className={"site-nav" + (cramped ? " site-nav--searching" : "") + (searchOpen ? " site-nav--search-open" : "")}
+      className={"site-nav" + (cramped ? " site-nav--searching" : "") + (searchOpen ? " site-nav--search-open" : "") + (scrolled ? " site-nav--scrolled" : "")}
       aria-label="Primary"
     >
       {/* left section — equal width to the right section keeps the tabs centered */}
