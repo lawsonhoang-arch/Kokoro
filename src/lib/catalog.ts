@@ -163,7 +163,9 @@ export type HeroSlide = SearchResult & {
 export function getHeroSlides(userId?: string, limit = 6): Promise<HeroSlide[]> {
   return unstable_cache(
     () => computeHeroSlides(userId, limit),
-    ["hero-slides", userId ?? "anon", String(limit), twoDayKey()],
+    // "v2" bumps the key so cached (pre-logo) slides are superseded once the
+    // Fanart title-logos are enriched; bump again if slide fields change.
+    ["hero-slides", "v2", userId ?? "anon", String(limit), twoDayKey()],
     { revalidate: TWO_DAYS },
   )();
 }
