@@ -19,6 +19,7 @@ import { HomeReadyBeacon } from "./HomeReadyBeacon";
 import { NewsCarousel } from "./NewsCarousel";
 import { CommunityCarousel } from "./CommunityCarousel";
 import { TitleCard } from "./TitleCard";
+import { ShelfRow } from "./ShelfRow";
 
 // Resolve to a fallback if a fetch rejects OR takes too long. Bounds Home's
 // worst case so a slow-DB window can't hang the page (which would pile up failed
@@ -72,11 +73,11 @@ function Shelf({
   return (
     <section className={"section" + (className ? " " + className : "")}>
       <SectionHead title={title} sub={sub} moreLabel="See all →" moreHref={moreHref} />
-      <div className="shelf" role="list">
+      <ShelfRow>
         {items.map((it, i) => (
           <TitleCard key={it.id} item={it} rank={ranked ? i + 1 : undefined} />
         ))}
-      </div>
+      </ShelfRow>
     </section>
   );
 }

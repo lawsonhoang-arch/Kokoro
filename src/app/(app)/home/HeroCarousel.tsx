@@ -181,7 +181,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   }, [active, colors, slides]);
 
   if (n === 0) return null;
-  const go = (i: number) => setActive(((i % n) + n) % n);
 
   return (
     <div
@@ -248,29 +247,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           );
         })}
       </div>
-
-      {n > 1 && (
-        <>
-          <button className="hero-nav hero-nav--prev" aria-label="Previous slide" onClick={() => go(active - 1)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-          </button>
-          <button className="hero-nav hero-nav--next" aria-label="Next slide" onClick={() => go(active + 1)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-          </button>
-          <div className="hero-dots" role="tablist" aria-label="Featured slides">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                role="tab"
-                className={"hero-dot" + (i === active ? " on" : "")}
-                aria-label={`Go to slide ${i + 1}`}
-                aria-selected={i === active}
-                onClick={() => go(i)}
-              />
-            ))}
-          </div>
-        </>
-      )}
+      {/* No manual controls — the hero auto-advances ambiently (pauses on hover). */}
     </div>
   );
 }

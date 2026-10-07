@@ -33,7 +33,7 @@
      (not 100vw) so the scrollbar never forces a horizontal scroll. */
   /* negative bottom margin pulls the first row up into the hero's fully-faded
      (solid --page) bottom, so content sits in the blend like the reference */
-  margin: calc(-1 * (var(--nav-h) + 38px)) -28px -56px;
+  margin: calc(-1 * (var(--nav-h) + 38px)) -28px -104px;
   border-radius: 0;
   overflow: hidden;
   border: none;
@@ -645,6 +645,6 @@
      other content — no edge bleed (which read as mis-aligned on a phone). The
      row still scrolls; a partial card at the right edge signals there's more.
      Scoped under .home-grid so it reliably beats the global .shelf base. */
-  .home-grid .shelf { gap: 11px; padding: 2px 0 14px; margin: 0; }
-  .home-grid .shelf > * { flex: 0 0 128px; }
+  .home-grid .shelf { gap: 13px; padding: 2px 0 8px; margin: 0; }
+  .home-grid .shelf > * { flex: 0 0 160px; }
 }

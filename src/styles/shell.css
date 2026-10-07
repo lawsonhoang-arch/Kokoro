@@ -632,17 +632,35 @@
    HORIZONTAL SHELF (used on Home + Profile for poster scrollers)
    ============================================================ */
 .shelf {
-  display: flex; gap: 16px;
+  display: flex; gap: 18px;
   overflow-x: auto; overflow-y: visible;
-  padding: 4px 4px 18px;
+  padding: 4px 2px 8px;
   scroll-snap-type: x proximity;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  /* no scrollbar — the ShelfRow side arrows drive scrolling */
+  scrollbar-width: none;
 }
-.shelf > * { flex: 0 0 168px; scroll-snap-align: start; }
-.shelf::-webkit-scrollbar { height: 8px; }
-.shelf::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
-.shelf::-webkit-scrollbar-track { background: transparent; }
+.shelf > * { flex: 0 0 232px; scroll-snap-align: start; }
+.shelf::-webkit-scrollbar { display: none; }
+
+/* side arrows (ShelfRow) — like the hero: fade in on hover, hide at the ends */
+.shelf-wrap { position: relative; }
+.shelf-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 4; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 50%;
+  color: #fff; cursor: pointer;
+  background: color-mix(in oklab, #000 48%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity .2s, background .2s;
+}
+.shelf-wrap:hover .shelf-arrow { opacity: 1; }
+.shelf-arrow:hover { background: color-mix(in oklab, #000 66%, transparent); }
+.shelf-arrow:focus-visible { opacity: 1; }
+.shelf-arrow[hidden] { display: none; }
+.shelf-arrow--prev { left: -6px; }
+.shelf-arrow--next { right: -6px; }
+@media (hover: none) { .shelf-arrow { display: none; } } /* touch: swipe instead */
 
 .shelf-card .poster { margin-bottom: 8px; }
 .shelf-card__title {
