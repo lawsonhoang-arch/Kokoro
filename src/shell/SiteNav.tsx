@@ -86,9 +86,6 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
   // when the expanded bar wouldn't otherwise fit — measured, not assumed.
   const [searchOpen, setSearchOpen] = useState(false);
   const [cramped, setCramped] = useState(false);
-  // Transparent over the hero at the top of the page; gains its glassy background
-  // once scrolled, so the bar reads over content without breaking the immersive top.
-  const [scrolled, setScrolled] = useState(false);
   const isMod = user && (user.role === "moderator" || user.role === "admin");
 
   const navRef = useRef<HTMLElement>(null);
@@ -141,9 +138,16 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
     recompute();
   }, [searchOpen, recompute]);
 
-  // Toggle the solid/glassy bar once the page scrolls off the very top.
+  // Fade the glassy bar in GRADUALLY with scroll: --nav-solid ramps 0→1 over the
+  // first ~160px. Written straight to the element (no React state) so it's smooth
+  // and doesn't re-render on every scroll tick.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    const nav = navRef.current;
+    if (!nav) return;
+    const onScroll = () => {
+      const p = Math.min(Math.max(window.scrollY, 0) / 160, 1);
+      nav.style.setProperty("--nav-solid", p.toFixed(3));
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -167,7 +171,7 @@ export function SiteNav({ user, unread = 0 }: { user: NavUser; unread?: number }
     <>
     <nav
       ref={navRef}
-      className={"site-nav" + (cramped ? " site-nav--searching" : "") + (searchOpen ? " site-nav--search-open" : "") + (scrolled ? " site-nav--scrolled" : "")}
+      className={"site-nav" + (cramped ? " site-nav--searching" : "") + (searchOpen ? " site-nav--search-open" : "")}
       aria-label="Primary"
     >
       {/* left section — equal width to the right section keeps the tabs centered */}
