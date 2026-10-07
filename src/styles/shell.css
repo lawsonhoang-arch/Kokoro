@@ -10,10 +10,11 @@
   display: flex; align-items: center; gap: 18px;
   height: var(--nav-h);
   padding: 0 28px;
-  background: color-mix(in oklab, var(--surface) 88%, transparent);
-  backdrop-filter: saturate(140%) blur(14px);
-  -webkit-backdrop-filter: saturate(140%) blur(14px);
-  border-bottom: 1px solid var(--line);
+  /* UI refresh: deeper, glassier chrome with a hairline edge */
+  background: color-mix(in oklab, var(--page) 70%, transparent);
+  backdrop-filter: saturate(160%) blur(18px);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  border-bottom: 1px solid var(--hair);
 }
 /* The tab group is centered within the space *between* the logo and the right
    controls: the center fills the gap and centers its contents, while the sides
@@ -45,35 +46,39 @@
   flex: 0 0 auto; /* natural width; grouped with the search circle, centered */
 }
 .site-nav__tab {
+  position: relative;
   display: inline-flex; align-items: center;
-  padding: 8px 16px; border-radius: 100px;
+  padding: 8px 14px; border-radius: 10px;
   font-family: var(--font-ui); font-weight: 600; font-size: 13.5px;
   color: var(--ink-faint);
-  transition: color .18s, background .18s, box-shadow .18s;
+  transition: color .18s, background .18s;
 }
-.site-nav__tab:hover { color: var(--ink-soft); background: color-mix(in oklab, var(--surface-2) 60%, transparent); }
-.site-nav__tab.on {
-  color: var(--ink);
-  background: color-mix(in oklab, var(--accent) 14%, var(--surface-2));
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, var(--line));
+.site-nav__tab:hover { color: var(--ink); background: color-mix(in oklab, var(--surface-2) 55%, transparent); }
+/* active = clear text + an accent underline-glow (UI refresh) */
+.site-nav__tab.on { color: var(--ink); background: transparent; }
+.site-nav__tab.on::after {
+  content: ""; position: absolute; left: 50%; transform: translateX(-50%); bottom: 2px;
+  width: calc(100% - 28px); height: 2px; border-radius: 2px;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent);
 }
 
 .site-nav__end { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .site-nav__icon {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--ink-soft);
-  border: 1px solid var(--line);
-  background: color-mix(in oklab, var(--surface-2) 60%, transparent);
+  border: 1px solid var(--hair);
+  background: color-mix(in oklab, var(--surface-2) 45%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   transition: color .15s, border-color .15s, background .15s;
 }
-.site-nav__icon:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); }
+.site-nav__icon:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, var(--hair-strong)); background: color-mix(in oklab, var(--surface-2) 70%, transparent); }
 .site-nav__avatar {
   position: relative; overflow: hidden;
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 38px; height: 38px; border-radius: 50%;
   background:
     radial-gradient(circle at 32% 30%, color-mix(in oklab, var(--accent) 80%, var(--surface-3)) 0%, var(--surface-3) 70%);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--hair-strong);
   transition: box-shadow .15s, transform .12s;
 }
 .site-nav__avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
