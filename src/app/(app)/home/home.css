@@ -353,15 +353,10 @@
 /* ============================================================
    HOME BODY — discovery shelves (left) + news/community rail (right)
    ============================================================ */
-.home-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 36px;
-  align-items: start;
-}
-/* min-width:0 lets the horizontal poster shelves shrink within the column
-   instead of forcing the grid track wider (which would overflow the page). */
-.home-main { min-width: 0; }
+/* single-column feed (the side rail was removed); sections stack with their own
+   margins, and min-width:0 lets the horizontal poster shelves shrink instead of
+   forcing the page wider. */
+.home-grid { display: block; min-width: 0; }
 
 .home-rail {
   position: sticky;
