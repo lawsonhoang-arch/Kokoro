@@ -12,8 +12,13 @@
   --ink-faint:oklch(0.62 0.016 64);
   --line:     oklch(0.32 0.014 56);
   --line-strong: oklch(0.42 0.016 55);
+  /* UI-refresh: hairline borders (light-on-dark) for the modern glassy look,
+     used alongside --line. See [[ui-refresh]]. */
+  --hair:     rgba(255,255,255,0.07);
+  --hair-strong: rgba(255,255,255,0.12);
   --accent:   oklch(0.72 0.13 52);
   --accent-hi:oklch(0.78 0.13 56);
+  --accent-bright: oklch(0.82 0.14 60);
   --accent-ink: oklch(0.18 0.02 50);
   --feel-loved:   oklch(0.78 0.14 70);
   --feel-liked:   oklch(0.76 0.10 150);

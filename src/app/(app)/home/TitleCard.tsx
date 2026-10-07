@@ -27,7 +27,8 @@ function genPoster(seed: string): CSSProperties {
 export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: string; rank?: number }) {
   const artRef = useRef<HTMLDivElement>(null);
   const unit = item.episodes ? `${item.episodes} ${item.kind === "manga" ? "ch" : "ep"}` : null;
-  const meta = sub ?? [item.format, item.year || null, unit].filter(Boolean).join(" · ");
+  const genre = item.genres?.[0] ?? null;
+  const meta = sub ?? [item.year || null, unit].filter(Boolean).join(" · ");
   return (
     <Link
       className="h-card"
@@ -46,9 +47,18 @@ export function TitleCard({ item, sub, rank }: { item: SearchResult; sub?: strin
         {rank != null && <span className="h-card__rank">{rank}</span>}
         {item.kind === "manga" && <span className="h-card__badge">Manga</span>}
         <StatusTag kind={item.kind} status={item.status} overlay />
+        {/* bottom gradient + info-bar overlaid on the art (refreshed card) */}
+        <span className="h-card__scrim" aria-hidden="true" />
+        <div className="h-card__info">
+          <div className="h-card__title">{item.title}</div>
+          {(genre || meta) && (
+            <div className="h-card__sub">
+              {genre && <span className="h-card__chip">{genre}</span>}
+              {meta && <span className="h-card__len">{meta}</span>}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="h-card__title">{item.title}</div>
-      {meta && <div className="h-card__sub">{meta}</div>}
     </Link>
   );
 }
