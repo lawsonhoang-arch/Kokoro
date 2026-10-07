@@ -3,7 +3,7 @@ import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Page, PageHead } from "@/shell/Page";
+import { Page } from "@/shell/Page";
 import { Avatar } from "@/components/ui";
 import { SectionHead } from "@/components/SectionHead";
 import {
@@ -242,12 +242,6 @@ async function HomeContent({
       {/* ambient top glow, tinted to the featured carousel cover by HeroCarousel */}
       <div className="feature-glow" aria-hidden="true" />
       <Page width="wide">
-        <PageHead
-          eyebrow="Discover"
-          title="What's on tonight"
-          lede="Top-rated and trending anime & manga, new arrivals, and picks shaped by what you watch."
-        />
-
         {/* Two-column body: hero + discovery shelves on the left, a sticky rail
             on the right that leads with the user's own library (up next + their
             lists) and continues into news + popular community posts. The whole
