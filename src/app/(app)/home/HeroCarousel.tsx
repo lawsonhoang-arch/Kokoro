@@ -192,12 +192,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     >
       <div className="hero-track" style={{ transform: `translateX(-${active * 100}%)` }}>
         {slides.map((s, i) => {
-          const meta = [
-            s.year || null,
-            s.genres.slice(0, 2).join(" · ") || null,
-            s.episodes ? `${s.episodes} ${s.kind === "manga" ? "chapters" : "episodes"}` : null,
-            s.score ? `★ ${(s.score / 100).toFixed(1)}` : null,
-          ].filter(Boolean);
           return (
             <section className="hero hero-slide" key={s.id} aria-hidden={i !== active}>
               <div className="hero__art" style={heroPoster(s.id)} aria-hidden="true">
@@ -220,11 +214,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     "Open it for details, or add it to one of your lists to start tracking."}
                 </p>
                 <div className="hero__meta">
-                  {meta.map((m, j) => (
-                    <span key={j}>
-                      {j > 0 && <span className="sep" />}
-                      {m}
-                    </span>
+                  {s.score ? <span className="hero__pill hero__pill--score">★ {(s.score / 100).toFixed(1)}</span> : null}
+                  {s.year ? <span className="hero__pill">{s.year}</span> : null}
+                  {s.episodes ? (
+                    <span className="hero__pill">{s.episodes} {s.kind === "manga" ? "chapters" : "episodes"}</span>
+                  ) : null}
+                  {s.genres.slice(0, 3).map((g) => (
+                    <span key={g} className="hero__pill hero__pill--genre">{g}</span>
                   ))}
                 </div>
                 <div className="hero__actions">
